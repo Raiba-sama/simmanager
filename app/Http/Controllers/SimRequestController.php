@@ -970,6 +970,11 @@ class SimRequestController extends Controller
                 $responseData = $response->json();
                 $responseBody = $response->body();
                 
+                // Initialiser responseData comme tableau vide si null
+                if ($responseData === null) {
+                    $responseData = [];
+                }
+                
                 // Si la réponse est un tableau indexé (ex: [0 => [...]], prendre le premier élément
                 if (is_array($responseData) && isset($responseData[0]) && is_array($responseData[0])) {
                     $responseData = $responseData[0];
@@ -979,6 +984,7 @@ class SimRequestController extends Controller
                     'request_number' => $simRequest->request_number,
                     'response_json' => $responseData,
                     'response_body' => $responseBody,
+                    'response_body_length' => strlen($responseBody),
                     'response_status' => $response->status()
                 ]);
 
@@ -1000,6 +1006,15 @@ class SimRequestController extends Controller
                     }
                 }
 
+                // Vérifier si la réponse est vide ou ne contient pas de données utiles
+                $hasValidData = !empty($responseData) && (
+                    isset($responseData['message_subject']) || 
+                    isset($responseData['subject']) || 
+                    isset($responseData['message_corps']) || 
+                    isset($responseData['body']) || 
+                    isset($responseData['message'])
+                );
+
                 // Sauvegarder le retour du webhook dans mail_sent si le statut est OK
                 // Vérifier le statut de différentes manières possibles
                 $status = null;
@@ -1007,14 +1022,15 @@ class SimRequestController extends Controller
                     $status = strtolower(trim($responseData['status'] ?? $responseData['Status'] ?? ''));
                 }
                 
-                // Si le statut est OK ou si la réponse est réussie (200), sauvegarder
+                // Vérifier si on doit stocker : le statut doit être OK ET la réponse doit contenir des données
                 $shouldStore = false;
-                if ($status === 'ok' || $response->status() === 200) {
-                    $shouldStore = true;
-                    // Si le statut n'est pas explicitement "ok", on le force pour la sauvegarde
-                    if ($status !== 'ok') {
+                if ($status === 'ok' || ($response->status() === 200 && $hasValidData)) {
+                    // Si le statut n'est pas explicitement "ok" mais qu'on a des données valides, on peut continuer
+                    if ($status !== 'ok' && $hasValidData) {
                         $responseData['status'] = 'ok';
+                        $status = 'ok';
                     }
+                    $shouldStore = ($status === 'ok' && $hasValidData);
                 }
                 
                 if ($shouldStore && !empty($responseData)) {
@@ -1059,6 +1075,16 @@ class SimRequestController extends Controller
                             $mailData['message_subject'] = "Demande {$typeLabel} - {$simRequest->request_number}";
                         }
                         
+                        // Vérifier que message_corps n'est pas vide (contenu essentiel du mail)
+                        if (empty($mailData['message_corps'])) {
+                            Log::warning('Webhook response missing message_corps, mail not stored', [
+                                'request_number' => $simRequest->request_number,
+                                'response_data' => $responseData,
+                                'mail_data' => $mailData
+                            ]);
+                            throw new \Exception('Le webhook n\'a pas retourné de contenu de message (message_corps). Impossible de stocker le mail sans contenu.');
+                        }
+                        
                         $storeRequest = new \Illuminate\Http\Request($mailData);
                         $storeResponse = $mailSentController->store($storeRequest);
                         
@@ -1090,12 +1116,25 @@ class SimRequestController extends Controller
                         ]);
                     }
                 } else {
-                    Log::warning('Webhook response status is not OK, mail not stored', [
+                    // Déterminer la raison pour laquelle le mail n'est pas stocké
+                    $reason = 'unknown';
+                    if (empty($responseData)) {
+                        $reason = 'empty_response';
+                    } elseif (!$hasValidData) {
+                        $reason = 'no_valid_data';
+                    } elseif ($status !== 'ok') {
+                        $reason = 'status_not_ok';
+                    }
+                    
+                    Log::warning('Webhook response not suitable for storage, mail not stored', [
                         'request_number' => $simRequest->request_number,
                         'response_data' => $responseData,
+                        'response_body' => $responseBody,
                         'status' => $status ?? 'not set',
                         'http_status' => $response->status(),
-                        'should_store' => $shouldStore
+                        'should_store' => $shouldStore,
+                        'has_valid_data' => $hasValidData ?? false,
+                        'reason' => $reason
                     ]);
                 }
             } else {
