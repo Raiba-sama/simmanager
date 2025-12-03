@@ -318,12 +318,8 @@
                 </div>
                 <div class="card-body">
                     {{-- Bouton pour soumettre au webhook --}}
-                    {{-- Pour les récupérations : afficher seulement si validée --}}
-                    {{-- Pour les autres demandes : afficher si non rejetée --}}
-                    @if(
-                        (!$simRequest->isRecuperation() && !$simRequest->isRejetee()) ||
-                        ($simRequest->isRecuperation() && $simRequest->isValidee() && !$simRequest->isRejetee())
-                    )
+                    {{-- Afficher pour toutes les demandes non rejetées --}}
+                    @if(!$simRequest->isRejetee())
                         <form method="POST" action="{{ route('sim-requests.submit-webhook', $simRequest) }}" class="mb-3" onsubmit="return confirm('Êtes-vous sûr de vouloir soumettre cette demande au webhook ? Un email sera envoyé automatiquement.');">
                             @csrf
                             <button type="submit" class="btn btn-success w-100">

@@ -147,6 +147,20 @@
                 @endif
 
                 <div class="mb-3">
+                    <label for="phone_number_recuperation" class="form-label">Numéro de ligne concerné <span class="text-danger">*</span></label>
+                    <input type="text" id="phone_number_recuperation" 
+                           class="form-control @error('phone_number') is-invalid @enderror" 
+                           value="{{ old('phone_number', $currentSim->phone_number ?? '') }}" 
+                           placeholder="Ex: 0341012345 ou +261 34 12 345 67"
+                           data-required-for="recuperation"
+                           oninput="document.getElementById('phone_number_hidden').value = this.value">
+                    <small class="form-text text-muted">Numéro de téléphone de la ligne à récupérer.</small>
+                    @error('phone_number')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
                     <label for="sim_id_recuperation" class="form-label">SIM disponible</label>
                     <select name="sim_id" id="sim_id_recuperation" class="form-select @error('sim_id') is-invalid @enderror">
                         <option value="">Sélectionner une SIM libre...</option>
@@ -333,9 +347,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const type = requestType.value;
         
         if (type === 'recuperation') {
+            const phoneNumber = document.getElementById('phone_number_recuperation');
+            const phoneNumberHidden = document.getElementById('phone_number_hidden');
             const motif = document.getElementById('motif_recuperation');
             const motifHidden = document.getElementById('motif_hidden');
             
+            if (phoneNumber && phoneNumberHidden) {
+                phoneNumberHidden.value = phoneNumber.value;
+            }
             if (motif && motifHidden) {
                 motifHidden.value = motif.value;
             }
@@ -398,6 +417,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Vérifier les champs requis selon le type
         if (type === 'recuperation') {
+            const phoneNumber = document.getElementById('phone_number_recuperation');
+            const phoneNumberHidden = document.getElementById('phone_number_hidden');
             const motif = document.getElementById('motif_recuperation');
             const motifHidden = document.getElementById('motif_hidden');
             
@@ -405,8 +426,22 @@ document.addEventListener('DOMContentLoaded', function() {
             recuperationForm.classList.remove('form-section-hidden');
             
             // Copier les valeurs vers les champs cachés
+            if (phoneNumber && phoneNumberHidden) {
+                phoneNumberHidden.value = phoneNumber.value;
+            }
             if (motif && motifHidden) {
                 motifHidden.value = motif.value;
+            }
+            
+            const phoneValue = phoneNumber ? phoneNumber.value.trim() : (phoneNumberHidden ? phoneNumberHidden.value.trim() : '');
+            if (!phoneValue) {
+                e.preventDefault();
+                if (phoneNumber) {
+                    phoneNumber.focus();
+                    phoneNumber.classList.add('is-invalid');
+                }
+                alert('Le numéro de ligne est requis.');
+                return false;
             }
             
             const motifValue = motif ? motif.value.trim() : (motifHidden ? motifHidden.value.trim() : '');

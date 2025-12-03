@@ -815,6 +815,7 @@ class SimRequestController extends Controller
     private function validateRecuperation(Request $request)
     {
         return $request->validate([
+            'phone_number' => 'required|string|max:255',
             'sim_id' => 'nullable|exists:sims,id',
             'requested_iccid' => 'nullable|string|max:255',
             'motif' => 'required|string|max:500',
@@ -857,17 +858,39 @@ class SimRequestController extends Controller
     {
         DB::beginTransaction();
         try {
-            // Récupérer automatiquement le numéro de l'user s'il a une SIM
-            $currentSim = Sim::where('assigned_to', $user->id)
-                ->whereIn('status', ['attribue', 'suspendu'])
-                ->first();
+            // Si l'utilisateur n'est pas validateur, récupérer automatiquement le numéro de l'user s'il a une SIM
+            // Sinon, utiliser le numéro fourni dans le formulaire
+            $phoneNumber = $validated['phone_number'] ?? null;
+            $simId = $validated['sim_id'] ?? null;
+            
+            // Le phone_number est maintenant requis dans la validation pour tous
+            // Pour les utilisateurs simples, on peut aussi chercher la SIM par numéro si non fournie
+            if (!$user->isValidator()) {
+                // Pour les utilisateurs simples, si la SIM n'est pas fournie, chercher par numéro
+                if (!$simId && $phoneNumber) {
+                    $simByPhone = Sim::where('phone_number', $phoneNumber)
+                        ->where('assigned_to', $user->id)
+                        ->first();
+                    if ($simByPhone) {
+                        $simId = $simByPhone->id;
+                    }
+                }
+            } else {
+                // Pour les validateurs, chercher la SIM par numéro de téléphone si fourni
+                if ($phoneNumber && !$simId) {
+                    $simByPhone = Sim::where('phone_number', $phoneNumber)->first();
+                    if ($simByPhone) {
+                        $simId = $simByPhone->id;
+                    }
+                }
+            }
 
             $simRequest = SimRequest::create([
                 'request_number' => SimRequest::generateRequestNumber(),
                 'user_id' => $user->id,
-                'sim_id' => $validated['sim_id'] ?? ($currentSim ? $currentSim->id : null),
+                'sim_id' => $simId,
                 'requested_iccid' => $validated['requested_iccid'] ?? null,
-                'phone_number' => $currentSim ? $currentSim->phone_number : null,
+                'phone_number' => $phoneNumber,
                 'request_type' => 'recuperation',
                 'motif' => $validated['motif'],
                 'status' => 'en_attente',
@@ -1035,17 +1058,17 @@ class SimRequestController extends Controller
             $createdByNumeroFlotte = $requester->numero_flotte ?? '';
             
             // Déterminer le numéro de téléphone à utiliser
-            // Pour les demandes de suspension, désactivation, ajustement : utiliser le numéro de la ligne concernée
-            // Sinon : utiliser le numéro personnel du demandeur
+            // Pour les demandes de suspension, désactivation, ajustement, récupération : utiliser le numéro de la ligne concernée
+            // Pour la création : utiliser le numéro personnel du demandeur
             $phoneNumberToUse = '';
-            if (in_array($simRequest->request_type, ['suspension', 'desactivation', 'ajustement'])) {
+            if (in_array($simRequest->request_type, ['suspension', 'desactivation', 'ajustement', 'recuperation'])) {
                 // Utiliser le numéro de la ligne concernée par la demande
                 $phoneNumberToUse = $simRequest->phone_number ?? '';
                 if (empty($phoneNumberToUse) && $sim) {
                     $phoneNumberToUse = $sim->phone_number ?? '';
                 }
             } else {
-                // Pour les autres types (récupération, création), utiliser le numéro personnel du demandeur
+                // Pour la création, utiliser le numéro personnel du demandeur
                 $phoneNumberToUse = $requester->phone ?? '';
             }
 
@@ -1365,16 +1388,14 @@ class SimRequestController extends Controller
             abort(403, 'Seuls les administrateurs peuvent soumettre une demande au webhook.');
         }
 
-        // Pour les demandes de récupération, permettre l'envoi manuel seulement si elles sont validées
-        // (elles sont normalement envoyées automatiquement après validation, mais l'admin peut les réenvoyer si nécessaire)
-        if ($simRequest->isRecuperation() && !$simRequest->isValidee()) {
-            return back()->with('error', 'Les demandes de récupération doivent être validées avant d\'être envoyées au webhook.');
-        }
-
         // Vérifier que la demande est dans un statut valide pour être soumise
+        // Les demandes rejetées ne peuvent pas être soumises
         if ($simRequest->isRejetee()) {
             return back()->with('error', 'Les demandes rejetées ne peuvent pas être soumises au webhook.');
         }
+        
+        // Vérifier que la demande n'a pas déjà été envoyée (optionnel, peut permettre de réenvoyer)
+        // On permet de réenvoyer si nécessaire
 
         DB::beginTransaction();
         try {
