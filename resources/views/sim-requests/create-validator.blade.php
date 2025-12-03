@@ -335,8 +335,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (type === 'recuperation') {
             const motif = document.getElementById('motif_recuperation');
             const motifHidden = document.getElementById('motif_hidden');
-
-            
             
             if (motif && motifHidden) {
                 motifHidden.value = motif.value;
