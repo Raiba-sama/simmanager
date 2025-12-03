@@ -13,6 +13,7 @@
                 <label for="request_type" class="form-label">Type de demande <span class="text-danger">*</span></label>
                 <select name="request_type" id="request_type" class="form-select @error('request_type') is-invalid @enderror" required>
                     <option value="">Sélectionner...</option>
+                    <option value="recuperation" {{ old('request_type') === 'recuperation' ? 'selected' : '' }}>Récupération</option>
                     <option value="creation" {{ old('request_type') === 'creation' ? 'selected' : '' }}>Création</option>
                     <option value="suspension" {{ old('request_type') === 'suspension' ? 'selected' : '' }}>Suspension</option>
                     <option value="desactivation" {{ old('request_type') === 'desactivation' ? 'selected' : '' }}>Désactivation</option>
@@ -133,6 +134,56 @@
             <input type="hidden" name="plan_id" id="plan_id_hidden" value="{{ old('plan_id', '') }}">
             <input type="hidden" name="motif" id="motif_hidden" value="{{ old('motif', '') }}">
             
+            <!-- Formulaire pour Récupération -->
+            <div id="recuperation-form" class="form-section-hidden">
+                @if($currentSim ?? null)
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle"></i> 
+                    <strong>SIM actuelle détectée :</strong> {{ $currentSim->iccid }} 
+                    @if($currentSim->phone_number)
+                        - {{ $currentSim->phone_number }}
+                    @endif
+                </div>
+                @endif
+
+                <div class="mb-3">
+                    <label for="sim_id_recuperation" class="form-label">SIM disponible</label>
+                    <select name="sim_id" id="sim_id_recuperation" class="form-select @error('sim_id') is-invalid @enderror">
+                        <option value="">Sélectionner une SIM libre...</option>
+                        @foreach($sims as $sim)
+                            <option value="{{ $sim->id }}" {{ old('sim_id') == $sim->id ? 'selected' : '' }}>
+                                {{ $sim->iccid }} - {{ $sim->operator ?? 'N/A' }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <small class="form-text text-muted">Si vous avez une SIM blanche, sélectionnez-la ici. Sinon, laissez vide et saisissez l'ICCID ci-dessous.</small>
+                    @error('sim_id')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label for="requested_iccid_recuperation" class="form-label">ICCID demandé (si SIM non listée)</label>
+                    <input type="text" name="requested_iccid" id="requested_iccid_recuperation" 
+                           class="form-control @error('requested_iccid') is-invalid @enderror" 
+                           value="{{ old('requested_iccid') }}" placeholder="Ex: 89261012345678901234">
+                    @error('requested_iccid')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label for="motif_recuperation" class="form-label">Motif <span class="text-danger">*</span></label>
+                    <textarea id="motif_recuperation" rows="3" 
+                              class="form-control @error('motif') is-invalid @enderror"
+                              data-required-for="recuperation"
+                              oninput="document.getElementById('motif_hidden').value = this.value">{{ old('motif') }}</textarea>
+                    @error('motif')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
+            
             <!-- Formulaire pour Suspension / Désactivation -->
             <div id="suspension-desactivation-form" class="form-section-hidden">
                 <div class="mb-3">
@@ -216,6 +267,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const requestType = document.getElementById('request_type');
     const creationForm = document.getElementById('creation-form');
+    const recuperationForm = document.getElementById('recuperation-form');
     const suspensionForm = document.getElementById('suspension-desactivation-form');
     const ajustementForm = document.getElementById('ajustement-form');
     const form = document.getElementById('requestForm');
@@ -224,19 +276,28 @@ document.addEventListener('DOMContentLoaded', function() {
         const type = requestType.value;
         
         // Utiliser classList au lieu de style.display pour éviter les problèmes
-        if (type === 'creation') {
+        if (type === 'recuperation') {
+            recuperationForm.classList.remove('form-section-hidden');
+            creationForm.classList.add('form-section-hidden');
+            suspensionForm.classList.add('form-section-hidden');
+            ajustementForm.classList.add('form-section-hidden');
+        } else if (type === 'creation') {
+            recuperationForm.classList.add('form-section-hidden');
             creationForm.classList.remove('form-section-hidden');
             suspensionForm.classList.add('form-section-hidden');
             ajustementForm.classList.add('form-section-hidden');
         } else if (type === 'suspension' || type === 'desactivation') {
+            recuperationForm.classList.add('form-section-hidden');
             creationForm.classList.add('form-section-hidden');
             suspensionForm.classList.remove('form-section-hidden');
             ajustementForm.classList.add('form-section-hidden');
         } else if (type === 'ajustement') {
+            recuperationForm.classList.add('form-section-hidden');
             creationForm.classList.add('form-section-hidden');
             suspensionForm.classList.add('form-section-hidden');
             ajustementForm.classList.remove('form-section-hidden');
         } else {
+            recuperationForm.classList.add('form-section-hidden');
             creationForm.classList.add('form-section-hidden');
             suspensionForm.classList.add('form-section-hidden');
             ajustementForm.classList.add('form-section-hidden');
@@ -271,7 +332,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function initializeHiddenFields() {
         const type = requestType.value;
         
-        if (type === 'creation') {
+        if (type === 'recuperation') {
+            const motif = document.getElementById('motif_recuperation');
+            const motifHidden = document.getElementById('motif_hidden');
+            
+            if (motif && motifHidden) {
+                motifHidden.value = motif.value;
+            }
+        } else if (type === 'creation') {
             const planId = document.getElementById('plan_id_creation');
             const planIdHidden = document.getElementById('plan_id_hidden');
             const motif = document.getElementById('motif_creation');
@@ -329,7 +397,29 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Vérifier les champs requis selon le type
-        if (type === 'creation') {
+        if (type === 'recuperation') {
+            const motif = document.getElementById('motif_recuperation');
+            const motifHidden = document.getElementById('motif_hidden');
+            
+            // S'assurer que le formulaire de récupération est visible avant soumission
+            recuperationForm.classList.remove('form-section-hidden');
+            
+            // Copier les valeurs vers les champs cachés
+            if (motif && motifHidden) {
+                motifHidden.value = motif.value;
+            }
+            
+            const motifValue = motif ? motif.value.trim() : (motifHidden ? motifHidden.value.trim() : '');
+            if (!motifValue) {
+                e.preventDefault();
+                if (motif) {
+                    motif.focus();
+                    motif.classList.add('is-invalid');
+                }
+                alert('Le motif est requis.');
+                return false;
+            }
+        } else if (type === 'creation') {
             const beneficiaryName = document.getElementById('beneficiary_name');
             const planId = document.getElementById('plan_id_creation');
             const planIdHidden = document.getElementById('plan_id_hidden');

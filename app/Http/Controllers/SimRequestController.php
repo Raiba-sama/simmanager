@@ -133,18 +133,18 @@ class SimRequestController extends Controller
         // Récupérer la liste des fonctions disponibles
         $fonctions = $this->getFonctionsList();
 
-        // User peut seulement créer une demande de récupération
+        // Récupérer la SIM actuelle de l'user s'il en a une (pour tous les utilisateurs)
+        $currentSim = Sim::where('assigned_to', $user->id)
+            ->whereIn('status', ['attribue', 'suspendu'])
+            ->first();
+
+        // Si l'utilisateur n'est pas validateur, il peut seulement créer une demande de récupération
         if (!$user->isValidator()) {
-            // Récupérer la SIM actuelle de l'user s'il en a une
-            $currentSim = Sim::where('assigned_to', $user->id)
-                ->whereIn('status', ['attribue', 'suspendu'])
-                ->first();
-            
             return view('sim-requests.create-recuperation', compact('sims', 'currentSim'));
         }
 
-        // Validator peut créer tous les types sauf récupération
-        return view('sim-requests.create-validator', compact('sims', 'plans', 'users', 'fonctions'));
+        // Validateur/Admin peut créer tous les types y compris récupération
+        return view('sim-requests.create-validator', compact('sims', 'plans', 'users', 'fonctions', 'currentSim'));
     }
     
     /**
@@ -283,11 +283,7 @@ class SimRequestController extends Controller
 
         // Validation selon le type de demande
         if ($requestType === 'recuperation') {
-            // Seul un user peut créer une récupération
-            if ($user->isValidator()) {
-                return back()->with('error', 'Seuls les utilisateurs peuvent créer une demande de récupération.');
-            }
-            
+            // Tout le monde peut créer une récupération
             $validated = $this->validateRecuperation($request);
             $simRequest = $this->createRecuperationRequest($validated, $user);
             
