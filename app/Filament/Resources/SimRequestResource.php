@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\SimRequestResource\Pages;
+use App\Models\Sim;
 use App\Models\SimRequest;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -31,7 +32,7 @@ class SimRequestResource extends Resource
                     ->searchable()
                     ->preload(),
                 Forms\Components\Select::make('sim_id')
-                    ->relationship('sim', 'iccid')
+                    ->options(Sim::libre()->pluck('iccid', 'id'))
                     ->searchable()
                     ->preload(),
                 Forms\Components\TextInput::make('requested_iccid')

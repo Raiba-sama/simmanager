@@ -297,6 +297,147 @@ class SimRequestController extends Controller
     }
 
     /**
+     * Afficher le formulaire d'édition d'une demande
+     */
+    public function edit(SimRequest $simRequest)
+    {
+        $user = auth()->user();
+        
+        // Vérifier les permissions
+        // Un utilisateur peut modifier ses propres demandes seulement si elles sont en attente
+        // Un validateur peut modifier les demandes qu'il a créées ou toutes les demandes en attente
+        $canEdit = false;
+        
+        if ($user->isValidator()) {
+            // Validateur peut modifier s'il a créé la demande OU si la demande est en attente
+            $canEdit = ($simRequest->created_by === $user->id) || ($simRequest->status === 'en_attente');
+        } else {
+            // Utilisateur peut modifier seulement ses propres demandes en attente
+            $canEdit = ($simRequest->user_id === $user->id) && ($simRequest->status === 'en_attente');
+        }
+        
+        if (!$canEdit) {
+            return back()->with('error', 'Cette demande ne peut plus être modifiée.');
+        }
+        
+        // Vérifier que la demande n'a pas été envoyée au webhook
+        if ($simRequest->status === 'demande_envoyee') {
+            return back()->with('error', 'Les demandes déjà envoyées au webhook ne peuvent plus être modifiées.');
+        }
+        
+        // Charger les données nécessaires
+        $sims = Sim::libre()->get();
+        $plans = Plan::active()->get();
+        $users = User::where('active', true)->get();
+        $fonctions = $this->getFonctionsList();
+        
+        // Déterminer quelle vue utiliser selon le type de demande
+        if ($simRequest->request_type === 'recuperation') {
+            $currentSim = Sim::where('assigned_to', $user->id)
+                ->whereIn('status', ['attribue', 'suspendu'])
+                ->first();
+            return view('sim-requests.edit-recuperation', compact('simRequest', 'sims', 'currentSim'));
+        } else {
+            return view('sim-requests.edit-validator', compact('simRequest', 'sims', 'plans', 'users', 'fonctions'));
+        }
+    }
+
+    /**
+     * Mettre à jour une demande
+     */
+    public function update(Request $request, SimRequest $simRequest)
+    {
+        $user = auth()->user();
+        
+        // Vérifier les permissions (même logique que edit)
+        $canEdit = false;
+        
+        if ($user->isValidator()) {
+            $canEdit = ($simRequest->created_by === $user->id) || ($simRequest->status === 'en_attente');
+        } else {
+            $canEdit = ($simRequest->user_id === $user->id) && ($simRequest->status === 'en_attente');
+        }
+        
+        if (!$canEdit) {
+            return back()->with('error', 'Cette demande ne peut plus être modifiée.');
+        }
+        
+        // Vérifier que la demande n'a pas été envoyée au webhook
+        if ($simRequest->status === 'demande_envoyee') {
+            return back()->with('error', 'Les demandes déjà envoyées au webhook ne peuvent plus être modifiées.');
+        }
+        
+        $requestType = $simRequest->request_type;
+        
+        DB::beginTransaction();
+        try {
+            // Sauvegarder les anciennes valeurs pour l'historique
+            $oldData = $simRequest->toArray();
+            
+            // Validation et mise à jour selon le type
+            if ($requestType === 'recuperation') {
+                $validated = $this->validateRecuperation($request);
+                $simRequest->update([
+                    'sim_id' => $validated['sim_id'] ?? null,
+                    'requested_iccid' => $validated['requested_iccid'] ?? null,
+                    'motif' => $validated['motif'],
+                    'updated_by' => $user->id,
+                ]);
+            } else {
+                switch ($requestType) {
+                    case 'creation':
+                        $validated = $this->validateCreation($request);
+                        $simRequest->update([
+                            'beneficiary_name' => $validated['beneficiary_name'],
+                            'beneficiary_first_name' => $validated['beneficiary_first_name'] ?? null,
+                            'beneficiary_fonction' => $validated['beneficiary_fonction'] ?? null,
+                            'beneficiary_matricule' => $validated['beneficiary_matricule'] ?? null,
+                            'plan_id' => $validated['plan_id'],
+                            'sim_id' => $validated['sim_id'] ?? null,
+                            'requested_iccid' => $validated['requested_iccid'] ?? null,
+                            'motif' => $validated['motif'],
+                            'updated_by' => $user->id,
+                        ]);
+                        break;
+                    case 'suspension':
+                    case 'desactivation':
+                        $validated = $this->validateSuspensionDesactivation($request);
+                        $simRequest->update([
+                            'phone_number' => $validated['phone_number'],
+                            'motif' => $validated['motif'],
+                            'updated_by' => $user->id,
+                        ]);
+                        break;
+                    case 'ajustement':
+                        $validated = $this->validateAjustement($request);
+                        $simRequest->update([
+                            'phone_number' => $validated['phone_number'],
+                            'plan_id' => $validated['plan_id'],
+                            'updated_by' => $user->id,
+                        ]);
+                        break;
+                }
+            }
+            
+            // Créer un historique pour la modification
+            $this->createRequestHistory($simRequest, 'updated', [
+                'old_data' => $oldData,
+                'new_data' => $simRequest->fresh()->toArray(),
+                'updated_by' => $user->id,
+            ]);
+            
+            logActivity('update_request', "Demande modifiée: {$simRequest->request_number}", 'sim_requests', $simRequest->id);
+            
+            DB::commit();
+            return redirect()->route('sim-requests.show', $simRequest)
+                ->with('success', 'Demande modifiée avec succès.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Erreur lors de la modification: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Validation d'une demande de récupération (seule demande qui nécessite validation)
      */
     public function approve(Request $request, SimRequest $simRequest)

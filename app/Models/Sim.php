@@ -47,7 +47,18 @@ class Sim extends Model
     // Scopes
     public function scopeLibre($query)
     {
-        return $query->where('status', 'libre');
+        return $query->where('status', 'libre')
+                     ->whereNull('assigned_to');
+    }
+    
+    /**
+     * Scope pour les SIMs vraiment disponibles (libres, non attribuées, non suspendues)
+     */
+    public function scopeDisponible($query)
+    {
+        return $query->where('status', 'libre')
+                     ->whereNull('assigned_to')
+                     ->where('status', '!=', 'suspendu');
     }
 
     public function scopeAttribue($query)
