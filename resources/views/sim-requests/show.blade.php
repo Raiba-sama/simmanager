@@ -42,14 +42,31 @@
                             @endif
                         @endif
                     </div>
-                    <button type="button" 
-                            class="btn btn-sm {{ $isFavorite ? 'btn-warning' : 'btn-outline-warning' }}" 
-                            style="border-radius: 6px;" 
-                            title="{{ $isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris' }}"
-                            onclick="toggleFavorite({{ $simRequest->id }}, this)">
-                        <i class="bi {{ $isFavorite ? 'bi-star-fill' : 'bi-star' }}"></i>
-                        {{ $isFavorite ? ' Favori' : ' Ajouter aux favoris' }}
-                    </button>
+                    <div class="d-flex gap-2">
+                        @php
+                            $user = auth()->user();
+                            $canEdit = false;
+                            if ($user->isValidator()) {
+                                $canEdit = ($simRequest->created_by === $user->id) || ($simRequest->status === 'en_attente');
+                            } else {
+                                $canEdit = ($simRequest->user_id === $user->id) && ($simRequest->status === 'en_attente');
+                            }
+                            $canEdit = $canEdit && ($simRequest->status !== 'demande_envoyee');
+                        @endphp
+                        @if($canEdit)
+                            <a href="{{ route('sim-requests.edit', $simRequest) }}" class="btn btn-sm btn-primary" style="border-radius: 6px;" title="Modifier la demande">
+                                <i class="bi bi-pencil"></i> Modifier
+                            </a>
+                        @endif
+                        <button type="button" 
+                                class="btn btn-sm {{ $isFavorite ? 'btn-warning' : 'btn-outline-warning' }}" 
+                                style="border-radius: 6px;" 
+                                title="{{ $isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris' }}"
+                                onclick="toggleFavorite({{ $simRequest->id }}, this)">
+                            <i class="bi {{ $isFavorite ? 'bi-star-fill' : 'bi-star' }}"></i>
+                            {{ $isFavorite ? ' Favori' : ' Ajouter aux favoris' }}
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="card-body">

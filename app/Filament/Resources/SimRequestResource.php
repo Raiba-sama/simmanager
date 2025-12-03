@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\SimRequestResource\Pages;
+use App\Models\Sim;
 use App\Models\SimRequest;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -31,7 +32,33 @@ class SimRequestResource extends Resource
                     ->searchable()
                     ->preload(),
                 Forms\Components\Select::make('sim_id')
-                    ->relationship('sim', 'iccid')
+                    ->options(function ($record) {
+                        // Statuts de demandes actives/en cours
+                        $activeStatuses = ['en_attente', 'validee', 'demande_envoyee', 'pending', 'accepted'];
+                        
+                        // Récupérer les IDs des SIMs déjà utilisées dans des demandes actives
+                        $query = \App\Models\SimRequest::whereIn('status', $activeStatuses)
+                            ->whereNotNull('sim_id');
+                        
+                        // Exclure la demande en cours d'édition si elle existe
+                        if ($record && $record->exists) {
+                            $query->where('id', '!=', $record->id);
+                        }
+                        
+                        $usedSimIds = $query->pluck('sim_id')
+                            ->unique()
+                            ->toArray();
+                        
+                        // Récupérer les SIMs libres qui ne sont pas utilisées
+                        $simsQuery = \App\Models\Sim::libre()->whereNotIn('id', $usedSimIds);
+                        
+                        // Si on édite et qu'il y a une SIM assignée, l'inclure aussi
+                        if ($record && $record->exists && $record->sim_id) {
+                            $simsQuery->orWhere('id', $record->sim_id);
+                        }
+                        
+                        return $simsQuery->pluck('iccid', 'id');
+                    })
                     ->searchable()
                     ->preload(),
                 Forms\Components\TextInput::make('requested_iccid')

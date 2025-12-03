@@ -123,7 +123,10 @@ class SimRequestController extends Controller
     public function create()
     {
         $user = auth()->user();
-        $sims = Sim::libre()->get();
+        
+        // Récupérer les SIMs libres et exclure celles déjà utilisées dans des demandes en cours
+        $sims = $this->getAvailableSims();
+        
         $plans = Plan::active()->get();
         $users = User::where('active', true)->get();
         
@@ -142,6 +145,59 @@ class SimRequestController extends Controller
 
         // Validator peut créer tous les types sauf récupération
         return view('sim-requests.create-validator', compact('sims', 'plans', 'users', 'fonctions'));
+    }
+    
+    /**
+     * Récupère les SIMs disponibles (libres et non utilisées dans des demandes en cours)
+     */
+    private function getAvailableSims()
+    {
+        // Statuts de demandes qui indiquent qu'une demande est encore active/en cours
+        $activeStatuses = ['en_attente', 'validee', 'demande_envoyee', 'pending', 'accepted'];
+        
+        // Récupérer les IDs des SIMs déjà utilisées dans des demandes actives
+        $usedSimIds = SimRequest::whereIn('status', $activeStatuses)
+            ->whereNotNull('sim_id')
+            ->pluck('sim_id')
+            ->unique()
+            ->toArray();
+        
+        // Récupérer les SIMs libres qui ne sont pas dans la liste des SIMs utilisées
+        return Sim::libre()
+            ->whereNotIn('id', $usedSimIds)
+            ->get();
+    }
+    
+    /**
+     * Récupère les SIMs disponibles pour l'édition (exclut les SIMs utilisées dans d'autres demandes,
+     * mais inclut la SIM de la demande en cours d'édition)
+     */
+    private function getAvailableSimsForEdit(SimRequest $currentRequest)
+    {
+        // Statuts de demandes qui indiquent qu'une demande est encore active/en cours
+        $activeStatuses = ['en_attente', 'validee', 'demande_envoyee', 'pending', 'accepted'];
+        
+        // Récupérer les IDs des SIMs déjà utilisées dans des demandes actives
+        // Exclure la demande actuelle de cette liste
+        $usedSimIds = SimRequest::whereIn('status', $activeStatuses)
+            ->whereNotNull('sim_id')
+            ->where('id', '!=', $currentRequest->id) // Exclure la demande en cours d'édition
+            ->pluck('sim_id')
+            ->unique()
+            ->toArray();
+        
+        // Récupérer les SIMs libres qui ne sont pas dans la liste des SIMs utilisées
+        // OU la SIM de la demande actuelle (pour permettre de la garder sélectionnée)
+        $query = Sim::libre()->where(function($q) use ($usedSimIds, $currentRequest) {
+            $q->whereNotIn('id', $usedSimIds);
+            
+            // Inclure la SIM de la demande actuelle si elle existe
+            if ($currentRequest->sim_id) {
+                $q->orWhere('id', $currentRequest->sim_id);
+            }
+        });
+        
+        return $query->get();
     }
     
     /**
@@ -294,6 +350,150 @@ class SimRequestController extends Controller
         $simRequest->load(['user', 'sim', 'validator', 'creator', 'admin', 'plan', 'histories.user', 'favoritedBy']);
         $isFavorite = $user->favorites()->where('sim_request_id', $simRequest->id)->exists();
         return view('sim-requests.show', compact('simRequest', 'isFavorite'));
+    }
+
+    /**
+     * Afficher le formulaire d'édition d'une demande
+     */
+    public function edit(SimRequest $simRequest)
+    {
+        $user = auth()->user();
+        
+        // Vérifier les permissions
+        // Un utilisateur peut modifier ses propres demandes seulement si elles sont en attente
+        // Un validateur peut modifier les demandes qu'il a créées ou toutes les demandes en attente
+        $canEdit = false;
+        
+        if ($user->isValidator()) {
+            // Validateur peut modifier s'il a créé la demande OU si la demande est en attente
+            $canEdit = ($simRequest->created_by === $user->id) || ($simRequest->status === 'en_attente');
+        } else {
+            // Utilisateur peut modifier seulement ses propres demandes en attente
+            $canEdit = ($simRequest->user_id === $user->id) && ($simRequest->status === 'en_attente');
+        }
+        
+        if (!$canEdit) {
+            return back()->with('error', 'Cette demande ne peut plus être modifiée.');
+        }
+        
+        // Vérifier que la demande n'a pas été envoyée au webhook
+        if ($simRequest->status === 'demande_envoyee') {
+            return back()->with('error', 'Les demandes déjà envoyées au webhook ne peuvent plus être modifiées.');
+        }
+        
+        // Charger les données nécessaires
+        // Récupérer les SIMs disponibles en excluant celles utilisées dans d'autres demandes
+        // Mais inclure la SIM de la demande actuelle si elle existe
+        $sims = $this->getAvailableSimsForEdit($simRequest);
+        
+        $plans = Plan::active()->get();
+        $users = User::where('active', true)->get();
+        $fonctions = $this->getFonctionsList();
+        
+        // Déterminer quelle vue utiliser selon le type de demande
+        if ($simRequest->request_type === 'recuperation') {
+            $currentSim = Sim::where('assigned_to', $user->id)
+                ->whereIn('status', ['attribue', 'suspendu'])
+                ->first();
+            return view('sim-requests.edit-recuperation', compact('simRequest', 'sims', 'currentSim'));
+        } else {
+            return view('sim-requests.edit-validator', compact('simRequest', 'sims', 'plans', 'users', 'fonctions'));
+        }
+    }
+
+    /**
+     * Mettre à jour une demande
+     */
+    public function update(Request $request, SimRequest $simRequest)
+    {
+        $user = auth()->user();
+        
+        // Vérifier les permissions (même logique que edit)
+        $canEdit = false;
+        
+        if ($user->isValidator()) {
+            $canEdit = ($simRequest->created_by === $user->id) || ($simRequest->status === 'en_attente');
+        } else {
+            $canEdit = ($simRequest->user_id === $user->id) && ($simRequest->status === 'en_attente');
+        }
+        
+        if (!$canEdit) {
+            return back()->with('error', 'Cette demande ne peut plus être modifiée.');
+        }
+        
+        // Vérifier que la demande n'a pas été envoyée au webhook
+        if ($simRequest->status === 'demande_envoyee') {
+            return back()->with('error', 'Les demandes déjà envoyées au webhook ne peuvent plus être modifiées.');
+        }
+        
+        $requestType = $simRequest->request_type;
+        
+        DB::beginTransaction();
+        try {
+            // Sauvegarder les anciennes valeurs pour l'historique
+            $oldData = $simRequest->toArray();
+            
+            // Validation et mise à jour selon le type
+            if ($requestType === 'recuperation') {
+                $validated = $this->validateRecuperation($request);
+                $simRequest->update([
+                    'sim_id' => $validated['sim_id'] ?? null,
+                    'requested_iccid' => $validated['requested_iccid'] ?? null,
+                    'motif' => $validated['motif'],
+                    'updated_by' => $user->id,
+                ]);
+            } else {
+                switch ($requestType) {
+                    case 'creation':
+                        $validated = $this->validateCreation($request);
+                        $simRequest->update([
+                            'beneficiary_name' => $validated['beneficiary_name'],
+                            'beneficiary_first_name' => $validated['beneficiary_first_name'] ?? null,
+                            'beneficiary_fonction' => $validated['beneficiary_fonction'] ?? null,
+                            'beneficiary_matricule' => $validated['beneficiary_matricule'] ?? null,
+                            'plan_id' => $validated['plan_id'],
+                            'sim_id' => $validated['sim_id'] ?? null,
+                            'requested_iccid' => $validated['requested_iccid'] ?? null,
+                            'motif' => $validated['motif'],
+                            'updated_by' => $user->id,
+                        ]);
+                        break;
+                    case 'suspension':
+                    case 'desactivation':
+                        $validated = $this->validateSuspensionDesactivation($request);
+                        $simRequest->update([
+                            'phone_number' => $validated['phone_number'],
+                            'motif' => $validated['motif'],
+                            'updated_by' => $user->id,
+                        ]);
+                        break;
+                    case 'ajustement':
+                        $validated = $this->validateAjustement($request);
+                        $simRequest->update([
+                            'phone_number' => $validated['phone_number'],
+                            'plan_id' => $validated['plan_id'],
+                            'updated_by' => $user->id,
+                        ]);
+                        break;
+                }
+            }
+            
+            // Créer un historique pour la modification
+            $this->createRequestHistory($simRequest, 'updated', [
+                'old_data' => $oldData,
+                'new_data' => $simRequest->fresh()->toArray(),
+                'updated_by' => $user->id,
+            ]);
+            
+            logActivity('update_request', "Demande modifiée: {$simRequest->request_number}", 'sim_requests', $simRequest->id);
+            
+            DB::commit();
+            return redirect()->route('sim-requests.show', $simRequest)
+                ->with('success', 'Demande modifiée avec succès.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Erreur lors de la modification: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -970,6 +1170,11 @@ class SimRequestController extends Controller
                 $responseData = $response->json();
                 $responseBody = $response->body();
                 
+                // Initialiser responseData comme tableau vide si null
+                if ($responseData === null) {
+                    $responseData = [];
+                }
+                
                 // Si la réponse est un tableau indexé (ex: [0 => [...]], prendre le premier élément
                 if (is_array($responseData) && isset($responseData[0]) && is_array($responseData[0])) {
                     $responseData = $responseData[0];
@@ -979,6 +1184,7 @@ class SimRequestController extends Controller
                     'request_number' => $simRequest->request_number,
                     'response_json' => $responseData,
                     'response_body' => $responseBody,
+                    'response_body_length' => strlen($responseBody),
                     'response_status' => $response->status()
                 ]);
 
@@ -1000,6 +1206,15 @@ class SimRequestController extends Controller
                     }
                 }
 
+                // Vérifier si la réponse est vide ou ne contient pas de données utiles
+                $hasValidData = !empty($responseData) && (
+                    isset($responseData['message_subject']) || 
+                    isset($responseData['subject']) || 
+                    isset($responseData['message_corps']) || 
+                    isset($responseData['body']) || 
+                    isset($responseData['message'])
+                );
+
                 // Sauvegarder le retour du webhook dans mail_sent si le statut est OK
                 // Vérifier le statut de différentes manières possibles
                 $status = null;
@@ -1007,14 +1222,15 @@ class SimRequestController extends Controller
                     $status = strtolower(trim($responseData['status'] ?? $responseData['Status'] ?? ''));
                 }
                 
-                // Si le statut est OK ou si la réponse est réussie (200), sauvegarder
+                // Vérifier si on doit stocker : le statut doit être OK ET la réponse doit contenir des données
                 $shouldStore = false;
-                if ($status === 'ok' || $response->status() === 200) {
-                    $shouldStore = true;
-                    // Si le statut n'est pas explicitement "ok", on le force pour la sauvegarde
-                    if ($status !== 'ok') {
+                if ($status === 'ok' || ($response->status() === 200 && $hasValidData)) {
+                    // Si le statut n'est pas explicitement "ok" mais qu'on a des données valides, on peut continuer
+                    if ($status !== 'ok' && $hasValidData) {
                         $responseData['status'] = 'ok';
+                        $status = 'ok';
                     }
+                    $shouldStore = ($status === 'ok' && $hasValidData);
                 }
                 
                 if ($shouldStore && !empty($responseData)) {
@@ -1059,6 +1275,16 @@ class SimRequestController extends Controller
                             $mailData['message_subject'] = "Demande {$typeLabel} - {$simRequest->request_number}";
                         }
                         
+                        // Vérifier que message_corps n'est pas vide (contenu essentiel du mail)
+                        if (empty($mailData['message_corps'])) {
+                            Log::warning('Webhook response missing message_corps, mail not stored', [
+                                'request_number' => $simRequest->request_number,
+                                'response_data' => $responseData,
+                                'mail_data' => $mailData
+                            ]);
+                            throw new \Exception('Le webhook n\'a pas retourné de contenu de message (message_corps). Impossible de stocker le mail sans contenu.');
+                        }
+                        
                         $storeRequest = new \Illuminate\Http\Request($mailData);
                         $storeResponse = $mailSentController->store($storeRequest);
                         
@@ -1090,12 +1316,25 @@ class SimRequestController extends Controller
                         ]);
                     }
                 } else {
-                    Log::warning('Webhook response status is not OK, mail not stored', [
+                    // Déterminer la raison pour laquelle le mail n'est pas stocké
+                    $reason = 'unknown';
+                    if (empty($responseData)) {
+                        $reason = 'empty_response';
+                    } elseif (!$hasValidData) {
+                        $reason = 'no_valid_data';
+                    } elseif ($status !== 'ok') {
+                        $reason = 'status_not_ok';
+                    }
+                    
+                    Log::warning('Webhook response not suitable for storage, mail not stored', [
                         'request_number' => $simRequest->request_number,
                         'response_data' => $responseData,
+                        'response_body' => $responseBody,
                         'status' => $status ?? 'not set',
                         'http_status' => $response->status(),
-                        'should_store' => $shouldStore
+                        'should_store' => $shouldStore,
+                        'has_valid_data' => $hasValidData ?? false,
+                        'reason' => $reason
                     ]);
                 }
             } else {
