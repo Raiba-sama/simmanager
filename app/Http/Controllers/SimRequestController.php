@@ -607,6 +607,41 @@ class SimRequestController extends Controller
 
         DB::beginTransaction();
         try {
+            // Libérer la SIM si elle était sélectionnée dans la demande
+            if ($simRequest->sim_id) {
+                $sim = Sim::find($simRequest->sim_id);
+                if ($sim) {
+                    $oldData = $sim->toArray();
+                    
+                    // Remettre la SIM en libre si elle était réservée pour cette demande
+                    // Vérifier que la SIM n'est pas déjà assignée à quelqu'un d'autre
+                    if (empty($sim->assigned_to) || $sim->assigned_to === $simRequest->user_id) {
+                        $sim->update([
+                            'status' => 'libre',
+                            'assigned_to' => null,
+                            'assigned_to_matricule' => null,
+                            'assigned_at' => null,
+                        ]);
+                        
+                        // Créer un historique pour la libération de la SIM
+                        $sim->histories()->create([
+                            'action' => 'released_from_rejected_request',
+                            'user_id' => auth()->id(),
+                            'user_matricule' => auth()->user()->matricule,
+                            'request_id' => $simRequest->id,
+                            'old_data' => $oldData,
+                            'new_data' => $sim->fresh()->toArray(),
+                            'notes' => "SIM libérée suite au rejet de la demande {$simRequest->request_number}",
+                        ]);
+                        
+                        Log::info('SIM released after request rejection', [
+                            'sim_id' => $sim->id,
+                            'request_number' => $simRequest->request_number,
+                        ]);
+                    }
+                }
+            }
+            
             $simRequest->update([
                 'status' => 'rejetee',
                 'validator_id' => auth()->id(),
@@ -815,7 +850,7 @@ class SimRequestController extends Controller
     private function validateRecuperation(Request $request)
     {
         return $request->validate([
-            'phone_number' => 'required|string|max:255',
+            'phone_number' => 'nullable|string|max:255',
             'sim_id' => 'nullable|exists:sims,id',
             'requested_iccid' => 'nullable|string|max:255',
             'motif' => 'required|string|max:500',
@@ -858,30 +893,59 @@ class SimRequestController extends Controller
     {
         DB::beginTransaction();
         try {
-            // Si l'utilisateur n'est pas validateur, récupérer automatiquement le numéro de l'user s'il a une SIM
-            // Sinon, utiliser le numéro fourni dans le formulaire
-            $phoneNumber = $validated['phone_number'] ?? null;
+            // Récupérer le numéro saisi dans le formulaire
+            // Vérifier explicitement si le champ est vide (null, '', ou seulement des espaces)
+            $phoneNumberInput = $validated['phone_number'] ?? null;
+            $phoneNumber = null;
+            
+            // Traiter le numéro : trim et vérifier qu'il n'est pas vide
+            if (!empty($phoneNumberInput)) {
+                $trimmed = trim($phoneNumberInput);
+                if ($trimmed !== '') {
+                    $phoneNumber = $trimmed;
+                }
+            }
+            
             $simId = $validated['sim_id'] ?? null;
             
-            // Le phone_number est maintenant requis dans la validation pour tous
-            // Pour les utilisateurs simples, on peut aussi chercher la SIM par numéro si non fournie
-            if (!$user->isValidator()) {
-                // Pour les utilisateurs simples, si la SIM n'est pas fournie, chercher par numéro
-                if (!$simId && $phoneNumber) {
-                    $simByPhone = Sim::where('phone_number', $phoneNumber)
-                        ->where('assigned_to', $user->id)
-                        ->first();
-                    if ($simByPhone) {
-                        $simId = $simByPhone->id;
+            // Log pour debug
+            Log::info('Creating recuperation request - phone number input', [
+                'phone_number_input' => $phoneNumberInput,
+                'phone_number_processed' => $phoneNumber,
+                'is_empty' => empty($phoneNumber),
+                'user_id' => $user->id,
+                'is_validator' => $user->isValidator(),
+            ]);
+            
+            // Si aucun numéro n'a été saisi, récupérer le numéro de l'utilisateur
+            if (empty($phoneNumber)) {
+                // Récupérer la SIM actuelle de l'utilisateur
+                $currentSim = Sim::where('assigned_to', $user->id)
+                    ->whereIn('status', ['attribue', 'suspendu'])
+                    ->first();
+                
+                if ($currentSim && $currentSim->phone_number) {
+                    $phoneNumber = $currentSim->phone_number;
+                    // Si aucune SIM n'a été sélectionnée, utiliser la SIM actuelle
+                    if (!$simId) {
+                        $simId = $currentSim->id;
                     }
+                } elseif ($user->phone) {
+                    // Si pas de SIM mais que l'utilisateur a un numéro dans son profil
+                    $phoneNumber = $user->phone;
                 }
-            } else {
-                // Pour les validateurs, chercher la SIM par numéro de téléphone si fourni
-                if ($phoneNumber && !$simId) {
-                    $simByPhone = Sim::where('phone_number', $phoneNumber)->first();
-                    if ($simByPhone) {
-                        $simId = $simByPhone->id;
-                    }
+            }
+            
+            // Chercher la SIM par numéro si fourni mais que la SIM n'a pas été sélectionnée
+            if ($phoneNumber && !$simId) {
+                $simByPhone = Sim::where('phone_number', $phoneNumber)
+                    ->when(!$user->isValidator(), function($query) use ($user) {
+                        // Pour les utilisateurs simples, chercher seulement leurs SIMs
+                        $query->where('assigned_to', $user->id);
+                    })
+                    ->first();
+                if ($simByPhone) {
+                    $simId = $simByPhone->id;
                 }
             }
 
@@ -1061,16 +1125,35 @@ class SimRequestController extends Controller
             // Pour les demandes de suspension, désactivation, ajustement, récupération : utiliser le numéro de la ligne concernée
             // Pour la création : utiliser le numéro personnel du demandeur
             $phoneNumberToUse = '';
+            $phoneNumberSource = '';
+            
             if (in_array($simRequest->request_type, ['suspension', 'desactivation', 'ajustement', 'recuperation'])) {
                 // Utiliser le numéro de la ligne concernée par la demande
                 $phoneNumberToUse = $simRequest->phone_number ?? '';
-                if (empty($phoneNumberToUse) && $sim) {
-                    $phoneNumberToUse = $sim->phone_number ?? '';
+                if (!empty($phoneNumberToUse)) {
+                    $phoneNumberSource = 'sim_request.phone_number';
+                } elseif ($sim && !empty($sim->phone_number)) {
+                    $phoneNumberToUse = $sim->phone_number;
+                    $phoneNumberSource = 'sim.phone_number';
                 }
             } else {
                 // Pour la création, utiliser le numéro personnel du demandeur
                 $phoneNumberToUse = $requester->phone ?? '';
+                if (!empty($phoneNumberToUse)) {
+                    $phoneNumberSource = 'requester.phone';
+                }
             }
+            
+            // Log détaillé pour tracer l'origine du numéro
+            Log::info('Phone number determination for webhook', [
+                'request_number' => $simRequest->request_number,
+                'request_type' => $simRequest->request_type,
+                'phone_number_to_use' => $phoneNumberToUse,
+                'phone_number_source' => $phoneNumberSource,
+                'sim_request_phone_number' => $simRequest->phone_number ?? 'null',
+                'sim_phone_number' => $sim ? ($sim->phone_number ?? 'null') : 'no_sim',
+                'requester_phone' => $requester->phone ?? 'null',
+            ]);
 
             // Construire les paramètres de base de la requête
             $params = [
@@ -1113,13 +1196,21 @@ class SimRequestController extends Controller
                 $params['sim_id'] = $simRequest->sim_id ?? '';
             }
 
-            // Ajouter le numéro de ligne de la demande (important pour suspension, désactivation, ajustement)
+            // Ajouter le numéro de ligne de la demande (important pour suspension, désactivation, ajustement, récupération)
             if ($simRequest->phone_number) {
                 $params['phone_number'] = $simRequest->phone_number;
             } elseif ($sim && $sim->phone_number) {
                 // Si pas de phone_number dans la demande mais qu'on a une SIM, utiliser celui de la SIM
                 $params['phone_number'] = $sim->phone_number;
             }
+            
+            // Log pour vérifier quel numéro est ajouté dans phone_number
+            Log::info('Phone number parameter for webhook', [
+                'request_number' => $simRequest->request_number,
+                'phone_number_param' => $params['phone_number'] ?? 'not_set',
+                'sim_request_phone_number' => $simRequest->phone_number ?? 'null',
+                'sim_phone_number' => $sim ? ($sim->phone_number ?? 'null') : 'no_sim',
+            ]);
 
             // Ajouter des paramètres spécifiques selon le type de requête
             switch ($simRequest->request_type) {
@@ -1166,17 +1257,23 @@ class SimRequestController extends Controller
             $baseUrl = 'https://acepmg.it4life.org/webhook/get_infos';
             $url = $baseUrl . '?' . http_build_query($params);
 
-            // Log de l'URL complète
-            Log::info('Webhook URL', [
-                'url' => $url,
+            // Log détaillé de l'URL complète et de tous les paramètres
+            Log::info('Webhook URL - Complete details', [
                 'request_number' => $simRequest->request_number,
-                'request_type' => $simRequest->request_type
+                'request_type' => $simRequest->request_type,
+                'base_url' => $baseUrl,
+                'full_url' => $url,
+                'url_decoded' => urldecode($url), // Pour faciliter la lecture
+                'all_params' => $params,
+                'params_count' => count($params),
             ]);
 
             Log::info('Sending request to webhook', [
                 'request_number' => $simRequest->request_number,
                 'request_type' => $simRequest->request_type,
-                'url' => $url
+                'url' => $url,
+                'phone_number_sent' => $params['phone_number'] ?? 'not_set',
+                'request_by_phone_sent' => $params['request_by_phone'] ?? 'not_set',
             ]);
 
             // Envoyer la requête HTTP
@@ -1567,6 +1664,32 @@ class SimRequestController extends Controller
             foreach ($requests as $simRequest) {
                 if ($simRequest->created_by === auth()->id()) {
                     continue;
+                }
+
+                // Libérer la SIM si elle était sélectionnée dans la demande
+                if ($simRequest->sim_id) {
+                    $sim = Sim::find($simRequest->sim_id);
+                    if ($sim) {
+                        // Remettre la SIM en libre si elle était réservée pour cette demande
+                        if (empty($sim->assigned_to) || $sim->assigned_to === $simRequest->user_id) {
+                            $sim->update([
+                                'status' => 'libre',
+                                'assigned_to' => null,
+                                'assigned_to_matricule' => null,
+                                'assigned_at' => null,
+                            ]);
+                            
+                            // Créer un historique pour la libération de la SIM
+                            $sim->histories()->create([
+                                'action' => 'released_from_rejected_request',
+                                'user_id' => auth()->id(),
+                                'user_matricule' => auth()->user()->matricule,
+                                'request_id' => $simRequest->id,
+                                'new_data' => $sim->fresh()->toArray(),
+                                'notes' => "SIM libérée suite au rejet en masse de la demande {$simRequest->request_number}",
+                            ]);
+                        }
+                    }
                 }
 
                 $simRequest->update([

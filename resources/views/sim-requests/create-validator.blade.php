@@ -147,14 +147,13 @@
                 @endif
 
                 <div class="mb-3">
-                    <label for="phone_number_recuperation" class="form-label">Numéro de ligne concerné <span class="text-danger">*</span></label>
+                    <label for="phone_number_recuperation" class="form-label">Numéro de ligne concerné</label>
                     <input type="text" id="phone_number_recuperation" 
                            class="form-control @error('phone_number') is-invalid @enderror" 
                            value="{{ old('phone_number', $currentSim->phone_number ?? '') }}" 
-                           placeholder="Ex: 0341012345 ou +261 34 12 345 67"
-                           data-required-for="recuperation"
-                           oninput="document.getElementById('phone_number_hidden').value = this.value">
-                    <small class="form-text text-muted">Numéro de téléphone de la ligne à récupérer.</small>
+                           placeholder="Ex: 0341012345 ou +261 34 12 345 67 (laisser vide pour utiliser le numéro de l'utilisateur)"
+                           oninput="const hidden = document.getElementById('phone_number_hidden'); if (hidden) hidden.value = this.value.trim();">
+                    <small class="form-text text-muted">Numéro de téléphone de la ligne à récupérer. Si vide, le numéro de l'utilisateur sera utilisé.</small>
                     @error('phone_number')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -352,8 +351,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const motif = document.getElementById('motif_recuperation');
             const motifHidden = document.getElementById('motif_hidden');
             
+            // Copier la valeur du champ visible vers le champ caché (même si vide)
             if (phoneNumber && phoneNumberHidden) {
-                phoneNumberHidden.value = phoneNumber.value;
+                phoneNumberHidden.value = phoneNumber.value.trim();
             }
             if (motif && motifHidden) {
                 motifHidden.value = motif.value;
@@ -425,25 +425,17 @@ document.addEventListener('DOMContentLoaded', function() {
             // S'assurer que le formulaire de récupération est visible avant soumission
             recuperationForm.classList.remove('form-section-hidden');
             
-            // Copier les valeurs vers les champs cachés
+            // Copier les valeurs vers les champs cachés (phone_number peut être vide)
+            // Utiliser trim() pour s'assurer qu'une chaîne vide est vraiment vide
             if (phoneNumber && phoneNumberHidden) {
-                phoneNumberHidden.value = phoneNumber.value;
+                phoneNumberHidden.value = phoneNumber.value.trim();
             }
             if (motif && motifHidden) {
                 motifHidden.value = motif.value;
             }
             
-            const phoneValue = phoneNumber ? phoneNumber.value.trim() : (phoneNumberHidden ? phoneNumberHidden.value.trim() : '');
-            if (!phoneValue) {
-                e.preventDefault();
-                if (phoneNumber) {
-                    phoneNumber.focus();
-                    phoneNumber.classList.add('is-invalid');
-                }
-                alert('Le numéro de ligne est requis.');
-                return false;
-            }
-            
+            // Le phone_number n'est plus requis (peut être vide, on utilisera le numéro de l'utilisateur)
+            // Vérifier seulement le motif
             const motifValue = motif ? motif.value.trim() : (motifHidden ? motifHidden.value.trim() : '');
             if (!motifValue) {
                 e.preventDefault();

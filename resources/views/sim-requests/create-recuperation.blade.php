@@ -21,12 +21,12 @@
             @endif
 
             <div class="mb-3">
-                <label for="phone_number" class="form-label">Numéro de ligne concerné <span class="text-danger">*</span></label>
+                <label for="phone_number" class="form-label">Numéro de ligne concerné</label>
                 <input type="text" name="phone_number" id="phone_number" 
                        class="form-control @error('phone_number') is-invalid @enderror" 
                        value="{{ old('phone_number', $currentSim->phone_number ?? '') }}" 
-                       placeholder="Ex: 0341012345 ou +261 34 12 345 67" required>
-                <small class="form-text text-muted">Numéro de téléphone de la ligne à récupérer.</small>
+                       placeholder="Ex: 0341012345 ou +261 34 12 345 67 (laisser vide pour utiliser votre numéro)">
+                <small class="form-text text-muted">Numéro de téléphone de la ligne à récupérer. Si vide, votre numéro actuel sera utilisé.</small>
                 @error('phone_number')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
