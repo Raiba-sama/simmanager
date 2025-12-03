@@ -123,7 +123,10 @@ class SimRequestController extends Controller
     public function create()
     {
         $user = auth()->user();
-        $sims = Sim::libre()->get();
+        
+        // Récupérer les SIMs libres et exclure celles déjà utilisées dans des demandes en cours
+        $sims = $this->getAvailableSims();
+        
         $plans = Plan::active()->get();
         $users = User::where('active', true)->get();
         
@@ -142,6 +145,59 @@ class SimRequestController extends Controller
 
         // Validator peut créer tous les types sauf récupération
         return view('sim-requests.create-validator', compact('sims', 'plans', 'users', 'fonctions'));
+    }
+    
+    /**
+     * Récupère les SIMs disponibles (libres et non utilisées dans des demandes en cours)
+     */
+    private function getAvailableSims()
+    {
+        // Statuts de demandes qui indiquent qu'une demande est encore active/en cours
+        $activeStatuses = ['en_attente', 'validee', 'demande_envoyee', 'pending', 'accepted'];
+        
+        // Récupérer les IDs des SIMs déjà utilisées dans des demandes actives
+        $usedSimIds = SimRequest::whereIn('status', $activeStatuses)
+            ->whereNotNull('sim_id')
+            ->pluck('sim_id')
+            ->unique()
+            ->toArray();
+        
+        // Récupérer les SIMs libres qui ne sont pas dans la liste des SIMs utilisées
+        return Sim::libre()
+            ->whereNotIn('id', $usedSimIds)
+            ->get();
+    }
+    
+    /**
+     * Récupère les SIMs disponibles pour l'édition (exclut les SIMs utilisées dans d'autres demandes,
+     * mais inclut la SIM de la demande en cours d'édition)
+     */
+    private function getAvailableSimsForEdit(SimRequest $currentRequest)
+    {
+        // Statuts de demandes qui indiquent qu'une demande est encore active/en cours
+        $activeStatuses = ['en_attente', 'validee', 'demande_envoyee', 'pending', 'accepted'];
+        
+        // Récupérer les IDs des SIMs déjà utilisées dans des demandes actives
+        // Exclure la demande actuelle de cette liste
+        $usedSimIds = SimRequest::whereIn('status', $activeStatuses)
+            ->whereNotNull('sim_id')
+            ->where('id', '!=', $currentRequest->id) // Exclure la demande en cours d'édition
+            ->pluck('sim_id')
+            ->unique()
+            ->toArray();
+        
+        // Récupérer les SIMs libres qui ne sont pas dans la liste des SIMs utilisées
+        // OU la SIM de la demande actuelle (pour permettre de la garder sélectionnée)
+        $query = Sim::libre()->where(function($q) use ($usedSimIds, $currentRequest) {
+            $q->whereNotIn('id', $usedSimIds);
+            
+            // Inclure la SIM de la demande actuelle si elle existe
+            if ($currentRequest->sim_id) {
+                $q->orWhere('id', $currentRequest->sim_id);
+            }
+        });
+        
+        return $query->get();
     }
     
     /**
@@ -326,7 +382,10 @@ class SimRequestController extends Controller
         }
         
         // Charger les données nécessaires
-        $sims = Sim::libre()->get();
+        // Récupérer les SIMs disponibles en excluant celles utilisées dans d'autres demandes
+        // Mais inclure la SIM de la demande actuelle si elle existe
+        $sims = $this->getAvailableSimsForEdit($simRequest);
+        
         $plans = Plan::active()->get();
         $users = User::where('active', true)->get();
         $fonctions = $this->getFonctionsList();
