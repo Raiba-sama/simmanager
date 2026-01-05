@@ -21,6 +21,16 @@ class RedirectIfAuthenticated
 
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
+                // Ne pas rediriger si on est déjà sur une route publique ou de login
+                if ($request->is('login', 'logout', 'register', 'password/*', 'email/*', 'verify-email/*')) {
+                    return $next($request);
+                }
+                
+                $user = Auth::guard($guard)->user();
+                // Rediriger les admins vers Filament, les autres vers le dashboard Breeze
+                if ($user && $user->isAdmin()) {
+                    return redirect()->route('filament.admin.pages.dashboard');
+                }
                 return redirect(RouteServiceProvider::HOME);
             }
         }

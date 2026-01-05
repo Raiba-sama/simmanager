@@ -17,6 +17,9 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(): View
     {
+        // Nettoyer la session pour éviter les redirections indésirables
+        session()->forget('url.intended');
+        
         return view('auth.login');
     }
 
@@ -29,21 +32,18 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        // Nettoyer l'URL intended de la session pour éviter les redirections vers /admin
-        $intended = $request->session()->pull('url.intended');
+        // Nettoyer complètement l'URL intended de la session
+        $request->session()->forget('url.intended');
         
-        // Rediriger les admins vers Filament, les autres vers le dashboard Breeze
+        // Rediriger selon le rôle de l'utilisateur
         $user = auth()->user();
+        
         if ($user->isAdmin()) {
-            // Si l'URL intended était vers /admin, on la garde, sinon on redirige vers le dashboard Filament
-            if ($intended && str_contains($intended, '/admin')) {
-                return redirect($intended);
-            }
+            // Admins → Filament
             return redirect()->route('filament.admin.pages.dashboard');
         }
         
-        // Pour les non-admins, toujours rediriger vers le dashboard Breeze
-        // Même si l'URL intended était /admin, on l'ignore
+        // Non-admins → Dashboard Breeze
         return redirect()->route('dashboard');
     }
 

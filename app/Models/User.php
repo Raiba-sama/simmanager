@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -102,5 +104,14 @@ class User extends Authenticatable
             return $this->avatar_url;
         }
         return 'https://ui-avatars.com/api/?name=' . urlencode($this->full_name) . '&background=0d6efd&color=fff';
+    }
+
+    /**
+     * Détermine si l'utilisateur peut accéder au panel Filament
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        // Seuls les admins peuvent accéder au panel admin
+        return $this->isAdmin() && $panel->getId() === 'admin';
     }
 }

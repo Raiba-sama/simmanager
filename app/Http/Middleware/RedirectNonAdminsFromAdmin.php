@@ -15,6 +15,11 @@ class RedirectNonAdminsFromAdmin
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Ne pas intercepter les routes de login, logout, ou autres routes publiques
+        if ($request->is('login', 'logout', 'register', 'password/*', 'email/*')) {
+            return $next($request);
+        }
+
         // Si l'utilisateur est authentifié et n'est pas admin, rediriger vers le dashboard Breeze
         if (auth()->check() && !auth()->user()->isAdmin()) {
             // Si la requête est vers /admin, rediriger vers le dashboard

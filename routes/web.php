@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
+    // Nettoyer la session pour éviter les redirections indésirables
+    session()->forget('url.intended');
+    
     if (auth()->check()) {
         $user = auth()->user();
         // Rediriger les admins vers Filament, les autres vers le dashboard Breeze
