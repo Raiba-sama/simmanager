@@ -29,6 +29,10 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // Rediriger les admins vers Filament, les autres vers le dashboard Breeze
+        if (auth()->user()->isAdmin()) {
+            return redirect()->intended(route('filament.admin.pages.dashboard'));
+        }
         return redirect()->intended(RouteServiceProvider::HOME);
     }
 

@@ -19,6 +19,12 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+        
+        // Rediriger les admins vers le dashboard Filament
+        if ($user->isAdmin()) {
+            return redirect()->route('filament.admin.pages.dashboard');
+        }
+        
         $isValidator = $user->isValidator();
         $period = $request->get('period', 'month'); // day, week, month, year
 

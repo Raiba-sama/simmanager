@@ -16,6 +16,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     if (auth()->check()) {
+        $user = auth()->user();
+        // Rediriger les admins vers Filament, les autres vers le dashboard Breeze
+        if ($user->isAdmin()) {
+            return redirect()->route('filament.admin.pages.dashboard');
+        }
         return redirect()->route('dashboard');
     }
     return redirect()->route('login');
