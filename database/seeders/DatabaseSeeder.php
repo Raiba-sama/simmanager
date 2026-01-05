@@ -16,6 +16,9 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             PlanSeeder::class,
             SimSeeder::class,
+            EquipmentTypeSeeder::class,
+            ZoneSeeder::class,
+            AgencySeeder::class,
         ]);
     }
 }

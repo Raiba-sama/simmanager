@@ -22,11 +22,12 @@ return new class extends Migration
             
             $table->foreign('sim_id')->references('id')->on('sims')->onDelete('cascade');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('request_id')->references('id')->on('sim_requests')->onDelete('cascade');
+            // La clé étrangère request_id sera ajoutée après la création de sim_requests
             $table->index('sim_id');
             $table->index('user_id');
             $table->index('request_id');
             $table->index('created_at');
+            // Note: La clé étrangère request_id sera ajoutée dans une migration ultérieure
         });
     }
 
