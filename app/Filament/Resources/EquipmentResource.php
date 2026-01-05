@@ -97,7 +97,14 @@ class EquipmentResource extends Resource
                                 'damaged' => 'Endommagé',
                             ])
                             ->required()
-                            ->default('available'),
+                            ->default('available')
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                if ($state !== 'assigned') {
+                                    $set('assigned_to_user_id', null);
+                                    $set('create_new_user', false);
+                                }
+                            }),
                         Forms\Components\Select::make('condition')
                             ->label('Condition')
                             ->options([
@@ -110,6 +117,69 @@ class EquipmentResource extends Resource
                             ->required()
                             ->default('good'),
                     ])
+                    ->columns(2),
+                Forms\Components\Section::make('Attribution')
+                    ->schema([
+                        Forms\Components\Toggle::make('create_new_user')
+                            ->label('Créer un nouvel utilisateur')
+                            ->reactive()
+                            ->visible(fn ($get) => $get('status') === 'assigned')
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                if ($state) {
+                                    $set('assigned_to_user_id', null);
+                                }
+                            }),
+                        Forms\Components\Select::make('assigned_to_user_id')
+                            ->label('Bénéficiaire')
+                            ->options(\App\Models\User::orderBy('name')->get()->mapWithKeys(fn ($user) => [$user->id => "{$user->name} ({$user->matricule})"]))
+                            ->searchable()
+                            ->getSearchResultsUsing(fn (string $search) => \App\Models\User::where('name', 'like', "%{$search}%")
+                                ->orWhere('matricule', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%")
+                                ->limit(50)
+                                ->get()
+                                ->mapWithKeys(fn ($user) => [$user->id => "{$user->name} ({$user->matricule})"]))
+                            ->getOptionLabelUsing(fn ($value): ?string => \App\Models\User::find($value)?->name . ' (' . \App\Models\User::find($value)?->matricule . ')')
+                            ->preload()
+                            ->visible(fn ($get) => $get('status') === 'assigned' && !$get('create_new_user'))
+                            ->required(fn ($get) => $get('status') === 'assigned' && !$get('create_new_user')),
+                        Forms\Components\TextInput::make('new_user_matricule')
+                            ->label('Matricule')
+                            ->required(fn ($get) => $get('status') === 'assigned' && $get('create_new_user'))
+                            ->visible(fn ($get) => $get('status') === 'assigned' && $get('create_new_user'))
+                            ->unique('users', 'matricule')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('new_user_name')
+                            ->label('Nom')
+                            ->required(fn ($get) => $get('status') === 'assigned' && $get('create_new_user'))
+                            ->visible(fn ($get) => $get('status') === 'assigned' && $get('create_new_user'))
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('new_user_first_name')
+                            ->label('Prénom')
+                            ->visible(fn ($get) => $get('status') === 'assigned' && $get('create_new_user'))
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('new_user_email')
+                            ->label('Email')
+                            ->email()
+                            ->required(fn ($get) => $get('status') === 'assigned' && $get('create_new_user'))
+                            ->visible(fn ($get) => $get('status') === 'assigned' && $get('create_new_user'))
+                            ->unique('users', 'email')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('new_user_fonction')
+                            ->label('Fonction')
+                            ->visible(fn ($get) => $get('status') === 'assigned' && $get('create_new_user'))
+                            ->maxLength(255),
+                        Forms\Components\DatePicker::make('assignment_date')
+                            ->label('Date d\'attribution')
+                            ->default(now())
+                            ->displayFormat('d/m/Y')
+                            ->visible(fn ($get) => $get('status') === 'assigned'),
+                        Forms\Components\Textarea::make('assignment_notes')
+                            ->label('Notes d\'attribution')
+                            ->rows(2)
+                            ->visible(fn ($get) => $get('status') === 'assigned'),
+                    ])
+                    ->visible(fn ($get) => $get('status') === 'assigned')
                     ->columns(2),
                 Forms\Components\Section::make('Spécifications')
                     ->schema([
@@ -208,6 +278,26 @@ class EquipmentResource extends Resource
                     ]),
             ])
             ->actions([
+                Tables\Actions\Action::make('downloadTransmissionSheet')
+                    ->label('Bordereau')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->visible(fn (Equipment $record) => $record->currentAssignment && $record->currentAssignment->transmissionSheet)
+                    ->action(function (Equipment $record) {
+                        $assignment = $record->currentAssignment;
+                        if (!$assignment || !$assignment->transmissionSheet) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Aucun bordereau trouvé')
+                                ->warning()
+                                ->send();
+                            return;
+                        }
+                        
+                        $transmissionSheet = $assignment->transmissionSheet->load(['toUser', 'fromUser', 'toAgency', 'fromAgency', 'creator', 'items.equipment.equipmentType']);
+                        
+                        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('transmission-sheets.pdf', compact('transmissionSheet'));
+                        return $pdf->download('bordereau_' . $transmissionSheet->sheet_number . '.pdf');
+                    }),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
