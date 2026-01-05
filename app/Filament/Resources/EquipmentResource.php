@@ -300,6 +300,7 @@ class EquipmentResource extends Resource
                             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('transmission-sheets.pdf', compact('transmissionSheet'));
                             $pdf->setOption('encoding', 'utf-8');
                             $pdf->setOption('defaultFont', 'DejaVu Sans');
+                            $pdf->setOption('enable-remote', true);
                             $pdf->setPaper('a4', 'portrait');
                             
                             $filename = 'bordereau_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $transmissionSheet->sheet_number ?? '') . '.pdf';

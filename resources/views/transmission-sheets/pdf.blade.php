@@ -18,10 +18,22 @@
             color: #212529;
         }
         .header {
+            position: relative;
             text-align: center;
             margin-bottom: 20px;
             border-bottom: 3px solid #00574A;
             padding-bottom: 15px;
+            padding-top: 10px;
+            min-height: 70px;
+        }
+        .header .logo {
+            position: absolute;
+            left: 0;
+            top: 5px;
+            max-width: 80px;
+            max-height: 60px;
+            width: auto;
+            height: auto;
         }
         .header h1 {
             color: #00574A;
@@ -125,6 +137,17 @@
         };
     @endphp
     <div class="header">
+        @php
+            $logoPath = public_path('images/acep_madagascar_logo.png');
+            $logoBase64 = '';
+            if (file_exists($logoPath)) {
+                $logoData = file_get_contents($logoPath);
+                $logoBase64 = 'data:image/png;base64,' . base64_encode($logoData);
+            }
+        @endphp
+        @if($logoBase64)
+        <img src="{{ $logoBase64 }}" alt="ACEP Madagascar" class="logo">
+        @endif
         <h1>BORDEREAU DE TRANSMISSION D'ÉQUIPEMENT</h1>
         <div class="sheet-number">N° {{ $clean($transmissionSheet->sheet_number ?? '') }}</div>
     </div>
@@ -193,7 +216,7 @@
     <table class="equipment-table">
         <thead>
             <tr>
-                <th>N° Inventaire</th>
+                <th>Tag / N° Inventaire</th>
                 <th>Type</th>
                 <th>Marque</th>
                 <th>Modèle</th>
@@ -204,7 +227,13 @@
         <tbody>
             @foreach($transmissionSheet->items as $item)
             <tr>
-                <td>{{ $clean($item->equipment->asset_tag ?? '-') }}</td>
+                <td>
+                    @if($item->equipment->asset_tag)
+                        <strong>{{ $clean($item->equipment->asset_tag) }}</strong>
+                    @else
+                        -
+                    @endif
+                </td>
                 <td>{{ $clean($item->equipment->equipmentType->name ?? '-') }}</td>
                 <td>{{ $clean($item->equipment->brand ?? '-') }}</td>
                 <td>{{ $clean($item->equipment->model ?? '-') }}</td>

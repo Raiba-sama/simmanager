@@ -42,6 +42,7 @@ class EditEquipment extends EditRecord
                         $pdf = Pdf::loadView('transmission-sheets.pdf', compact('transmissionSheet'));
                         $pdf->setOption('encoding', 'utf-8');
                         $pdf->setOption('defaultFont', 'DejaVu Sans');
+                        $pdf->setOption('enable-remote', true);
                         $pdf->setPaper('a4', 'portrait');
                         
                         $filename = 'bordereau_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $transmissionSheet->sheet_number ?? '') . '.pdf';
