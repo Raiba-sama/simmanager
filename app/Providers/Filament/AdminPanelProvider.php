@@ -40,7 +40,7 @@ class AdminPanelProvider extends PanelProvider
                 fn () => view('filament.custom-styles')
             )
             ->renderHook(
-                'panels::body.end',
+                'panels::sidebar.footer',
                 fn () => view('filament.logout-button')
             )
             ->middleware([
