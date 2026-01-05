@@ -20,11 +20,8 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
         
-        // Rediriger les admins vers le dashboard Filament
-        if ($user->isAdmin()) {
-            return redirect()->route('filament.admin.pages.dashboard');
-        }
-        
+        // Les admins peuvent accéder au dashboard Breeze pour valider les requêtes
+        // Ils peuvent aussi accéder à /admin pour la gestion administrative
         $isValidator = $user->isValidator();
         $period = $request->get('period', 'month'); // day, week, month, year
 

@@ -39,6 +39,10 @@ class AdminPanelProvider extends PanelProvider
                 'panels::head.end',
                 fn () => view('filament.custom-styles')
             )
+            ->renderHook(
+                'panels::body.end',
+                fn () => view('filament.logout-button')
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

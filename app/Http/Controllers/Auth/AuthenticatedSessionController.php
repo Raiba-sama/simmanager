@@ -37,18 +37,9 @@ class AuthenticatedSessionController extends Controller
         $request->session()->forget('_previous');
         $request->session()->forget('_flash');
         
-        // Rediriger selon le rôle de l'utilisateur
-        $user = auth()->user();
-        
-        // Forcer la redirection vers /dashboard pour les non-admins
-        if (!$user->isAdmin()) {
-            // Utiliser redirect()->intended() avec fallback vers /dashboard
-            // Cela évite les problèmes de redirection automatique
-            return redirect()->intended('/dashboard');
-        }
-        
-        // Admins → Filament
-        return redirect()->intended('/admin');
+        // Rediriger tous les utilisateurs vers /dashboard par défaut
+        // Les admins peuvent ensuite accéder à /admin s'ils le souhaitent
+        return redirect()->intended('/dashboard');
     }
 
     /**

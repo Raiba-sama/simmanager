@@ -19,11 +19,8 @@ Route::get('/', function () {
     session()->forget('url.intended');
     
     if (auth()->check()) {
-        $user = auth()->user();
-        // Rediriger les admins vers Filament, les autres vers le dashboard Breeze
-        if ($user->isAdmin()) {
-            return redirect()->route('filament.admin.pages.dashboard');
-        }
+        // Rediriger tous les utilisateurs vers le dashboard Breeze
+        // Les admins peuvent ensuite accéder à /admin s'ils le souhaitent
         return redirect()->route('dashboard');
     }
     return redirect()->route('login');

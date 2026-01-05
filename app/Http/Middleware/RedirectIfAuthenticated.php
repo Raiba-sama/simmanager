@@ -26,11 +26,8 @@ class RedirectIfAuthenticated
                     return $next($request);
                 }
                 
-                $user = Auth::guard($guard)->user();
-                // Rediriger les admins vers Filament, les autres vers le dashboard Breeze
-                if ($user && $user->isAdmin()) {
-                    return redirect()->route('filament.admin.pages.dashboard');
-                }
+                // Rediriger tous les utilisateurs authentifiés vers le dashboard
+                // Les admins peuvent ensuite accéder à /admin s'ils le souhaitent
                 return redirect(RouteServiceProvider::HOME);
             }
         }
