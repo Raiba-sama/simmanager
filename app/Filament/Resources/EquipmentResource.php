@@ -295,7 +295,15 @@ class EquipmentResource extends Resource
                         
                         $transmissionSheet = $assignment->transmissionSheet->load(['toUser', 'fromUser', 'toAgency', 'fromAgency', 'creator', 'items.equipment.equipmentType']);
                         
-                        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('transmission-sheets.pdf', compact('transmissionSheet'));
+                        $html = view('transmission-sheets.pdf', compact('transmissionSheet'))->render();
+                        
+                        // Nettoyer l'encodage
+                        $html = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
+                        
+                        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+                        $pdf->setOption('encoding', 'utf-8');
+                        $pdf->setOption('defaultFont', 'DejaVu Sans');
+                        
                         return $pdf->download('bordereau_' . $transmissionSheet->sheet_number . '.pdf');
                     }),
                 Tables\Actions\ViewAction::make(),
