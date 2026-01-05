@@ -52,24 +52,73 @@ class EquipmentImport implements ToCollection, WithHeadingRow
         // Nettoyer les clés (supprimer espaces, caractères spéciaux)
         $data = $this->normalizeRow($row);
         
-        // Vérifier si l'équipement existe déjà (par serial_number ou asset_tag)
-        $serialNumber = $data['sn'] ?? null;
-        $assetTag = $data['n_inventaire'] ?? null;
+        // Vérifier si la ligne est vraiment vide (aucune donnée utile)
+        $hasData = false;
+        foreach ($data as $value) {
+            if (!empty($value) && trim($value) !== '') {
+                $hasData = true;
+                break;
+            }
+        }
         
+        if (!$hasData) {
+            // Ligne complètement vide, on l'ignore sans compter comme "skipped"
+            return;
+        }
+        
+        // Vérifier si l'équipement existe déjà (par serial_number ou asset_tag)
+        // Essayer plusieurs variantes pour SN
+        $serialNumber = null;
+        if (!empty($data['sn'])) {
+            $serialNumber = trim($data['sn']);
+        } elseif (!empty($data['serial_number'])) {
+            $serialNumber = trim($data['serial_number']);
+        } elseif (!empty($data['serial'])) {
+            $serialNumber = trim($data['serial']);
+        }
+        
+        // Essayer plusieurs variantes pour N° Inventaire
+        $assetTag = null;
+        if (!empty($data['n_inventaire'])) {
+            $assetTag = trim($data['n_inventaire']);
+        } elseif (!empty($data['asset_tag'])) {
+            $assetTag = trim($data['asset_tag']);
+        } elseif (!empty($data['inventaire'])) {
+            $assetTag = trim($data['inventaire']);
+        } elseif (!empty($data['colonne_1'])) {
+            // "Colonne 1" peut contenir le N° Inventaire
+            $assetTag = trim($data['colonne_1']);
+        }
+        
+        // Si ni SN ni N° Inventaire, on ne peut pas créer l'équipement
         if (empty($serialNumber) && empty($assetTag)) {
+            // Logger pour debug
+            if ($this->currentRow <= 10) {
+                Log::warning("Ligne {$this->currentRow}: Aucun SN ou N° Inventaire", [
+                    'data' => $data,
+                    'row_keys' => array_keys($data)
+                ]);
+            }
             $this->skipped++;
             return;
         }
         
-        // Vérifier existence
-        $existingEquipment = Equipment::where(function($query) use ($serialNumber, $assetTag) {
-            if ($serialNumber) {
-                $query->where('serial_number', $serialNumber);
-            }
-            if ($assetTag) {
-                $query->orWhere('asset_tag', $assetTag);
-            }
-        })->first();
+        // Vérifier existence uniquement si on a au moins un identifiant
+        $existingEquipment = null;
+        if ($serialNumber || $assetTag) {
+            $existingEquipment = Equipment::where(function($query) use ($serialNumber, $assetTag) {
+                if ($serialNumber) {
+                    $query->where('serial_number', $serialNumber);
+                }
+                if ($assetTag) {
+                    if ($serialNumber) {
+                        $query->orWhere('asset_tag', $assetTag);
+                    } else {
+                        $query->where('asset_tag', $assetTag);
+                    }
+                }
+            })->first();
+        }
         
         if ($existingEquipment) {
             $this->skipped++;
@@ -135,10 +184,10 @@ class EquipmentImport implements ToCollection, WithHeadingRow
         
         // Mapper les colonnes avec différentes variantes possibles
         $mapping = [
-            'sn' => ['sn', 'serial_number', 'serial', 'numéro_serie', 'numero_serie'],
+            'sn' => ['sn', 'serial_number', 'serial', 'numéro_serie', 'numero_serie', 's_n', 's_n_'],
             'marque' => ['marque', 'brand', 'manufacturer'],
             'modele' => ['modele', 'model', 'modèle'],
-            'n_inventaire' => ['n_inventaire', 'asset_tag', 'inventaire', 'n°_inventaire', 'numero_inventaire', 'n_inventaire', 'n_inventaire'],
+            'n_inventaire' => ['n_inventaire', 'asset_tag', 'inventaire', 'n_inventaire', 'numero_inventaire', 'n_inventaire', 'colonne_1'],
             'ram' => ['ram', 'memory'],
             'cpu' => ['cpu', 'processeur'],
             'disque' => ['disque', 'disk', 'stockage'],
@@ -162,7 +211,17 @@ class EquipmentImport implements ToCollection, WithHeadingRow
         $normalizedRow = [];
         foreach ($row as $key => $value) {
             $normalizedKey = $this->normalizeKey($key);
+            // Stocker la valeur même si elle est vide pour le debug
             $normalizedRow[$normalizedKey] = $value;
+        }
+        
+        // Debug: logger les clés normalisées pour les premières lignes
+        if ($this->currentRow <= 3) {
+            Log::info("Import équipement - Ligne {$this->currentRow} - Clés normalisées", [
+                'original_keys' => $row->keys()->toArray(),
+                'normalized_keys' => array_keys($normalizedRow),
+                'normalized_values' => $normalizedRow
+            ]);
         }
         
         // Maintenant mapper les colonnes
@@ -172,9 +231,8 @@ class EquipmentImport implements ToCollection, WithHeadingRow
                 
                 if (isset($normalizedRow[$normalizedKey])) {
                     $value = $normalizedRow[$normalizedKey];
-                    if ($value !== null && $value !== '') {
-                        $normalized[$key] = $value;
-                    }
+                    // Accepter la valeur même si elle est vide pour le debug
+                    $normalized[$key] = $value;
                     break;
                 }
             }
