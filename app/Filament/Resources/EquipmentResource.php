@@ -295,20 +295,35 @@ class EquipmentResource extends Resource
                         
                         $transmissionSheet = $assignment->transmissionSheet->load(['toUser', 'fromUser', 'toAgency', 'fromAgency', 'creator', 'items.equipment.equipmentType']);
                         
-                        // Nettoyer les données pour éviter les problèmes d'encodage
-                        $transmissionSheet = static::cleanUtf8Data($transmissionSheet);
-                        
-                        $html = view('transmission-sheets.pdf', compact('transmissionSheet'))->render();
-                        
-                        // Nettoyer l'HTML final
-                        $html = static::cleanUtf8String($html);
-                        
-                        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-                        $pdf->setOption('encoding', 'utf-8');
-                        $pdf->setOption('defaultFont', 'DejaVu Sans');
-                        $pdf->setPaper('a4', 'portrait');
-                        
-                        return $pdf->download('bordereau_' . static::cleanUtf8String($transmissionSheet->sheet_number) . '.pdf');
+                        try {
+                            // Utiliser loadView directement avec options DomPDF
+                            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('transmission-sheets.pdf', compact('transmissionSheet'));
+                            $pdf->setOption('encoding', 'utf-8');
+                            $pdf->setOption('defaultFont', 'DejaVu Sans');
+                            $pdf->setPaper('a4', 'portrait');
+                            
+                            $filename = 'bordereau_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $transmissionSheet->sheet_number ?? '') . '.pdf';
+                            
+                            return response()->streamDownload(function () use ($pdf) {
+                                echo $pdf->output();
+                            }, $filename, [
+                                'Content-Type' => 'application/pdf',
+                            ]);
+                        } catch (\Exception $e) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Erreur lors de la génération du PDF')
+                                ->body('Erreur: ' . $e->getMessage())
+                                ->danger()
+                                ->send();
+                            
+                            \Log::error('Erreur génération PDF bordereau', [
+                                'error' => $e->getMessage(),
+                                'trace' => $e->getTraceAsString(),
+                                'transmission_sheet_id' => $transmissionSheet->id ?? null,
+                            ]);
+                            
+                            return null;
+                        }
                     }),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
@@ -350,32 +365,37 @@ class EquipmentResource extends Resource
             return '';
         }
         
-        // Convertir en UTF-8 si nécessaire
+        // D'abord, essayer de réparer avec iconv (ignore les caractères invalides)
+        $string = @iconv('UTF-8', 'UTF-8//IGNORE//TRANSLIT', $string);
+        if ($string === false) {
+            $string = '';
+        }
+        
+        // Nettoyer les caractères de contrôle
+        $string = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $string);
+        
+        // Supprimer les séquences UTF-8 invalides
+        $string = preg_replace('/[\x{FFFE}\x{FFFF}]/u', '', $string);
+        
+        // Vérifier et réparer l'encodage
         if (!mb_check_encoding($string, 'UTF-8')) {
-            // Essayer différents encodages
-            $encodings = ['ISO-8859-1', 'Windows-1252', 'UTF-8'];
+            // Essayer de convertir depuis différents encodages
+            $encodings = ['ISO-8859-1', 'Windows-1252', 'Windows-1251'];
             foreach ($encodings as $encoding) {
                 $converted = @mb_convert_encoding($string, 'UTF-8', $encoding);
-                if ($converted && mb_check_encoding($converted, 'UTF-8')) {
+                if ($converted !== false && mb_check_encoding($converted, 'UTF-8')) {
                     $string = $converted;
                     break;
                 }
             }
-        }
-        
-        // Nettoyer les caractères de contrôle sauf les retours à la ligne et tabulations
-        $string = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $string);
-        
-        // Supprimer les caractères malformés restants
-        $string = htmlspecialchars($string, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', false);
-        $string = html_entity_decode($string, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        $string = mb_convert_encoding($string, 'UTF-8', 'UTF-8');
-        
-        // Vérification finale
-        if (!mb_check_encoding($string, 'UTF-8')) {
-            // Dernier recours : remplacer les caractères invalides
-            $string = mb_convert_encoding($string, 'UTF-8', 'UTF-8');
-            $string = @iconv('UTF-8', 'UTF-8//IGNORE', $string);
+            
+            // Si toujours invalide, utiliser iconv avec IGNORE
+            if (!mb_check_encoding($string, 'UTF-8')) {
+                $string = @iconv('UTF-8', 'UTF-8//IGNORE', $string);
+                if ($string === false) {
+                    $string = '';
+                }
+            }
         }
         
         return $string;

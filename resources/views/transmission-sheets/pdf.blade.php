@@ -1,9 +1,10 @@
+{!! '<?xml version="1.0" encoding="UTF-8"?>' !!}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta charset="utf-8">
-    <title>Bordereau de Transmission - {{ e($transmissionSheet->sheet_number) }}</title>
+    <title>Bordereau de Transmission - {{ e($transmissionSheet->sheet_number ?? '') }}</title>
     <style>
         @page {
             margin: 15mm;
@@ -113,15 +114,25 @@
     </style>
 </head>
 <body>
+    @php
+        $clean = function($value) {
+            if (is_null($value)) return '';
+            $str = (string) $value;
+            $str = @iconv('UTF-8', 'UTF-8//IGNORE', $str);
+            if ($str === false) $str = '';
+            $str = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $str);
+            return htmlspecialchars($str, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', false);
+        };
+    @endphp
     <div class="header">
         <h1>BORDEREAU DE TRANSMISSION D'ÉQUIPEMENT</h1>
-        <div class="sheet-number">N° {{ e($transmissionSheet->sheet_number) }}</div>
+        <div class="sheet-number">N° {{ $clean($transmissionSheet->sheet_number ?? '') }}</div>
     </div>
 
     <div class="info-section">
         <div class="info-row">
             <div class="info-label">Type :</div>
-            <div class="info-value">{{ e($transmissionSheet->type_label) }}</div>
+            <div class="info-value">{{ $clean($transmissionSheet->type_label ?? '') }}</div>
         </div>
         <div class="info-row">
             <div class="info-label">Date de transmission :</div>
@@ -129,15 +140,15 @@
         </div>
         <div class="info-row">
             <div class="info-label">Statut :</div>
-            <div class="info-value">{{ e($transmissionSheet->status_label) }}</div>
+            <div class="info-value">{{ $clean($transmissionSheet->status_label ?? '') }}</div>
         </div>
         @if($transmissionSheet->fromUser)
         <div class="info-row">
             <div class="info-label">De :</div>
             <div class="info-value">
-                {{ e($transmissionSheet->fromUser->name) }}
+                {{ $clean($transmissionSheet->fromUser->name ?? '') }}
                 @if($transmissionSheet->fromUser->matricule)
-                    (MLE: {{ e($transmissionSheet->fromUser->matricule) }})
+                    (MLE: {{ $clean($transmissionSheet->fromUser->matricule) }})
                 @endif
             </div>
         </div>
@@ -146,21 +157,21 @@
         <div class="info-row">
             <div class="info-label">Bénéficiaire :</div>
             <div class="info-value">
-                <strong>{{ e($transmissionSheet->toUser->name) }}</strong>
+                <strong>{{ $clean($transmissionSheet->toUser->name ?? '') }}</strong>
                 @if($transmissionSheet->toUser->first_name)
-                    {{ e($transmissionSheet->toUser->first_name) }}
+                    {{ $clean($transmissionSheet->toUser->first_name) }}
                 @endif
                 @if($transmissionSheet->toUser->matricule)
-                    <br>Matricule: {{ e($transmissionSheet->toUser->matricule) }}
+                    <br>Matricule: {{ $clean($transmissionSheet->toUser->matricule) }}
                 @endif
                 @if($transmissionSheet->toUser->fonction)
-                    <br>Fonction: {{ e($transmissionSheet->toUser->fonction) }}
+                    <br>Fonction: {{ $clean($transmissionSheet->toUser->fonction) }}
                 @endif
                 @if($transmissionSheet->toUser->direction)
-                    <br>Direction: {{ e($transmissionSheet->toUser->direction) }}
+                    <br>Direction: {{ $clean($transmissionSheet->toUser->direction) }}
                 @endif
                 @if($transmissionSheet->toUser->lieu_affectation)
-                    <br>Lieu d'affectation: {{ e($transmissionSheet->toUser->lieu_affectation) }}
+                    <br>Lieu d'affectation: {{ $clean($transmissionSheet->toUser->lieu_affectation) }}
                 @endif
             </div>
         </div>
@@ -168,13 +179,13 @@
         @if($transmissionSheet->fromAgency)
         <div class="info-row">
             <div class="info-label">De (Agence) :</div>
-            <div class="info-value">{{ e($transmissionSheet->fromAgency->name) }}</div>
+            <div class="info-value">{{ $clean($transmissionSheet->fromAgency->name ?? '') }}</div>
         </div>
         @endif
         @if($transmissionSheet->toAgency)
         <div class="info-row">
             <div class="info-label">Vers (Agence) :</div>
-            <div class="info-value">{{ e($transmissionSheet->toAgency->name) }}</div>
+            <div class="info-value">{{ $clean($transmissionSheet->toAgency->name ?? '') }}</div>
         </div>
         @endif
     </div>
@@ -193,12 +204,12 @@
         <tbody>
             @foreach($transmissionSheet->items as $item)
             <tr>
-                <td>{{ e($item->equipment->asset_tag ?? '-') }}</td>
-                <td>{{ e($item->equipment->equipmentType->name ?? '-') }}</td>
-                <td>{{ e($item->equipment->brand ?? '-') }}</td>
-                <td>{{ e($item->equipment->model ?? '-') }}</td>
-                <td>{{ e($item->equipment->serial_number ?? '-') }}</td>
-                <td>{{ e($item->condition_label ?? '-') }}</td>
+                <td>{{ $clean($item->equipment->asset_tag ?? '-') }}</td>
+                <td>{{ $clean($item->equipment->equipmentType->name ?? '-') }}</td>
+                <td>{{ $clean($item->equipment->brand ?? '-') }}</td>
+                <td>{{ $clean($item->equipment->model ?? '-') }}</td>
+                <td>{{ $clean($item->equipment->serial_number ?? '-') }}</td>
+                <td>{{ $clean($item->condition_label ?? '-') }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -207,7 +218,7 @@
     @if($transmissionSheet->notes)
     <div class="notes">
         <div class="notes-label">Notes :</div>
-        <div>{{ e($transmissionSheet->notes) }}</div>
+        <div>{{ $clean($transmissionSheet->notes) }}</div>
     </div>
     @endif
 
@@ -216,7 +227,7 @@
             <div class="signature-line">
                 <strong>Émetteur</strong><br>
                 @if($transmissionSheet->creator)
-                    {{ e($transmissionSheet->creator->name) }}
+                    {{ $clean($transmissionSheet->creator->name ?? '') }}
                 @endif
             </div>
         </div>
@@ -224,7 +235,7 @@
             <div class="signature-line">
                 <strong>Bénéficiaire</strong><br>
                 @if($transmissionSheet->toUser)
-                    {{ e($transmissionSheet->toUser->name) }}
+                    {{ $clean($transmissionSheet->toUser->name ?? '') }}
                 @endif
             </div>
         </div>
