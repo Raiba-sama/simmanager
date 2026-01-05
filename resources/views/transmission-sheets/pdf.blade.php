@@ -138,7 +138,7 @@
     @endphp
     <div class="header">
         @php
-            $logoPath = public_path('images/acep_madagascar_logo.png');
+            $logoPath = public_path('images/acep_madagascar_logo-1.png');
             $logoBase64 = '';
             if (file_exists($logoPath)) {
                 $logoData = file_get_contents($logoPath);
