@@ -38,19 +38,19 @@ class EditEquipment extends EditRecord
                     $transmissionSheet = $assignment->transmissionSheet->load(['toUser', 'fromUser', 'toAgency', 'fromAgency', 'creator', 'items.equipment.equipmentType']);
                     
                     // Nettoyer les données pour éviter les problèmes d'encodage
-                    $transmissionSheet = $this->cleanUtf8Data($transmissionSheet);
+                    $transmissionSheet = static::cleanUtf8Data($transmissionSheet);
                     
                     $html = view('transmission-sheets.pdf', compact('transmissionSheet'))->render();
                     
                     // Nettoyer l'HTML final
-                    $html = $this->cleanUtf8String($html);
+                    $html = static::cleanUtf8String($html);
                     
                     $pdf = Pdf::loadHTML($html);
                     $pdf->setOption('encoding', 'utf-8');
                     $pdf->setOption('defaultFont', 'DejaVu Sans');
                     $pdf->setPaper('a4', 'portrait');
                     
-                    return $pdf->download('bordereau_' . $this->cleanUtf8String($transmissionSheet->sheet_number) . '.pdf');
+                    return $pdf->download('bordereau_' . static::cleanUtf8String($transmissionSheet->sheet_number) . '.pdf');
                 }),
             Actions\DeleteAction::make(),
         ];
@@ -156,7 +156,7 @@ class EditEquipment extends EditRecord
     /**
      * Nettoie une chaîne UTF-8 en supprimant les caractères malformés
      */
-    protected function cleanUtf8String(?string $string): string
+    protected static function cleanUtf8String(?string $string): string
     {
         if (empty($string)) {
             return '';
@@ -196,14 +196,14 @@ class EditEquipment extends EditRecord
     /**
      * Nettoie récursivement les données d'un modèle pour l'encodage UTF-8
      */
-    protected function cleanUtf8Data($data)
+    protected static function cleanUtf8Data($data)
     {
         if (is_string($data)) {
-            return $this->cleanUtf8String($data);
+            return static::cleanUtf8String($data);
         }
         
         if (is_array($data)) {
-            return array_map([$this, 'cleanUtf8Data'], $data);
+            return array_map([static::class, 'cleanUtf8Data'], $data);
         }
         
         if (is_object($data)) {
@@ -212,20 +212,20 @@ class EditEquipment extends EditRecord
                 $attributes = $data->getAttributes();
                 foreach ($attributes as $key => $value) {
                     if (is_string($value)) {
-                        $data->setAttribute($key, $this->cleanUtf8String($value));
+                        $data->setAttribute($key, static::cleanUtf8String($value));
                     } elseif (is_array($value)) {
-                        $data->setAttribute($key, $this->cleanUtf8Data($value));
+                        $data->setAttribute($key, static::cleanUtf8Data($value));
                     }
                 }
                 
                 // Nettoyer aussi les relations chargées
                 foreach ($data->getRelations() as $relationName => $relation) {
                     if (is_object($relation)) {
-                        $data->setRelation($relationName, $this->cleanUtf8Data($relation));
+                        $data->setRelation($relationName, static::cleanUtf8Data($relation));
                     } elseif (is_array($relation) || $relation instanceof \Illuminate\Support\Collection) {
                         $cleaned = [];
                         foreach ($relation as $item) {
-                            $cleaned[] = $this->cleanUtf8Data($item);
+                            $cleaned[] = static::cleanUtf8Data($item);
                         }
                         $data->setRelation($relationName, is_array($relation) ? $cleaned : collect($cleaned));
                     }
