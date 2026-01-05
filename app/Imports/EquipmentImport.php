@@ -20,14 +20,24 @@ class EquipmentImport implements ToCollection, WithHeadingRow
     protected $skipped = 0;
     protected $errors = [];
     protected $currentRow = 0;
+    protected $headerMap = []; // Mapping des indices vers les noms de colonnes normalisés
 
     public function collection(Collection $rows)
     {
         DB::beginTransaction();
         
         try {
+            $isFirstRow = true;
+            
             foreach ($rows as $row) {
                 $this->currentRow++;
+                
+                // La première ligne contient les en-têtes
+                if ($isFirstRow) {
+                    $this->buildHeaderMap($row);
+                    $isFirstRow = false;
+                    continue; // Ignorer la ligne d'en-têtes
+                }
                 
                 try {
                     $this->importRow($row);
@@ -45,6 +55,19 @@ class EquipmentImport implements ToCollection, WithHeadingRow
             DB::rollBack();
             throw $e;
         }
+    }
+    
+    protected function buildHeaderMap(Collection $headerRow)
+    {
+        // Créer un mapping des indices vers les noms de colonnes normalisés
+        foreach ($headerRow as $index => $headerName) {
+            if (!empty($headerName)) {
+                $normalizedKey = $this->normalizeKey($headerName);
+                $this->headerMap[$index] = $normalizedKey;
+            }
+        }
+        
+        Log::info("Header map créé", ['header_map' => $this->headerMap]);
     }
 
     protected function importRow(Collection $row)
@@ -207,20 +230,19 @@ class EquipmentImport implements ToCollection, WithHeadingRow
             'localisation' => ['localisation', 'location', 'lieu'],
         ];
         
-        // D'abord, normaliser toutes les clés de la collection
+        // Créer un tableau associatif à partir de la ligne en utilisant le headerMap
         $normalizedRow = [];
-        foreach ($row as $key => $value) {
-            $normalizedKey = $this->normalizeKey($key);
-            // Stocker la valeur même si elle est vide pour le debug
-            $normalizedRow[$normalizedKey] = $value;
+        foreach ($row as $index => $value) {
+            if (isset($this->headerMap[$index])) {
+                $normalizedRow[$this->headerMap[$index]] = $value;
+            }
         }
         
         // Debug: logger les clés normalisées pour les premières lignes
         if ($this->currentRow <= 3) {
-            Log::info("Import équipement - Ligne {$this->currentRow} - Clés normalisées", [
-                'original_keys' => $row->keys()->toArray(),
-                'normalized_keys' => array_keys($normalizedRow),
-                'normalized_values' => $normalizedRow
+            Log::info("Import équipement - Ligne {$this->currentRow} - Données normalisées", [
+                'header_map' => $this->headerMap,
+                'normalized_row' => $normalizedRow
             ]);
         }
         
