@@ -1,0 +1,151 @@
+/* Dark dropdown background for Filament */
+.fi-dropdown-panel,
+.fi-dropdown-panel > * {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+.fi-dropdown-item,
+.fi-dropdown-item > * {
+    color: #f9fafb !important;
+}
+
+.fi-dropdown-item:hover,
+.fi-dropdown-item:hover > * {
+    background-color: #374151 !important;
+    color: #ffffff !important;
+}
+
+.fi-dropdown-divider {
+    border-color: #374151 !important;
+}
+
+/* User menu dropdown */
+.fi-user-menu-items,
+.fi-user-menu-items > * {
+    background-color: #1f2937 !important;
+}
+
+.fi-user-menu-item,
+.fi-user-menu-item > * {
+    color: #f9fafb !important;
+}
+
+.fi-user-menu-item:hover,
+.fi-user-menu-item:hover > * {
+    background-color: #374151 !important;
+    color: #ffffff !important;
+}
+
+/* Action dropdown */
+.fi-ac-action-group-items,
+.fi-ac-action-group-items > * {
+    background-color: #1f2937 !important;
+}
+
+.fi-ac-action-group-item,
+.fi-ac-action-group-item > * {
+    color: #f9fafb !important;
+}
+
+.fi-ac-action-group-item:hover,
+.fi-ac-action-group-item:hover > * {
+    background-color: #374151 !important;
+    color: #ffffff !important;
+}
+
+/* Table action dropdown */
+.fi-ta-action-group-items,
+.fi-ta-action-group-items > * {
+    background-color: #1f2937 !important;
+}
+
+.fi-ta-action-group-item,
+.fi-ta-action-group-item > * {
+    color: #f9fafb !important;
+}
+
+.fi-ta-action-group-item:hover,
+.fi-ta-action-group-item:hover > * {
+    background-color: #374151 !important;
+    color: #ffffff !important;
+}
+
+/* Select dropdown */
+.fi-select-option,
+.fi-select-option > * {
+    background-color: #1f2937 !important;
+    color: #f9fafb !important;
+}
+
+.fi-select-option:hover,
+.fi-select-option[data-highlighted],
+.fi-select-option:hover > *,
+.fi-select-option[data-highlighted] > * {
+    background-color: #374151 !important;
+    color: #ffffff !important;
+}
+
+/* Autocomplete dropdown */
+.fi-ac-input-option,
+.fi-ac-input-option > * {
+    background-color: #1f2937 !important;
+    color: #f9fafb !important;
+}
+
+.fi-ac-input-option:hover,
+.fi-ac-input-option[data-highlighted],
+.fi-ac-input-option:hover > *,
+.fi-ac-input-option[data-highlighted] > * {
+    background-color: #374151 !important;
+    color: #ffffff !important;
+}
+
+/* Date picker dropdown */
+.fi-date-time-picker-dropdown,
+.fi-date-time-picker-dropdown > * {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+/* Color picker dropdown */
+.fi-color-picker-dropdown,
+.fi-color-picker-dropdown > * {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+/* Menu dropdown */
+[x-data*="dropdown"] [x-show],
+[x-data*="dropdown"] [x-show] > * {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+/* Filament v3 specific classes */
+[role="menu"],
+[role="listbox"],
+[role="menu"] > *,
+[role="listbox"] > * {
+    background-color: #1f2937 !important;
+}
+
+[role="menuitem"],
+[role="option"],
+[role="menuitem"] > *,
+[role="option"] > * {
+    color: #f9fafb !important;
+}
+
+[role="menuitem"]:hover,
+[role="option"]:hover,
+[role="menuitem"][aria-selected="true"],
+[role="option"][aria-selected="true"],
+[role="menuitem"]:hover > *,
+[role="option"]:hover > *,
+[role="menuitem"][aria-selected="true"] > *,
+[role="option"][aria-selected="true"] > * {
+    background-color: #374151 !important;
+    color: #ffffff !important;
+}
+
