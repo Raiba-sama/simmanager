@@ -19,21 +19,30 @@
         }
         .header {
             position: relative;
-            text-align: center;
+            display: table;
+            width: 100%;
             margin-bottom: 20px;
             border-bottom: 3px solid #00574A;
             padding-bottom: 15px;
             padding-top: 10px;
             min-height: 70px;
         }
+        .header .logo-container {
+            display: table-cell;
+            vertical-align: middle;
+            width: 100px;
+        }
         .header .logo {
-            position: absolute;
-            left: 0;
-            top: 5px;
             max-width: 80px;
             max-height: 60px;
             width: auto;
             height: auto;
+        }
+        .header .title-container {
+            display: table-cell;
+            vertical-align: middle;
+            text-align: center;
+            width: auto;
         }
         .header h1 {
             color: #00574A;
@@ -137,19 +146,23 @@
         };
     @endphp
     <div class="header">
-        @php
-            $logoPath = public_path('images/acep_madagascar_logo-1.png');
-            $logoBase64 = '';
-            if (file_exists($logoPath)) {
-                $logoData = file_get_contents($logoPath);
-                $logoBase64 = 'data:image/png;base64,' . base64_encode($logoData);
-            }
-        @endphp
-        @if($logoBase64)
-        <img src="{{ $logoBase64 }}" alt="ACEP Madagascar" class="logo">
-        @endif
-        <h1>BORDEREAU DE TRANSMISSION D'ÉQUIPEMENT</h1>
-        <div class="sheet-number">N° {{ $clean($transmissionSheet->sheet_number ?? '') }}</div>
+        <div class="logo-container">
+            @php
+                $logoPath = public_path('images/acep_madagascar_logo-1.png');
+                $logoBase64 = '';
+                if (file_exists($logoPath)) {
+                    $logoData = file_get_contents($logoPath);
+                    $logoBase64 = 'data:image/png;base64,' . base64_encode($logoData);
+                }
+            @endphp
+            @if($logoBase64)
+            <img src="{{ $logoBase64 }}" alt="ACEP Madagascar" class="logo">
+            @endif
+        </div>
+        <div class="title-container">
+            <h1>BORDEREAU DE TRANSMISSION D'ÉQUIPEMENT</h1>
+            <div class="sheet-number">N° {{ $clean($transmissionSheet->sheet_number ?? '') }}</div>
+        </div>
     </div>
 
     <div class="info-section">
