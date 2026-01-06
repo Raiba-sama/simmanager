@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\TransmissionSheetResource\Pages;
 use App\Filament\Resources\TransmissionSheetResource\RelationManagers;
 use App\Models\TransmissionSheet;
+use App\Mail\TransmissionSheetsEmail;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -12,6 +13,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Collection;
 
 class TransmissionSheetResource extends Resource
 {
@@ -221,6 +224,87 @@ class TransmissionSheetResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('send_email')
+                        ->label('Envoyer par email')
+                        ->icon('heroicon-o-paper-airplane')
+                        ->color('success')
+                        ->form([
+                            Forms\Components\TextInput::make('recipient_email')
+                                ->label('Email du destinataire')
+                                ->email()
+                                ->required()
+                                ->default(fn () => auth()->user()->email)
+                                ->helperText('L\'email où envoyer les bordereaux'),
+                            Forms\Components\Textarea::make('message')
+                                ->label('Message (optionnel)')
+                                ->rows(3)
+                                ->placeholder('Message à inclure dans l\'email...'),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            try {
+                                $transmissionSheets = $records->load([
+                                    'toUser',
+                                    'fromUser',
+                                    'toAgency',
+                                    'fromAgency',
+                                    'creator',
+                                    'items.equipment.equipmentType'
+                                ]);
+
+                                Mail::to($data['recipient_email'])
+                                    ->send(new TransmissionSheetsEmail(
+                                        $transmissionSheets,
+                                        $data['recipient_email'],
+                                        $data['message'] ?? null
+                                    ));
+
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Email envoyé avec succès')
+                                    ->body(count($transmissionSheets) . ' bordereau(x) envoyé(s) à ' . $data['recipient_email'])
+                                    ->success()
+                                    ->send();
+                            } catch (\Illuminate\Mail\SendFailedException $e) {
+                                $errorMessage = 'Erreur SMTP: ' . $e->getMessage();
+                                if ($e->getPrevious()) {
+                                    $errorMessage .= ' (' . $e->getPrevious()->getMessage() . ')';
+                                }
+                                
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Erreur lors de l\'envoi de l\'email')
+                                    ->body($errorMessage)
+                                    ->danger()
+                                    ->send();
+
+                                \Log::error('Erreur envoi email bordereaux (SMTP)', [
+                                    'error' => $e->getMessage(),
+                                    'previous_error' => $e->getPrevious()?->getMessage(),
+                                    'trace' => $e->getTraceAsString(),
+                                    'recipient' => $data['recipient_email'] ?? null,
+                                    'count' => $records->count(),
+                                    'mail_config' => [
+                                        'host' => config('mail.mailers.smtp.host'),
+                                        'port' => config('mail.mailers.smtp.port'),
+                                        'encryption' => config('mail.mailers.smtp.encryption'),
+                                        'username' => config('mail.mailers.smtp.username') ? '***' : null,
+                                    ],
+                                ]);
+                            } catch (\Exception $e) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Erreur lors de l\'envoi de l\'email')
+                                    ->body('Erreur: ' . $e->getMessage())
+                                    ->danger()
+                                    ->send();
+
+                                \Log::error('Erreur envoi email bordereaux', [
+                                    'error' => $e->getMessage(),
+                                    'trace' => $e->getTraceAsString(),
+                                    'recipient' => $data['recipient_email'] ?? null,
+                                    'count' => $records->count(),
+                                ]);
+                            }
+                        })
+                        ->requiresConfirmation()
+                        ->deselectRecordsAfterCompletion(),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
