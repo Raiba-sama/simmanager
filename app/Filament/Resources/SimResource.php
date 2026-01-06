@@ -74,7 +74,10 @@ class SimResource extends Resource
                     ->color(fn (string $state): string => match ($state) {
                         'libre' => 'success',
                         'attribue' => 'info',
+                        'attribué' => 'info',
                         'suspendu' => 'danger',
+                        'suspendue' => 'danger',
+                        default => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('operator')
                     ->searchable(),

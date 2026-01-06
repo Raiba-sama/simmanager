@@ -116,6 +116,11 @@ class SimRequestResource extends Resource
                         'suspension' => 'warning',
                         'reactivation' => 'info',
                         'retour' => 'danger',
+                        'recuperation' => 'warning',
+                        'ajustement' => 'info',
+                        'desactivation' => 'danger',
+                        'creation' => 'success',
+                        default => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
@@ -123,6 +128,12 @@ class SimRequestResource extends Resource
                         'en_attente' => 'warning',
                         'validee' => 'success',
                         'rejetee' => 'danger',
+                        'pending' => 'warning',
+                        'accepted' => 'success',
+                        'refused' => 'danger',
+                        'validated' => 'success',
+                        'rejected' => 'danger',
+                        default => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('priority')
                     ->badge()
@@ -131,6 +142,7 @@ class SimRequestResource extends Resource
                         'high' => 'warning',
                         'normal' => 'info',
                         'low' => 'gray',
+                        default => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('validator.name')
                     ->label('Validateur'),
