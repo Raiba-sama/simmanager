@@ -141,18 +141,30 @@ class TransmissionSheetResource extends Resource
                         default => 'gray',
                     })
                     ->sortable(),
-                Tables\Columns\TextColumn::make('from')
-                    ->label('De')
-                    ->formatStateUsing(fn (TransmissionSheet $record): string => 
-                        $record->fromUser ? $record->fromUser->name : ($record->fromAgency ? $record->fromAgency->name : '-')
-                    )
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('to')
-                    ->label('Vers')
-                    ->formatStateUsing(fn (TransmissionSheet $record): string => 
-                        $record->toUser ? $record->toUser->name : ($record->toAgency ? $record->toAgency->name : '-')
-                    )
-                    ->searchable(),
+                Tables\Columns\TextColumn::make('fromUser.name')
+                    ->label('De (Utilisateur)')
+                    ->default('-')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('fromAgency.name')
+                    ->label('De (Agence)')
+                    ->default('-')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('toUser.name')
+                    ->label('Vers (Utilisateur)')
+                    ->default('-')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('toAgency.name')
+                    ->label('Vers (Agence)')
+                    ->default('-')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('transmission_date')
                     ->label('Date')
                     ->date('d/m/Y')

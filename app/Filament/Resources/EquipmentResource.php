@@ -252,6 +252,11 @@ class EquipmentResource extends Resource
                     })
                     ->badge()
                     ->toggleable(),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Date de création')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('equipment_type_id')
