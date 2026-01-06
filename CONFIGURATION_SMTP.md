@@ -17,7 +17,7 @@ MAIL_ENCRYPTION=tls
 
 # Adresse d'expéditeur
 MAIL_FROM_ADDRESS=noreply@votre-domaine.com
-MAIL_FROM_NAME="ACEP Madagascar - SIM Manager"
+MAIL_FROM_NAME="ACEP Madagascar - Parc Manager"
 ```
 
 ## Exemples de configuration selon le fournisseur
@@ -58,7 +58,7 @@ MAIL_PASSWORD=votre-mot-de-passe
 MAIL_ENCRYPTION=tls
 # ou 'ssl' pour le port 465
 MAIL_FROM_ADDRESS=noreply@votre-entreprise.com
-MAIL_FROM_NAME="ACEP Madagascar - SIM Manager"
+MAIL_FROM_NAME="ACEP Madagascar - Parc Manager"
 ```
 
 ### Ports courants
