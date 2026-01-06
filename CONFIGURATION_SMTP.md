@@ -101,6 +101,31 @@ Pour tester la configuration SMTP, vous pouvez utiliser la fonctionnalité d'env
 - Vérifiez que `MAIL_MAILER=smtp` dans le `.env`
 - Exécutez `php artisan config:clear`
 
+### Erreur SSL "certificate verify failed"
+Cette erreur se produit lorsque le certificat SSL du serveur SMTP ne peut pas être vérifié. Solutions :
+
+**Option 1 : Désactiver la vérification SSL (développement uniquement)**
+Ajoutez dans votre `.env` :
+```env
+MAIL_VERIFY_PEER=false
+MAIL_VERIFY_PEER_NAME=false
+MAIL_ALLOW_SELF_SIGNED=true
+```
+
+**Option 2 : Utiliser SSL au lieu de TLS**
+Si votre serveur utilise SSL (port 465), changez :
+```env
+MAIL_PORT=465
+MAIL_ENCRYPTION=ssl
+```
+
+**Option 3 : Vérifier le certificat**
+- Vérifiez que le certificat du serveur SMTP est valide
+- Vérifiez que la date système est correcte
+- Contactez votre administrateur réseau pour vérifier le certificat
+
+**⚠️ Attention** : Désactiver la vérification SSL réduit la sécurité. Utilisez uniquement en développement ou si vous êtes sûr de la sécurité de votre connexion.
+
 ### Les emails ne sont pas reçus
 - Vérifiez le dossier spam/courrier indésirable
 - Vérifiez les logs Laravel : `storage/logs/laravel.log`
