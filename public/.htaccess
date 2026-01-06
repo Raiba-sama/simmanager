@@ -4,6 +4,12 @@
     </IfModule>
 
     RewriteEngine On
+    
+    # Augmenter le temps d'exécution pour les opérations longues (génération PDF, envoi emails)
+    <IfModule mod_php.c>
+        php_value max_execution_time 300
+        php_value memory_limit 256M
+    </IfModule>
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .

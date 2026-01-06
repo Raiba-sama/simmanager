@@ -22,6 +22,9 @@ class TransmissionSheetsEmail extends Mailable
 
     public function build()
     {
+        // Augmenter le temps d'exécution pour la génération des PDFs
+        set_time_limit(300); // 5 minutes
+        
         $mail = $this->subject('Bordereaux de transmission d\'équipements')
             ->view('emails.transmission-sheets')
             ->with([

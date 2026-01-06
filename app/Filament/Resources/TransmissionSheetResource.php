@@ -242,6 +242,9 @@ class TransmissionSheetResource extends Resource
                         ])
                         ->action(function (Collection $records, array $data) {
                             try {
+                                // Augmenter le temps d'exécution pour la génération des PDFs
+                                set_time_limit(300); // 5 minutes
+                                
                                 $transmissionSheets = $records->load([
                                     'toUser',
                                     'fromUser',
