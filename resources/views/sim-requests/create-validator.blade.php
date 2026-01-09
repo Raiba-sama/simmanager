@@ -94,7 +94,8 @@
 
                 <div class="mb-3">
                     <label for="sim_id_creation" class="form-label">SIM (optionnel)</label>
-                    <select name="sim_id" id="sim_id_creation" class="form-select @error('sim_id') is-invalid @enderror">
+                    <select id="sim_id_creation" class="form-select @error('sim_id') is-invalid @enderror"
+                            onchange="document.getElementById('sim_id_hidden').value = this.value">
                         <option value="">Sélectionner une SIM...</option>
                         @foreach($sims as $sim)
                             <option value="{{ $sim->id }}" {{ old('sim_id') == $sim->id ? 'selected' : '' }}>
@@ -133,6 +134,7 @@
             <input type="hidden" name="phone_number" id="phone_number_hidden" value="{{ old('phone_number') }}">
             <input type="hidden" name="plan_id" id="plan_id_hidden" value="{{ old('plan_id', '') }}">
             <input type="hidden" name="motif" id="motif_hidden" value="{{ old('motif', '') }}">
+            <input type="hidden" name="sim_id" id="sim_id_hidden" value="{{ old('sim_id', '') }}">
             
             <!-- Formulaire pour Récupération -->
             <div id="recuperation-form" class="form-section-hidden">
@@ -161,7 +163,8 @@
 
                 <div class="mb-3">
                     <label for="sim_id_recuperation" class="form-label">SIM disponible</label>
-                    <select name="sim_id" id="sim_id_recuperation" class="form-select @error('sim_id') is-invalid @enderror">
+                    <select id="sim_id_recuperation" class="form-select @error('sim_id') is-invalid @enderror"
+                            onchange="document.getElementById('sim_id_hidden').value = this.value">
                         <option value="">Sélectionner une SIM libre...</option>
                         @foreach($sims as $sim)
                             <option value="{{ $sim->id }}" {{ old('sim_id') == $sim->id ? 'selected' : '' }}>
@@ -344,12 +347,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser les champs cachés au chargement si des valeurs existent
     function initializeHiddenFields() {
         const type = requestType.value;
+        const simIdHidden = document.getElementById('sim_id_hidden');
         
         if (type === 'recuperation') {
             const phoneNumber = document.getElementById('phone_number_recuperation');
             const phoneNumberHidden = document.getElementById('phone_number_hidden');
             const motif = document.getElementById('motif_recuperation');
             const motifHidden = document.getElementById('motif_hidden');
+            const simId = document.getElementById('sim_id_recuperation');
             
             // Copier la valeur du champ visible vers le champ caché (même si vide)
             if (phoneNumber && phoneNumberHidden) {
@@ -358,17 +363,24 @@ document.addEventListener('DOMContentLoaded', function() {
             if (motif && motifHidden) {
                 motifHidden.value = motif.value;
             }
+            if (simId && simIdHidden) {
+                simIdHidden.value = simId.value;
+            }
         } else if (type === 'creation') {
             const planId = document.getElementById('plan_id_creation');
             const planIdHidden = document.getElementById('plan_id_hidden');
             const motif = document.getElementById('motif_creation');
             const motifHidden = document.getElementById('motif_hidden');
+            const simId = document.getElementById('sim_id_creation');
             
             if (planId && planIdHidden) {
                 planIdHidden.value = planId.value;
             }
             if (motif && motifHidden) {
                 motifHidden.value = motif.value;
+            }
+            if (simId && simIdHidden) {
+                simIdHidden.value = simId.value;
             }
         } else if (type === 'suspension' || type === 'desactivation') {
             const phoneNumber = document.getElementById('phone_number');
@@ -382,6 +394,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (motif && motifHidden) {
                 motifHidden.value = motif.value;
             }
+            // Réinitialiser sim_id pour suspension/desactivation
+            if (simIdHidden) {
+                simIdHidden.value = '';
+            }
         } else if (type === 'ajustement') {
             const phoneNumber = document.getElementById('phone_number_ajustement');
             const phoneNumberHidden = document.getElementById('phone_number_hidden');
@@ -393,6 +409,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (planId && planIdHidden) {
                 planIdHidden.value = planId.value;
+            }
+            // Réinitialiser sim_id pour ajustement
+            if (simIdHidden) {
+                simIdHidden.value = '';
+            }
+        } else {
+            // Réinitialiser sim_id si aucun type n'est sélectionné
+            if (simIdHidden) {
+                simIdHidden.value = '';
             }
         }
     }
@@ -421,6 +446,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const phoneNumberHidden = document.getElementById('phone_number_hidden');
             const motif = document.getElementById('motif_recuperation');
             const motifHidden = document.getElementById('motif_hidden');
+            const simId = document.getElementById('sim_id_recuperation');
+            const simIdHidden = document.getElementById('sim_id_hidden');
             
             // S'assurer que le formulaire de récupération est visible avant soumission
             recuperationForm.classList.remove('form-section-hidden');
@@ -432,6 +459,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (motif && motifHidden) {
                 motifHidden.value = motif.value;
+            }
+            if (simId && simIdHidden) {
+                simIdHidden.value = simId.value;
             }
             
             // Le phone_number n'est plus requis (peut être vide, on utilisera le numéro de l'utilisateur)
@@ -452,6 +482,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const planIdHidden = document.getElementById('plan_id_hidden');
             const motif = document.getElementById('motif_creation');
             const motifHidden = document.getElementById('motif_hidden');
+            const simId = document.getElementById('sim_id_creation');
+            const simIdHidden = document.getElementById('sim_id_hidden');
             
             // S'assurer que le formulaire de création est visible avant soumission
             creationForm.classList.remove('form-section-hidden');
@@ -462,6 +494,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (motif && motifHidden) {
                 motifHidden.value = motif.value;
+            }
+            if (simId && simIdHidden) {
+                simIdHidden.value = simId.value;
             }
             
             if (!beneficiaryName || !beneficiaryName.value || !beneficiaryName.value.trim()) {
