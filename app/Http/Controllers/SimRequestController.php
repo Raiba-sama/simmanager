@@ -1010,6 +1010,14 @@ class SimRequestController extends Controller
             DB::commit();
             return $simRequest;
         } catch (\Exception $e) {
+            Log::error('Error creating recuperation request', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id,
+                'collaborator_matricule' => $validated['collaborator_matricule'] ?? null,
+                'sim_id' => $validated['sim_id'] ?? null,
+                'requested_iccid' => $validated['requested_iccid'] ?? null,
+                'phone_number' => $validated['phone_number'] ?? null,
+            ]);
             DB::rollBack();
             return null;
         }
