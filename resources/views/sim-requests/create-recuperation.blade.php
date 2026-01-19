@@ -20,6 +20,46 @@
             </div>
             @endif
 
+            <h5 class="mb-3">Informations du collaborateur</h5>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="collaborator_matricule" class="form-label">Matricule <span class="text-danger">*</span></label>
+                    <input type="text" name="collaborator_matricule" id="collaborator_matricule"
+                           class="form-control @error('collaborator_matricule') is-invalid @enderror"
+                           value="{{ old('collaborator_matricule') }}" placeholder="Ex: M12345" required>
+                    @error('collaborator_matricule')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="collaborator_name" class="form-label">Nom</label>
+                    <input type="text" name="collaborator_name" id="collaborator_name"
+                           class="form-control @error('collaborator_name') is-invalid @enderror"
+                           value="{{ old('collaborator_name') }}" placeholder="Nom du collaborateur">
+                    @error('collaborator_name')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="collaborator_first_name" class="form-label">Prénoms</label>
+                    <input type="text" name="collaborator_first_name" id="collaborator_first_name"
+                           class="form-control @error('collaborator_first_name') is-invalid @enderror"
+                           value="{{ old('collaborator_first_name') }}" placeholder="Prénoms du collaborateur">
+                    @error('collaborator_first_name')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="collaborator_agence" class="form-label">Agence</label>
+                <input type="text" name="collaborator_agence" id="collaborator_agence"
+                       class="form-control @error('collaborator_agence') is-invalid @enderror"
+                       value="{{ old('collaborator_agence') }}" placeholder="Agence / Lieu d'affectation">
+                @error('collaborator_agence')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
+
             <div class="mb-3">
                 <label for="phone_number" class="form-label">Numéro de ligne concerné</label>
                 <input type="text" name="phone_number" id="phone_number" 

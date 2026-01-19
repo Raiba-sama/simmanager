@@ -129,6 +129,21 @@
                         <dd class="col-sm-8">{{ $simRequest->user->full_name }} ({{ $simRequest->user->matricule }})</dd>
                     @endif
 
+                    @if($simRequest->isRecuperation() && ($simRequest->collaborator_matricule || $simRequest->collaborator_name || $simRequest->collaborator_first_name || $simRequest->collaborator_agence))
+                        <dt class="col-sm-4">Collaborateur:</dt>
+                        <dd class="col-sm-8">
+                            @if($simRequest->collaborator_name || $simRequest->collaborator_first_name)
+                                <strong>{{ trim(($simRequest->collaborator_name ?? '') . ' ' . ($simRequest->collaborator_first_name ?? '')) }}</strong>
+                            @endif
+                            @if($simRequest->collaborator_matricule)
+                                <br><small class="text-muted">Matricule: {{ $simRequest->collaborator_matricule }}</small>
+                            @endif
+                            @if($simRequest->collaborator_agence)
+                                <br><small class="text-muted">Agence: {{ $simRequest->collaborator_agence }}</small>
+                            @endif
+                        </dd>
+                    @endif
+
                     @if($simRequest->isCreation())
                         <dt class="col-sm-4">Bénéficiaire:</dt>
                         <dd class="col-sm-8">

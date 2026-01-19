@@ -432,7 +432,23 @@ class SimRequestController extends Controller
             // Validation et mise à jour selon le type
             if ($requestType === 'recuperation') {
                 $validated = $this->validateRecuperation($request);
+                $collaborator = User::where('matricule', $validated['collaborator_matricule'])->first();
+                $collaboratorName = !empty($validated['collaborator_name'])
+                    ? $validated['collaborator_name']
+                    : ($collaborator->name ?? null);
+                $collaboratorFirstName = !empty($validated['collaborator_first_name'])
+                    ? $validated['collaborator_first_name']
+                    : ($collaborator->first_name ?? null);
+                $collaboratorAgence = !empty($validated['collaborator_agence'])
+                    ? $validated['collaborator_agence']
+                    : ($collaborator->lieu_affectation ?? $collaborator->zone_affectation ?? $collaborator->direction ?? null);
+
                 $simRequest->update([
+                    'collaborator_matricule' => $validated['collaborator_matricule'] ?? null,
+                    'collaborator_name' => $collaboratorName,
+                    'collaborator_first_name' => $collaboratorFirstName,
+                    'collaborator_agence' => $collaboratorAgence,
+                    'phone_number' => $validated['phone_number'] ?? null,
                     'sim_id' => $validated['sim_id'] ?? null,
                     'requested_iccid' => $validated['requested_iccid'] ?? null,
                     'motif' => $validated['motif'],
@@ -533,12 +549,8 @@ class SimRequestController extends Controller
             
             // Assigner la SIM si disponible et libre
             if ($sim && $sim->isLibre()) {
-                $sim->update([
-                    'status' => 'attribue',
-                    'assigned_to' => $simRequest->user_id,
-                    'assigned_to_matricule' => $simRequest->user->matricule,
-                    'assigned_at' => now(),
-                ]);
+                $assignedUser = $this->resolveRecuperationCollaborator($simRequest);
+                $sim->update($this->buildRecuperationSimAssignmentData($simRequest, $assignedUser));
 
                 $sim->histories()->create([
                     'action' => 'assigned',
@@ -850,6 +862,10 @@ class SimRequestController extends Controller
     private function validateRecuperation(Request $request)
     {
         return $request->validate([
+            'collaborator_matricule' => 'required|string|max:255|exists:users,matricule',
+            'collaborator_name' => 'nullable|string|max:255',
+            'collaborator_first_name' => 'nullable|string|max:255',
+            'collaborator_agence' => 'nullable|string|max:255',
             'phone_number' => 'nullable|string|max:255',
             'sim_id' => 'nullable|exists:sims,id',
             'requested_iccid' => 'nullable|string|max:255',
@@ -893,6 +909,21 @@ class SimRequestController extends Controller
     {
         DB::beginTransaction();
         try {
+            $collaborator = null;
+            if (!empty($validated['collaborator_matricule'])) {
+                $collaborator = User::where('matricule', $validated['collaborator_matricule'])->first();
+            }
+
+            $collaboratorName = !empty($validated['collaborator_name'])
+                ? $validated['collaborator_name']
+                : ($collaborator->name ?? null);
+            $collaboratorFirstName = !empty($validated['collaborator_first_name'])
+                ? $validated['collaborator_first_name']
+                : ($collaborator->first_name ?? null);
+            $collaboratorAgence = !empty($validated['collaborator_agence'])
+                ? $validated['collaborator_agence']
+                : ($collaborator->lieu_affectation ?? $collaborator->zone_affectation ?? $collaborator->direction ?? null);
+
             // Récupérer le numéro saisi dans le formulaire
             // Vérifier explicitement si le champ est vide (null, '', ou seulement des espaces)
             $phoneNumberInput = $validated['phone_number'] ?? null;
@@ -915,12 +946,15 @@ class SimRequestController extends Controller
                 'is_empty' => empty($phoneNumber),
                 'user_id' => $user->id,
                 'is_validator' => $user->isValidator(),
+                'collaborator_matricule' => $validated['collaborator_matricule'] ?? null,
             ]);
             
             // Si aucun numéro n'a été saisi, récupérer le numéro de l'utilisateur
             if (empty($phoneNumber)) {
-                // Récupérer la SIM actuelle de l'utilisateur
-                $currentSim = Sim::where('assigned_to', $user->id)
+                $targetUser = $collaborator ?? $user;
+
+                // Récupérer la SIM actuelle du collaborateur ou de l'utilisateur
+                $currentSim = Sim::where('assigned_to', $targetUser->id)
                     ->whereIn('status', ['attribue', 'suspendu'])
                     ->first();
                 
@@ -930,9 +964,9 @@ class SimRequestController extends Controller
                     if (!$simId) {
                         $simId = $currentSim->id;
                     }
-                } elseif ($user->phone) {
+                } elseif ($targetUser->phone) {
                     // Si pas de SIM mais que l'utilisateur a un numéro dans son profil
-                    $phoneNumber = $user->phone;
+                    $phoneNumber = $targetUser->phone;
                 }
             }
             
@@ -955,6 +989,10 @@ class SimRequestController extends Controller
                 'sim_id' => $simId,
                 'requested_iccid' => $validated['requested_iccid'] ?? null,
                 'phone_number' => $phoneNumber,
+                'collaborator_matricule' => $validated['collaborator_matricule'] ?? null,
+                'collaborator_name' => $collaboratorName,
+                'collaborator_first_name' => $collaboratorFirstName,
+                'collaborator_agence' => $collaboratorAgence,
                 'request_type' => 'recuperation',
                 'motif' => $validated['motif'],
                 'status' => 'en_attente',
@@ -975,6 +1013,34 @@ class SimRequestController extends Controller
             DB::rollBack();
             return null;
         }
+    }
+
+    private function resolveRecuperationCollaborator(SimRequest $simRequest): User
+    {
+        if (!empty($simRequest->collaborator_matricule)) {
+            $collaborator = User::where('matricule', $simRequest->collaborator_matricule)->first();
+            if ($collaborator) {
+                return $collaborator;
+            }
+        }
+
+        return $simRequest->user;
+    }
+
+    private function buildRecuperationSimAssignmentData(SimRequest $simRequest, User $assignedUser): array
+    {
+        $assignmentData = [
+            'status' => 'attribue',
+            'assigned_to' => $assignedUser->id,
+            'assigned_to_matricule' => $assignedUser->matricule,
+            'assigned_at' => now(),
+        ];
+
+        if (!empty($simRequest->phone_number)) {
+            $assignmentData['phone_number'] = $simRequest->phone_number;
+        }
+
+        return $assignmentData;
     }
 
     private function createCreationRequest(array $validated, User $user)
@@ -1617,12 +1683,8 @@ class SimRequestController extends Controller
                 ]);
 
                 if ($sim && $sim->isLibre()) {
-                    $sim->update([
-                        'status' => 'attribue',
-                        'assigned_to' => $simRequest->user_id,
-                        'assigned_to_matricule' => $simRequest->user->matricule,
-                        'assigned_at' => now(),
-                    ]);
+                    $assignedUser = $this->resolveRecuperationCollaborator($simRequest);
+                    $sim->update($this->buildRecuperationSimAssignmentData($simRequest, $assignedUser));
                 }
 
                 $this->sendRequestToWebhook($simRequest, $sim);
