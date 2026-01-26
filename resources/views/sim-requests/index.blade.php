@@ -48,7 +48,7 @@
                         <i class="bi bi-funnel"></i> Filtrer
                     </button>
                 </div>
-                <div class="col-md-1" id="reset-filter-btn" style="{{ request()->has('request_type') || request()->has('status') ? '' : 'display: none;' }}">
+                <div class="col-md-1" id="reset-filter-btn" style="{{ request()->hasAny(['request_type','status','collaborator','agence','phone_number','iccid']) ? '' : 'display: none;' }}">
                     <a href="{{ route('sim-requests.index') }}" class="btn btn-outline-secondary w-100" style="border-radius: 8px;" title="Réinitialiser" onclick="event.preventDefault(); resetFilters();">
                         <i class="bi bi-x-circle"></i>
                     </a>
@@ -73,7 +73,27 @@
                     </div>
                 </div>
             </div>
+            <div class="row g-3 mt-2">
+                <div class="col-md-3">
+                    <input type="text" name="collaborator" class="form-control" value="{{ request('collaborator') }}" placeholder="Collaborateur (matricule ou nom)" style="border-radius: 8px; border: 1px solid #e2e8f0;">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" name="agence" class="form-control" value="{{ request('agence') }}" placeholder="Agence" style="border-radius: 8px; border: 1px solid #e2e8f0;">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" name="phone_number" class="form-control" value="{{ request('phone_number') }}" placeholder="Numéro de ligne" style="border-radius: 8px; border: 1px solid #e2e8f0;">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" name="iccid" class="form-control" value="{{ request('iccid') }}" placeholder="ICCID" style="border-radius: 8px; border: 1px solid #e2e8f0;">
+                </div>
+            </div>
         </form>
+
+        <div class="d-flex justify-content-end mb-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="toggle-columns-btn" style="border-radius: 6px;">
+                <i class="bi bi-layout-three-columns"></i> Afficher détails
+            </button>
+        </div>
 
         <!-- Barre d'actions en masse (affichée seulement si des éléments sont sélectionnés) -->
         <div id="bulk-actions-bar" style="display: none; margin-bottom: 16px; padding: 16px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
@@ -121,18 +141,18 @@
             <table class="table table-hover mb-0" style="margin: 0;">
                 <thead style="background: #f9fafb;">
                     <tr>
-                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; width: 50px;">
+                        <th class="sticky-col-left" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; width: 50px;">
                             <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" style="cursor: pointer;">
                         </th>
-                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">N° Demande</th>
+                        <th class="sticky-col-left second" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">N° Demande</th>
                         <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Type</th>
-                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Demandeur</th>
-                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Collaborateur concerné</th>
-                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Ligne concernée</th>
+                        <th class="col-secondary" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Demandeur</th>
+                        <th class="col-secondary" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Collaborateur concerné</th>
+                        <th class="col-secondary" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Ligne concernée</th>
                         <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Statut</th>
-                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Priorité</th>
-                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Date</th>
-                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Actions</th>
+                        <th class="col-secondary" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Priorité</th>
+                        <th class="col-secondary" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Date</th>
+                        <th class="sticky-col-right" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="table-body">
@@ -190,10 +210,10 @@
                             ];
                         @endphp
                         <tr style="border-bottom: 1px solid #e5e7eb; transition: background 0.2s; {{ $urgencyLevel !== 'low' ? 'border-left: 4px solid ' . $urgencyColors[$urgencyLevel] . ';' : '' }} background: {{ $urgencyBg[$urgencyLevel] }};" onmouseover="this.style.background='{{ $urgencyLevel !== 'low' ? $urgencyBg[$urgencyLevel] : '#f9fafb' }}'" onmouseout="this.style.background='{{ $urgencyBg[$urgencyLevel] }}'">
-                            <td style="padding: 16px;">
+                            <td class="sticky-col-left" style="padding: 16px;">
                                 <input type="checkbox" class="request-checkbox" value="{{ $request->id }}" onchange="updateBulkActions()" style="cursor: pointer;">
                             </td>
-                            <td style="padding: 16px; font-weight: 600; color: #1a1a1a;">
+                            <td class="sticky-col-left second" style="padding: 16px; font-weight: 600; color: #1a1a1a;">
                                 {{ $request->request_number }}
                                 @if($urgencyLevel !== 'low')
                                     <span class="badge" style="background: {{ $urgencyColors[$urgencyLevel] }}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 6px; font-weight: 600;" title="En attente depuis {{ $daysPending }} jour(s)">
@@ -223,13 +243,19 @@
                                     }
                                 }
                                 $lineNumber = $request->phone_number ?? ($request->sim ? $request->sim->phone_number : null);
+                                $needsAttention = false;
+                                if ($request->isCreation()) {
+                                    $needsAttention = empty($request->beneficiary_name);
+                                } else {
+                                    $needsAttention = empty($request->collaborator_matricule) || empty($lineNumber);
+                                }
                             @endphp
                             <td style="padding: 16px;">
                                 <span class="badge" style="background: {{ $typeColor['bg'] }}; color: {{ $typeColor['text'] }}; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;">
                                     {{ $typeLabels[$request->request_type] ?? ucfirst($request->request_type) }}
                                 </span>
                             </td>
-                            <td style="padding: 16px; color: #4b5563;">
+                            <td class="col-secondary" style="padding: 16px; color: #4b5563;">
                                 @if($requester)
                                     {{ $requester->full_name }}
                                     @if($requester->matricule)
@@ -239,7 +265,7 @@
                                     <span class="text-muted" style="color: #9ca3af;">-</span>
                                 @endif
                             </td>
-                            <td style="padding: 16px; color: #4b5563;">
+                            <td class="col-secondary" style="padding: 16px; color: #4b5563;">
                                 @if($collaboratorName)
                                     {{ $collaboratorName }}
                                     @if($collaboratorMatricule)
@@ -251,7 +277,7 @@
                                     <span class="text-muted" style="color: #9ca3af;">-</span>
                                 @endif
                             </td>
-                            <td style="padding: 16px; color: #4b5563;">
+                            <td class="col-secondary" style="padding: 16px; color: #4b5563;">
                                 @if($lineNumber)
                                     {{ $lineNumber }}
                                 @else
@@ -262,8 +288,13 @@
                                 <span class="badge" style="background: {{ $statusColor['bg'] }}; color: {{ $statusColor['text'] }}; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;">
                                     {{ $statusLabels[$request->status] ?? ucfirst($request->status) }}
                                 </span>
+                                @if($needsAttention)
+                                    <span class="badge ms-1" style="background: #ef4444; color: white; padding: 4px 8px; border-radius: 6px; font-size: 11px;">
+                                        À corriger
+                                    </span>
+                                @endif
                             </td>
-                            <td style="padding: 16px;">
+                            <td class="col-secondary" style="padding: 16px;">
                                 @if($request->priority)
                                     @php
                                         $priorityColors = [
@@ -280,8 +311,8 @@
                                     <span class="text-muted" style="color: #9ca3af;">-</span>
                                 @endif
                             </td>
-                            <td style="padding: 16px; color: #6b7280; font-size: 14px;">{{ $request->created_at->format('d/m/Y H:i') }}</td>
-                            <td style="padding: 16px;">
+                            <td class="col-secondary" style="padding: 16px; color: #6b7280; font-size: 14px;">{{ $request->created_at->format('d/m/Y H:i') }}</td>
+                            <td class="sticky-col-right" style="padding: 16px;">
                                 <div class="d-flex align-items-center gap-2">
                                     <button type="button" 
                                             class="btn btn-sm {{ isset($request->is_favorite) && $request->is_favorite ? 'btn-warning' : 'btn-outline-warning' }}" 
@@ -293,6 +324,20 @@
                                     <a href="{{ route('sim-requests.show', $request) }}" class="btn btn-sm" style="background: transparent; border: 1px solid #e5e7eb; color: #3b82f6; padding: 6px 12px; border-radius: 6px; text-decoration: none;" data-bs-toggle="tooltip" title="Voir les détails">
                                         <i class="bi bi-eye"></i>
                                     </a>
+                                    @if(auth()->user()->canValidateRequests() && $request->isRecuperation() && $request->status === 'en_attente' && $request->created_by !== auth()->id())
+                                        <form method="POST" action="{{ route('sim-requests.approve', $request) }}" class="d-inline" data-confirm="Valider cette demande ?">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm" style="background: #10b981; border: 1px solid #10b981; color: white; padding: 6px 10px; border-radius: 6px;" data-bs-toggle="tooltip" title="Valider">
+                                                <i class="bi bi-check-circle"></i>
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ route('sim-requests.reject', $request) }}" class="d-inline" data-confirm="Rejeter cette demande ?">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm" style="background: #ef4444; border: 1px solid #ef4444; color: white; padding: 6px 10px; border-radius: 6px;" data-bs-toggle="tooltip" title="Rejeter">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                     @if(auth()->user()->isAdmin())
                                         <form method="POST" action="{{ route('sim-requests.quick-update-status', $request) }}" class="d-inline" data-confirm="Mettre à jour le statut à Pending ?">
                                             @csrf
@@ -341,6 +386,34 @@
 <script>
     let filterTimeout;
     const baseUrl = '{{ route('sim-requests.index') }}';
+    const detailsStorageKey = 'sim-requests-show-details';
+
+    function applyColumnVisibility(showDetails) {
+        document.querySelectorAll('.col-secondary').forEach(col => {
+            col.classList.toggle('d-none', !showDetails);
+        });
+        const btn = document.getElementById('toggle-columns-btn');
+        if (btn) {
+            btn.innerHTML = showDetails
+                ? '<i class="bi bi-layout-three-columns"></i> Masquer détails'
+                : '<i class="bi bi-layout-three-columns"></i> Afficher détails';
+        }
+    }
+
+    function initializeColumnToggle() {
+        const stored = localStorage.getItem(detailsStorageKey);
+        const showDetails = stored === null ? true : stored === 'true';
+        applyColumnVisibility(showDetails);
+        const btn = document.getElementById('toggle-columns-btn');
+        if (btn) {
+            btn.addEventListener('click', function () {
+                const current = localStorage.getItem(detailsStorageKey);
+                const nextValue = current === 'true' ? 'false' : 'true';
+                localStorage.setItem(detailsStorageKey, nextValue);
+                applyColumnVisibility(nextValue === 'true');
+            });
+        }
+    }
     
     // Auto-filter on change
     document.getElementById('filter-request-type').addEventListener('change', function() {
@@ -360,10 +433,18 @@
     function applyFilters() {
         const requestType = document.getElementById('filter-request-type').value;
         const status = document.getElementById('filter-status').value;
+        const collaborator = document.querySelector('input[name="collaborator"]')?.value?.trim() || '';
+        const agence = document.querySelector('input[name="agence"]')?.value?.trim() || '';
+        const phoneNumber = document.querySelector('input[name="phone_number"]')?.value?.trim() || '';
+        const iccid = document.querySelector('input[name="iccid"]')?.value?.trim() || '';
         
         const params = new URLSearchParams();
         if (requestType) params.append('request_type', requestType);
         if (status) params.append('status', status);
+        if (collaborator) params.append('collaborator', collaborator);
+        if (agence) params.append('agence', agence);
+        if (phoneNumber) params.append('phone_number', phoneNumber);
+        if (iccid) params.append('iccid', iccid);
         const favorites = document.getElementById('filter-favorites');
         if (favorites && favorites.checked) params.append('favorites', '1');
         
@@ -397,6 +478,9 @@
                 clearSelection();
                 // Réattacher les event listeners aux nouvelles checkboxes
                 attachCheckboxListeners();
+                // Réappliquer la visibilité des colonnes
+                const stored = localStorage.getItem(detailsStorageKey);
+                applyColumnVisibility(stored === null ? true : stored === 'true');
             }
             
             // Update pagination
@@ -411,7 +495,7 @@
             // Update reset button visibility
             const resetBtn = document.getElementById('reset-filter-btn');
             const favorites = document.getElementById('filter-favorites');
-            if (requestType || status || (favorites && favorites.checked)) {
+            if (requestType || status || collaborator || agence || phoneNumber || iccid || (favorites && favorites.checked)) {
                 resetBtn.style.display = '';
             } else {
                 resetBtn.style.display = 'none';
@@ -426,6 +510,14 @@
     function resetFilters() {
         document.getElementById('filter-request-type').value = '';
         document.getElementById('filter-status').value = '';
+        const collaborator = document.querySelector('input[name="collaborator"]');
+        const agence = document.querySelector('input[name="agence"]');
+        const phoneNumber = document.querySelector('input[name="phone_number"]');
+        const iccid = document.querySelector('input[name="iccid"]');
+        if (collaborator) collaborator.value = '';
+        if (agence) agence.value = '';
+        if (phoneNumber) phoneNumber.value = '';
+        if (iccid) iccid.value = '';
         const favorites = document.getElementById('filter-favorites');
         if (favorites) favorites.checked = false;
         applyFilters();
@@ -477,6 +569,14 @@
         const params = new URLSearchParams();
         if (requestType) params.append('request_type', requestType);
         if (status) params.append('status', status);
+        const collaborator = document.querySelector('input[name="collaborator"]')?.value?.trim() || '';
+        const agence = document.querySelector('input[name="agence"]')?.value?.trim() || '';
+        const phoneNumber = document.querySelector('input[name="phone_number"]')?.value?.trim() || '';
+        const iccid = document.querySelector('input[name="iccid"]')?.value?.trim() || '';
+        if (collaborator) params.append('collaborator', collaborator);
+        if (agence) params.append('agence', agence);
+        if (phoneNumber) params.append('phone_number', phoneNumber);
+        if (iccid) params.append('iccid', iccid);
         const favorites = document.getElementById('filter-favorites');
         if (favorites && favorites.checked) params.append('favorites', '1');
         
@@ -516,6 +616,8 @@
                     // Réinitialiser les sélections après pagination
                     clearSelection();
                     attachCheckboxListeners();
+                    const stored = localStorage.getItem(detailsStorageKey);
+                    applyColumnVisibility(stored === null ? true : stored === 'true');
                 }
                 
                 const newPagination = doc.getElementById('pagination-container');
@@ -598,6 +700,7 @@
     // Initialiser les listeners au chargement de la page
     document.addEventListener('DOMContentLoaded', function() {
         attachCheckboxListeners();
+        initializeColumnToggle();
     });
     
     function getSelectedIds() {
@@ -703,6 +806,24 @@
     .spin {
         animation: spin 1s linear infinite;
         display: inline-block;
+    }
+    .sticky-col-left {
+        position: sticky;
+        left: 0;
+        background: white;
+        z-index: 2;
+    }
+    .sticky-col-left.second {
+        left: 50px;
+    }
+    .sticky-col-right {
+        position: sticky;
+        right: 0;
+        background: white;
+        z-index: 2;
+    }
+    .col-secondary.d-none {
+        display: none !important;
     }
 </style>
 @endpush

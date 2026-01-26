@@ -85,6 +85,8 @@ Route::middleware('auth')->group(function () {
         ->name('sim-requests.bulk-delete');
     Route::post('sim-requests/{simRequest}/toggle-favorite', [\App\Http\Controllers\SimRequestController::class, 'toggleFavorite'])
         ->name('sim-requests.toggle-favorite');
+    Route::get('sim-requests/collaborator-history', [\App\Http\Controllers\SimRequestController::class, 'collaboratorHistory'])
+        ->name('sim-requests.collaborator-history');
 
     // SIMs
     Route::get('sims/export', [\App\Http\Controllers\SimController::class, 'export'])->name('sims.export');

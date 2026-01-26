@@ -58,6 +58,14 @@
                                 <i class="bi bi-pencil"></i> Modifier
                             </a>
                         @endif
+                        @php
+                            $canCopy = $user->isValidator() || ($simRequest->isRecuperation() && $simRequest->user_id === $user->id);
+                        @endphp
+                        @if($canCopy)
+                            <a href="{{ route('sim-requests.create', ['copy_from' => $simRequest->id]) }}" class="btn btn-sm btn-outline-primary" style="border-radius: 6px;" title="Reprendre cette demande">
+                                <i class="bi bi-arrow-repeat"></i> Reprendre
+                            </a>
+                        @endif
                         <button type="button" 
                                 class="btn btn-sm {{ $isFavorite ? 'btn-warning' : 'btn-outline-warning' }}" 
                                 style="border-radius: 6px;" 
@@ -392,6 +400,32 @@
                 </div>
             </div>
         @endif
+
+        @php
+            $recentHistories = $simRequest->histories->sortByDesc('created_at')->take(3);
+        @endphp
+        <div class="card mb-3" style="border: none; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <div class="card-header" style="background: white; border-bottom: 1px solid #e2e8f0; border-radius: 10px 10px 0 0;">
+                <h5 class="mb-0" style="font-weight: 600; color: #1e293b;">
+                    <i class="bi bi-lightning-charge" style="margin-right: 8px;"></i>Activité récente
+                </h5>
+            </div>
+            <div class="card-body">
+                @forelse($recentHistories as $history)
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <div style="font-weight: 600;">{{ $history->action_label }}</div>
+                            <div class="text-muted" style="font-size: 12px;">{{ $history->created_at->format('d/m/Y H:i') }}</div>
+                        </div>
+                        <div class="text-muted" style="font-size: 12px;">
+                            {{ $history->user ? $history->user->full_name : ($history->user_matricule ?? '-') }}
+                        </div>
+                    </div>
+                @empty
+                    <span class="text-muted">Aucune activité récente</span>
+                @endforelse
+            </div>
+        </div>
 
         <div class="card" style="border: none; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div class="card-header" style="background: white; border-bottom: 1px solid #e2e8f0; border-radius: 10px 10px 0 0;">

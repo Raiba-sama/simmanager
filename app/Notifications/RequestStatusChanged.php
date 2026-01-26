@@ -53,15 +53,22 @@ class RequestStatusChanged extends Notification
 
         $oldStatusLabel = $statusLabels[$this->oldStatus] ?? $this->oldStatus;
         $newStatusLabel = $statusLabels[$this->newStatus] ?? $this->newStatus;
+        $nextSteps = [
+            'accepted' => 'Bordereau disponible',
+            'refused' => 'Corriger et soumettre à nouveau',
+            'pending' => 'En attente opérateur',
+            'demande_envoyee' => 'En attente opérateur',
+        ];
 
         return [
             'type' => 'request_status_changed',
             'title' => 'Statut de demande modifié',
-            'message' => "Le statut de la demande #{$this->simRequest->request_number} est passé de \"{$oldStatusLabel}\" à \"{$newStatusLabel}\"",
+            'message' => "Le statut de la demande #{$this->simRequest->request_number} est passé de \"{$oldStatusLabel}\" à \"{$newStatusLabel}\".",
             'request_id' => $this->simRequest->id,
             'request_number' => $this->simRequest->request_number,
             'old_status' => $this->oldStatus,
             'new_status' => $this->newStatus,
+            'next_step' => $nextSteps[$this->newStatus] ?? null,
             'url' => url()->route('sim-requests.show', $this->simRequest, false), // URL relative
             'icon' => 'bi-arrow-repeat',
             'color' => '#06b6d4',

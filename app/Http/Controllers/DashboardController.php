@@ -478,6 +478,7 @@ class DashboardController extends Controller
                                       ->count();
 
         $validationRate = $totalRequests > 0 ? round(($validatedRequests / $totalRequests) * 100, 1) : 0;
+        $rejectionRate = $totalRequests > 0 ? round(($rejectedRequests / $totalRequests) * 100, 1) : 0;
 
         // Délai moyen de traitement (en jours)
         $avgProcessingTime = SimRequest::whereBetween('created_at', [$startDate, $endDate])
@@ -501,13 +502,23 @@ class DashboardController extends Controller
                                        ];
                                    });
 
+        $topMotifs = SimRequest::whereBetween('created_at', [$startDate, $endDate])
+            ->whereNotNull('motif')
+            ->select('motif', DB::raw('COUNT(*) as count'))
+            ->groupBy('motif')
+            ->orderBy('count', 'desc')
+            ->limit(5)
+            ->get();
+
         return [
             'total_requests' => $totalRequests,
             'validated_requests' => $validatedRequests,
             'rejected_requests' => $rejectedRequests,
             'validation_rate' => $validationRate,
+            'rejection_rate' => $rejectionRate,
             'avg_processing_time' => round($avgProcessingTime, 1),
             'top_requesters' => $topRequesters,
+            'top_motifs' => $topMotifs,
         ];
     }
 }

@@ -52,6 +52,47 @@ class SimRequestController extends Controller
             $query->where('request_type', $request->request_type);
         }
 
+        if ($request->filled('collaborator')) {
+            $search = $request->collaborator;
+            $query->where(function ($q) use ($search) {
+                $q->where('collaborator_matricule', 'like', "%{$search}%")
+                    ->orWhere('collaborator_name', 'like', "%{$search}%")
+                    ->orWhere('collaborator_first_name', 'like', "%{$search}%")
+                    ->orWhere('beneficiary_matricule', 'like', "%{$search}%")
+                    ->orWhere('beneficiary_name', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%")
+                            ->orWhere('first_name', 'like', "%{$search}%")
+                            ->orWhere('matricule', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($request->filled('agence')) {
+            $search = $request->agence;
+            $query->where('collaborator_agence', 'like', "%{$search}%");
+        }
+
+        if ($request->filled('phone_number')) {
+            $search = $request->phone_number;
+            $query->where(function ($q) use ($search) {
+                $q->where('phone_number', 'like', "%{$search}%")
+                    ->orWhereHas('sim', function ($q2) use ($search) {
+                        $q2->where('phone_number', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($request->filled('iccid')) {
+            $search = $request->iccid;
+            $query->where(function ($q) use ($search) {
+                $q->where('requested_iccid', 'like', "%{$search}%")
+                    ->orWhereHas('sim', function ($q2) use ($search) {
+                        $q2->where('iccid', 'like', "%{$search}%");
+                    });
+            });
+        }
+
         $requests = $query->paginate(15);
         
         // Charger les favoris de l'utilisateur pour chaque demande
@@ -73,7 +114,7 @@ class SimRequestController extends Controller
     {
         $user = auth()->user();
         
-        $query = SimRequest::with(['user', 'sim', 'validator', 'plan', 'admin'])
+        $query = SimRequest::with(['user', 'sim', 'validator', 'plan', 'admin', 'creator'])
             ->orderBy('created_at', 'desc');
 
         // Visibilité : User voit seulement ses demandes, Validator/Admin voient tout
@@ -138,13 +179,92 @@ class SimRequestController extends Controller
             ->whereIn('status', ['attribue', 'suspendu'])
             ->first();
 
+        $prefill = [];
+        $copyFromId = request()->query('copy_from');
+        if ($copyFromId) {
+            $source = SimRequest::find($copyFromId);
+            if ($source) {
+                $canCopy = $user->isValidator() || ($source->isRecuperation() && $source->user_id === $user->id);
+                if ($canCopy) {
+                    $prefill = $this->buildPrefillFromRequest($source);
+                }
+            }
+        }
+
         // Si l'utilisateur n'est pas validateur, il peut seulement créer une demande de récupération
         if (!$user->isValidator()) {
-            return view('sim-requests.create-recuperation', compact('sims', 'currentSim'));
+            return view('sim-requests.create-recuperation', compact('sims', 'currentSim', 'prefill'));
         }
 
         // Validateur/Admin peut créer tous les types y compris récupération
-        return view('sim-requests.create-validator', compact('sims', 'plans', 'users', 'fonctions', 'currentSim'));
+        return view('sim-requests.create-validator', compact('sims', 'plans', 'users', 'fonctions', 'currentSim', 'prefill'));
+    }
+
+    /**
+     * Retourne l'historique d'un collaborateur (lignes/forfaits récents)
+     */
+    public function collaboratorHistory(Request $request)
+    {
+        $matricule = $request->get('matricule');
+        if (!$matricule) {
+            return response()->json(['success' => false, 'message' => 'Matricule requis.'], 422);
+        }
+
+        $collaborator = User::where('matricule', $matricule)->first();
+        $currentSim = null;
+        if ($collaborator) {
+            $currentSim = Sim::where('assigned_to', $collaborator->id)
+                ->whereIn('status', ['attribue', 'suspendu'])
+                ->first();
+        }
+
+        $requests = SimRequest::where(function ($query) use ($matricule) {
+                $query->where('collaborator_matricule', $matricule)
+                    ->orWhere('beneficiary_matricule', $matricule);
+            })
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        $recentLines = $requests->pluck('phone_number')
+            ->filter()
+            ->unique()
+            ->values()
+            ->take(5)
+            ->values();
+
+        $recentPlans = $requests->pluck('plan_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->take(3)
+            ->values();
+
+        $planNames = [];
+        if ($recentPlans->isNotEmpty()) {
+            $planNames = Plan::whereIn('id', $recentPlans)->pluck('name', 'id');
+        }
+
+        $preferredOperator = $currentSim->operator ?? null;
+        $suggestedSim = null;
+        if ($preferredOperator) {
+            $suggestedSim = Sim::libre()->where('operator', $preferredOperator)->first();
+        }
+
+        return response()->json([
+            'success' => true,
+            'collaborator' => $collaborator ? [
+                'matricule' => $collaborator->matricule,
+                'name' => $collaborator->name,
+                'first_name' => $collaborator->first_name,
+                'agence' => $collaborator->lieu_affectation ?? $collaborator->zone_affectation ?? $collaborator->direction,
+            ] : null,
+            'recent_lines' => $recentLines,
+            'recent_plans' => $planNames,
+            'preferred_operator' => $preferredOperator,
+            'suggested_sim_id' => $suggestedSim?->id,
+            'suggested_sim_label' => $suggestedSim ? ($suggestedSim->iccid . ' - ' . ($suggestedSim->operator ?? 'N/A')) : null,
+        ]);
     }
     
     /**
@@ -202,6 +322,26 @@ class SimRequestController extends Controller
         });
         
         return $query->get();
+    }
+
+    private function buildPrefillFromRequest(SimRequest $source): array
+    {
+        return [
+            'request_type' => $source->request_type,
+            'collaborator_matricule' => $source->collaborator_matricule,
+            'collaborator_name' => $source->collaborator_name,
+            'collaborator_first_name' => $source->collaborator_first_name,
+            'collaborator_agence' => $source->collaborator_agence,
+            'phone_number' => $source->phone_number,
+            'sim_id' => $source->sim_id,
+            'requested_iccid' => $source->requested_iccid,
+            'motif' => $source->motif,
+            'plan_id' => $source->plan_id,
+            'beneficiary_name' => $source->beneficiary_name,
+            'beneficiary_first_name' => $source->beneficiary_first_name,
+            'beneficiary_fonction' => $source->beneficiary_fonction,
+            'beneficiary_matricule' => $source->beneficiary_matricule,
+        ];
     }
     
     /**
@@ -561,6 +701,24 @@ class SimRequestController extends Controller
             } elseif ($simRequest->phone_number) {
                 // Chercher la SIM par numéro de téléphone
                 $sim = Sim::where('phone_number', $simRequest->phone_number)->first();
+            }
+
+            if ($sim && !$sim->isLibre()) {
+                DB::rollBack();
+                return back()->with('error', 'La SIM sélectionnée est déjà attribuée ou indisponible.');
+            }
+
+            if ($simRequest->phone_number) {
+                $lineSim = Sim::where('phone_number', $simRequest->phone_number)
+                    ->when($sim, function ($query) use ($sim) {
+                        $query->where('id', '!=', $sim->id);
+                    })
+                    ->whereIn('status', ['attribue', 'suspendu'])
+                    ->first();
+                if ($lineSim) {
+                    DB::rollBack();
+                    return back()->with('error', 'La ligne est déjà active sur une autre SIM.');
+                }
             }
             
             // Assigner la SIM si disponible et libre
@@ -1808,6 +1966,30 @@ class SimRequestController extends Controller
                     $sim = Sim::find($simRequest->sim_id);
                 } elseif ($simRequest->phone_number) {
                     $sim = Sim::where('phone_number', $simRequest->phone_number)->first();
+                }
+
+                if ($sim && !$sim->isLibre()) {
+                    Log::info('Bulk approve skipped: SIM not free', [
+                        'request_id' => $simRequest->id,
+                        'sim_id' => $sim->id,
+                    ]);
+                    continue;
+                }
+
+                if ($simRequest->phone_number) {
+                    $lineSim = Sim::where('phone_number', $simRequest->phone_number)
+                        ->when($sim, function ($query) use ($sim) {
+                            $query->where('id', '!=', $sim->id);
+                        })
+                        ->whereIn('status', ['attribue', 'suspendu'])
+                        ->first();
+                    if ($lineSim) {
+                        Log::info('Bulk approve skipped: line already active', [
+                            'request_id' => $simRequest->id,
+                            'line_sim_id' => $lineSim->id,
+                        ]);
+                        continue;
+                    }
                 }
 
                 $simRequest->update([

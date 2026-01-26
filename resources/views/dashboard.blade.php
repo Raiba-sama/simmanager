@@ -295,6 +295,20 @@
                         </div>
                     </div>
                 </div>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div style="text-align: center; padding: 20px; background: #fef2f2; border-radius: 8px;">
+                            <div style="font-size: 32px; font-weight: 700; color: #ef4444; margin-bottom: 8px;">{{ $advancedStats['rejection_rate'] ?? 0 }}%</div>
+                            <div style="font-size: 14px; color: #64748b; font-weight: 500;">Taux de rejet</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div style="text-align: center; padding: 20px; background: #fef2f2; border-radius: 8px;">
+                            <div style="font-size: 32px; font-weight: 700; color: #ef4444; margin-bottom: 8px;">{{ $advancedStats['rejected_requests'] ?? 0 }}</div>
+                            <div style="font-size: 14px; color: #64748b; font-weight: 500;">Demandes rejetées</div>
+                        </div>
+                    </div>
+                </div>
                 
                 @if(isset($advancedStats['top_requesters']) && $advancedStats['top_requesters']->count() > 0)
                 <div class="mt-4">
@@ -314,6 +328,30 @@
                                     <td style="padding: 12px; color: #64748b; font-weight: 600;">#{{ $index + 1 }}</td>
                                     <td style="padding: 12px; color: #1e293b; font-weight: 500;">{{ $requester['name'] }}</td>
                                     <td style="padding: 12px; text-align: right; color: #00574A; font-weight: 600;">{{ $requester['count'] }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
+
+                @if(isset($advancedStats['top_motifs']) && $advancedStats['top_motifs']->count() > 0)
+                <div class="mt-4">
+                    <h6 style="font-weight: 600; color: #1e293b; margin-bottom: 16px;">Top 5 motifs</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0" style="background: white;">
+                            <thead style="background: #f9fafb;">
+                                <tr>
+                                    <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase;">Motif</th>
+                                    <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase; text-align: right;">Nombre</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($advancedStats['top_motifs'] as $item)
+                                <tr>
+                                    <td style="padding: 12px; color: #1e293b; font-weight: 500;">{{ \Illuminate\Support\Str::limit($item->motif, 60) }}</td>
+                                    <td style="padding: 12px; text-align: right; color: #00574A; font-weight: 600;">{{ $item->count }}</td>
                                 </tr>
                                 @endforeach
                             </tbody>

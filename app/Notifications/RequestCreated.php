@@ -50,11 +50,12 @@ class RequestCreated extends Notification
         return [
             'type' => 'request_created',
             'title' => 'Nouvelle demande',
-            'message' => "Une nouvelle demande de {$typeLabel} a été créée",
+            'message' => "Nouvelle demande de {$typeLabel} (#{$this->simRequest->request_number}). Action requise : validation.",
             'request_id' => $this->simRequest->id,
             'request_number' => $this->simRequest->request_number,
             'request_type' => $this->simRequest->request_type,
             'user_name' => $this->simRequest->user->full_name ?? 'Utilisateur inconnu',
+            'next_step' => 'Valider la demande',
             'url' => url()->route('sim-requests.show', $this->simRequest, false), // URL relative
             'icon' => 'bi-envelope',
             'color' => '#3b82f6',

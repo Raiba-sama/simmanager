@@ -50,11 +50,12 @@ class RequestValidated extends Notification
         return [
             'type' => 'request_validated',
             'title' => 'Demande validée',
-            'message' => "Votre demande de {$typeLabel} (#{$this->simRequest->request_number}) a été validée",
+            'message' => "Votre demande de {$typeLabel} (#{$this->simRequest->request_number}) a été validée. Prochaine étape : traitement admin.",
             'request_id' => $this->simRequest->id,
             'request_number' => $this->simRequest->request_number,
             'request_type' => $this->simRequest->request_type,
             'validator_name' => $this->simRequest->validator->full_name ?? 'Validateur',
+            'next_step' => 'Traitement admin / envoi webhook',
             'url' => url()->route('sim-requests.show', $this->simRequest, false), // URL relative
             'icon' => 'bi-check-circle',
             'color' => '#10b981',

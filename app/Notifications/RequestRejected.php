@@ -50,12 +50,13 @@ class RequestRejected extends Notification
         return [
             'type' => 'request_rejected',
             'title' => 'Demande rejetée',
-            'message' => "Votre demande de {$typeLabel} (#{$this->simRequest->request_number}) a été rejetée",
+            'message' => "Votre demande de {$typeLabel} (#{$this->simRequest->request_number}) a été rejetée. Prochaine étape : corriger et soumettre à nouveau.",
             'request_id' => $this->simRequest->id,
             'request_number' => $this->simRequest->request_number,
             'request_type' => $this->simRequest->request_type,
             'rejection_reason' => $this->simRequest->rejection_reason,
             'validator_name' => $this->simRequest->validator->full_name ?? 'Validateur',
+            'next_step' => 'Corriger et soumettre à nouveau',
             'url' => url()->route('sim-requests.show', $this->simRequest, false), // URL relative
             'icon' => 'bi-x-circle',
             'color' => '#ef4444',
