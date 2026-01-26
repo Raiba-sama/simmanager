@@ -240,6 +240,49 @@ class SimRequestResource extends Resource
                                 'rejection_reason' => $data['rejection_reason'],
                                 'updated_by' => auth()->id(),
                             ]);
+
+                            $sim = null;
+                            if ($record->sim_id) {
+                                $sim = $record->sim;
+                            } elseif ($record->phone_number) {
+                                $sim = \App\Models\Sim::where('phone_number', $record->phone_number)->first();
+                            }
+
+                            if ($sim) {
+                                $oldData = $sim->toArray();
+                                $assignedUser = null;
+                                if ($record->collaborator_matricule) {
+                                    $assignedUser = \App\Models\User::where('matricule', $record->collaborator_matricule)->first();
+                                }
+                                $assignedUser = $assignedUser ?: $record->user;
+                                $wasAssignedByRequest = $sim->histories()
+                                    ->where('request_id', $record->id)
+                                    ->where('action', 'assigned')
+                                    ->exists();
+
+                                if ($wasAssignedByRequest
+                                    || empty($sim->assigned_to)
+                                    || $sim->assigned_to === $record->user_id
+                                    || ($assignedUser && $sim->assigned_to === $assignedUser->id)) {
+                                    $sim->update([
+                                        'status' => 'libre',
+                                        'assigned_to' => null,
+                                        'assigned_to_matricule' => null,
+                                        'assigned_at' => null,
+                                    ]);
+
+                                    $sim->histories()->create([
+                                        'action' => 'released_from_rejected_request',
+                                        'user_id' => auth()->id(),
+                                        'user_matricule' => auth()->user()->matricule,
+                                        'request_id' => $record->id,
+                                        'old_data' => $oldData,
+                                        'new_data' => $sim->fresh()->toArray(),
+                                        'notes' => "SIM libérée suite au rejet de la demande {$record->request_number}",
+                                    ]);
+                                }
+                            }
+
                             \Filament\Notifications\Notification::make()
                                 ->title('Demande rejetée')
                                 ->success()

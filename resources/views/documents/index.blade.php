@@ -101,8 +101,10 @@
                     <tr>
                         <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">N° Demande</th>
                         <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Type</th>
-                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Bénéficiaire</th>
-                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">ICCID / Téléphone</th>
+                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Demandeur</th>
+                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Collaborateur concerné</th>
+                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Ligne concernée</th>
+                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">ICCID</th>
                         <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Date validation</th>
                         <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Actions</th>
                     </tr>
@@ -133,35 +135,62 @@
                                     {{ $typeLabels[$request->request_type] ?? ucfirst($request->request_type) }}
                                 </span>
                             </td>
+                            @php
+                                $requester = $request->creator ?? $request->user;
+                                $collaboratorName = null;
+                                $collaboratorMatricule = null;
+                                if ($request->isCreation()) {
+                                    $collaboratorName = trim(($request->beneficiary_name ?? '') . ' ' . ($request->beneficiary_first_name ?? ''));
+                                    if ($collaboratorName === '') {
+                                        $collaboratorName = null;
+                                    }
+                                    $collaboratorMatricule = $request->beneficiary_matricule;
+                                } else {
+                                    $collaboratorName = trim(($request->collaborator_name ?? '') . ' ' . ($request->collaborator_first_name ?? ''));
+                                    if ($collaboratorName === '') {
+                                        $collaboratorName = null;
+                                    }
+                                    $collaboratorMatricule = $request->collaborator_matricule;
+                                    if (!$collaboratorName && !$collaboratorMatricule) {
+                                        $collaboratorName = $request->user->full_name ?? null;
+                                        $collaboratorMatricule = $request->user->matricule ?? null;
+                                    }
+                                }
+                                $lineNumber = $request->phone_number ?? ($request->sim ? $request->sim->phone_number : null);
+                                $iccidValue = $request->sim ? $request->sim->iccid : ($request->requested_iccid ?? null);
+                            @endphp
                             <td style="padding: 16px; color: #4b5563;">
-                                @if($request->isCreation() && $request->beneficiary_name)
-                                    <strong>{{ $request->beneficiary_name }}</strong>
-                                    @if($request->beneficiary_first_name)
-                                        {{ $request->beneficiary_first_name }}
-                                    @endif
-                                    @if($request->beneficiary_matricule)
-                                        <br><small style="color: #9ca3af;">Mat: {{ $request->beneficiary_matricule }}</small>
+                                @if($requester)
+                                    {{ $requester->full_name }}
+                                    @if($requester->matricule)
+                                        <br><small style="color: #9ca3af;">Mat: {{ $requester->matricule }}</small>
                                     @endif
                                 @else
-                                    {{ $request->user->full_name ?? 'N/A' }}
-                                    @if($request->user)
-                                        <br><small style="color: #9ca3af;">Mat: {{ $request->user->matricule }}</small>
-                                    @endif
+                                    <span style="color: #9ca3af;">-</span>
                                 @endif
                             </td>
                             <td style="padding: 16px; color: #4b5563;">
-                                @if($request->sim)
-                                    <strong>ICCID:</strong> {{ $request->sim->iccid }}<br>
-                                    @if($request->sim->phone_number)
-                                        <small style="color: #9ca3af;">Tel: {{ $request->sim->phone_number }}</small>
+                                @if($collaboratorName)
+                                    {{ $collaboratorName }}
+                                    @if($collaboratorMatricule)
+                                        <br><small style="color: #9ca3af;">Mat: {{ $collaboratorMatricule }}</small>
                                     @endif
-                                @elseif($request->requested_iccid)
-                                    <strong>ICCID:</strong> {{ $request->requested_iccid }}<br>
-                                    @if($request->phone_number)
-                                        <small style="color: #9ca3af;">Tel: {{ $request->phone_number }}</small>
-                                    @endif
-                                @elseif($request->phone_number)
-                                    <strong>Tel:</strong> {{ $request->phone_number }}
+                                @elseif($collaboratorMatricule)
+                                    {{ $collaboratorMatricule }}
+                                @else
+                                    <span style="color: #9ca3af;">-</span>
+                                @endif
+                            </td>
+                            <td style="padding: 16px; color: #4b5563;">
+                                @if($lineNumber)
+                                    {{ $lineNumber }}
+                                @else
+                                    <span style="color: #9ca3af;">-</span>
+                                @endif
+                            </td>
+                            <td style="padding: 16px; color: #4b5563;">
+                                @if($iccidValue)
+                                    {{ $iccidValue }}
                                 @else
                                     <span style="color: #9ca3af;">-</span>
                                 @endif
@@ -188,7 +217,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center" style="padding: 40px; color: #9ca3af;">
+                            <td colspan="8" class="text-center" style="padding: 40px; color: #9ca3af;">
                                 <i class="bi bi-inbox" style="font-size: 48px; opacity: 0.5; margin-bottom: 12px; display: block;"></i>
                                 Aucun bordereau trouvé
                             </td>

@@ -695,6 +695,10 @@ class SimRequestController extends Controller
                 'updated_by' => auth()->id(),
             ]);
 
+            if ($validated['status'] === 'refused') {
+                $this->releaseSimAfterRejection($simRequest, null);
+            }
+
             $statusLabels = [
                 'pending' => 'Pending (En attente)',
                 'accepted' => 'Accepted (Accepté)',
@@ -749,6 +753,10 @@ class SimRequestController extends Controller
                 'admin_processed_at' => now(),
                 'updated_by' => auth()->id(),
             ]);
+
+            if ($validated['status'] === 'refused') {
+                $this->releaseSimAfterRejection($simRequest, null);
+            }
 
             // Créer un historique pour l'action admin
             $oldStatus = $simRequest->getOriginal('status');
@@ -1043,6 +1051,16 @@ class SimRequestController extends Controller
             }
         }
 
+        if (!empty($simRequest->phone_number)) {
+            $lineSim = Sim::where('phone_number', $simRequest->phone_number)->first();
+            if ($lineSim && $lineSim->assigned_to) {
+                $assignedUser = User::find($lineSim->assigned_to);
+                if ($assignedUser) {
+                    return $assignedUser;
+                }
+            }
+        }
+
         return $simRequest->user;
     }
 
@@ -1062,8 +1080,24 @@ class SimRequestController extends Controller
         return $assignmentData;
     }
 
+    private function resolveSimForRequest(SimRequest $simRequest): ?Sim
+    {
+        if ($simRequest->sim_id) {
+            return Sim::find($simRequest->sim_id);
+        }
+
+        if ($simRequest->phone_number) {
+            return Sim::where('phone_number', $simRequest->phone_number)->first();
+        }
+
+        return null;
+    }
+
     private function releaseSimAfterRejection(SimRequest $simRequest, ?Sim $sim): void
     {
+        if (!$sim) {
+            $sim = $this->resolveSimForRequest($simRequest);
+        }
         if (!$sim) {
             return;
         }
@@ -1861,6 +1895,10 @@ class SimRequestController extends Controller
                     'admin_processed_at' => now(),
                     'updated_by' => auth()->id(),
                 ]);
+
+                if ($validated['status'] === 'refused') {
+                    $this->releaseSimAfterRejection($simRequest, null);
+                }
 
                 if ($oldStatus !== $validated['status']) {
                     $simRequest->user->notify(new \App\Notifications\RequestStatusChanged($simRequest, $oldStatus, $validated['status']));
