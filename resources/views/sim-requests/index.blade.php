@@ -125,8 +125,10 @@
                             <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" style="cursor: pointer;">
                         </th>
                         <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">N° Demande</th>
-                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Utilisateur</th>
                         <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Type</th>
+                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Demandeur</th>
+                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Collaborateur concerné</th>
+                        <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Ligne concernée</th>
                         <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Statut</th>
                         <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Priorité</th>
                         <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Date</th>
@@ -199,17 +201,61 @@
                                     </span>
                                 @endif
                             </td>
-                            <td style="padding: 16px; color: #4b5563;">
-                                @if($request->isCreation() && $request->beneficiary_name)
-                                    {{ $request->beneficiary_name }} {{ $request->beneficiary_first_name ?? '' }}
-                                @else
-                                    {{ $request->user->full_name }}
-                                @endif
-                            </td>
+                            @php
+                                $requester = $request->creator ?? $request->user;
+                                $collaboratorName = null;
+                                $collaboratorMatricule = null;
+                                if ($request->isRecuperation()) {
+                                    $collaboratorName = trim(($request->collaborator_name ?? '') . ' ' . ($request->collaborator_first_name ?? ''));
+                                    if ($collaboratorName === '') {
+                                        $collaboratorName = null;
+                                    }
+                                    $collaboratorMatricule = $request->collaborator_matricule;
+                                } elseif ($request->isCreation()) {
+                                    $collaboratorName = trim(($request->beneficiary_name ?? '') . ' ' . ($request->beneficiary_first_name ?? ''));
+                                    if ($collaboratorName === '') {
+                                        $collaboratorName = null;
+                                    }
+                                    $collaboratorMatricule = $request->beneficiary_matricule;
+                                } else {
+                                    $collaboratorName = $request->user->full_name ?? null;
+                                    $collaboratorMatricule = $request->user->matricule ?? null;
+                                }
+                                $lineNumber = $request->phone_number ?? ($request->sim ? $request->sim->phone_number : null);
+                            @endphp
                             <td style="padding: 16px;">
                                 <span class="badge" style="background: {{ $typeColor['bg'] }}; color: {{ $typeColor['text'] }}; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;">
                                     {{ $typeLabels[$request->request_type] ?? ucfirst($request->request_type) }}
                                 </span>
+                            </td>
+                            <td style="padding: 16px; color: #4b5563;">
+                                @if($requester)
+                                    {{ $requester->full_name }}
+                                    @if($requester->matricule)
+                                        <br><small class="text-muted">Mat: {{ $requester->matricule }}</small>
+                                    @endif
+                                @else
+                                    <span class="text-muted" style="color: #9ca3af;">-</span>
+                                @endif
+                            </td>
+                            <td style="padding: 16px; color: #4b5563;">
+                                @if($collaboratorName)
+                                    {{ $collaboratorName }}
+                                    @if($collaboratorMatricule)
+                                        <br><small class="text-muted">Mat: {{ $collaboratorMatricule }}</small>
+                                    @endif
+                                @elseif($collaboratorMatricule)
+                                    {{ $collaboratorMatricule }}
+                                @else
+                                    <span class="text-muted" style="color: #9ca3af;">-</span>
+                                @endif
+                            </td>
+                            <td style="padding: 16px; color: #4b5563;">
+                                @if($lineNumber)
+                                    {{ $lineNumber }}
+                                @else
+                                    <span class="text-muted" style="color: #9ca3af;">-</span>
+                                @endif
                             </td>
                             <td style="padding: 16px;">
                                 <span class="badge" style="background: {{ $statusColor['bg'] }}; color: {{ $statusColor['text'] }}; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;">
@@ -274,7 +320,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center" style="padding: 40px; color: #9ca3af;">Aucune demande trouvée</td>
+                            <td colspan="10" class="text-center" style="padding: 40px; color: #9ca3af;">Aucune demande trouvée</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -325,7 +371,7 @@
         // Show loading state
         const tableBody = document.getElementById('table-body');
         const paginationContainer = document.getElementById('pagination-container');
-        tableBody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 40px;"><i class="bi bi-arrow-repeat spin"></i> Chargement...</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="10" class="text-center" style="padding: 40px;"><i class="bi bi-arrow-repeat spin"></i> Chargement...</td></tr>';
         
         // Update URL without reload
         window.history.pushState({}, '', url);
@@ -372,7 +418,7 @@
         })
         .catch(error => {
             console.error('Filter error:', error);
-            tableBody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 40px; color: #ef4444;">Erreur lors du chargement</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="10" class="text-center" style="padding: 40px; color: #ef4444;">Erreur lors du chargement</td></tr>';
         });
     }
     
@@ -450,7 +496,7 @@
             const url = e.target.closest('.pagination a').href;
             
             const tableBody = document.getElementById('table-body');
-            tableBody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 40px;"><i class="bi bi-arrow-repeat spin"></i> Chargement...</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="10" class="text-center" style="padding: 40px;"><i class="bi bi-arrow-repeat spin"></i> Chargement...</td></tr>';
             
             fetch(url, {
                 headers: {

@@ -160,9 +160,9 @@
                         </dd>
                     @endif
 
-                    @if($simRequest->phone_number)
-                        <dt class="col-sm-4">Numéro de ligne:</dt>
-                        <dd class="col-sm-8">{{ $simRequest->phone_number }}</dd>
+                    @if($simRequest->phone_number || ($simRequest->sim && $simRequest->sim->phone_number))
+                        <dt class="col-sm-4">Ligne concernée:</dt>
+                        <dd class="col-sm-8">{{ $simRequest->phone_number ?? $simRequest->sim->phone_number }}</dd>
                     @endif
 
                     @if($simRequest->sim)
@@ -306,8 +306,8 @@
             </div>
         @endif
 
-        {{-- Bouton pour générer le bordereau de transmission (visible uniquement pour les admins si la demande est acceptée) --}}
-        @if(auth()->user()->isAdmin())
+        {{-- Bouton pour générer le bordereau de transmission (visible pour les validateurs si la demande est acceptée) --}}
+        @if(auth()->user()->isValidator())
             <div class="card mb-3" style="border: none; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
                 <div class="card-header bg-info text-white" style="border-radius: 10px 10px 0 0;">
                     <h5 class="mb-0">Bordereau de Transmission</h5>

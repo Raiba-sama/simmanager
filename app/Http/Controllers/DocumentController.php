@@ -138,7 +138,7 @@ class DocumentController extends Controller
 
         // Vérifier les permissions
         $user = auth()->user();
-        if (!$user->isAdmin() && $simRequest->user_id !== $user->id && $simRequest->created_by !== $user->id) {
+        if (!$user->isValidator() && $simRequest->user_id !== $user->id && $simRequest->created_by !== $user->id) {
             abort(403, 'Vous n\'avez pas accès à ce bordereau.');
         }
 

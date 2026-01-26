@@ -29,7 +29,7 @@ class SimRequestController extends Controller
     {
         $user = auth()->user();
         
-        $query = SimRequest::with(['user', 'sim', 'validator', 'plan', 'admin', 'favoritedBy'])
+        $query = SimRequest::with(['user', 'sim', 'validator', 'plan', 'admin', 'creator', 'favoritedBy'])
             ->orderBy('created_at', 'desc');
 
         // Visibilité : User voit seulement ses demandes, Validator/Admin voient tout
@@ -624,10 +624,18 @@ class SimRequestController extends Controller
                 $sim = Sim::find($simRequest->sim_id);
                 if ($sim) {
                     $oldData = $sim->toArray();
+                    $assignedUser = $this->resolveRecuperationCollaborator($simRequest);
+                    $wasAssignedByRequest = $sim->histories()
+                        ->where('request_id', $simRequest->id)
+                        ->where('action', 'assigned')
+                        ->exists();
                     
                     // Remettre la SIM en libre si elle était réservée pour cette demande
                     // Vérifier que la SIM n'est pas déjà assignée à quelqu'un d'autre
-                    if (empty($sim->assigned_to) || $sim->assigned_to === $simRequest->user_id) {
+                    if ($wasAssignedByRequest
+                        || empty($sim->assigned_to)
+                        || $sim->assigned_to === $simRequest->user_id
+                        || $sim->assigned_to === $assignedUser->id) {
                         $sim->update([
                             'status' => 'libre',
                             'assigned_to' => null,
@@ -1631,9 +1639,9 @@ class SimRequestController extends Controller
      */
     public function generateBordereau(SimRequest $simRequest)
     {
-        // Vérifier que c'est un admin
-        if (!auth()->user()->isAdmin()) {
-            abort(403, 'Seuls les administrateurs peuvent accéder au bordereau de transmission.');
+        // Vérifier que c'est un validator/admin
+        if (!auth()->user()->isValidator()) {
+            abort(403, 'Seuls les validateurs peuvent accéder au bordereau de transmission.');
         }
 
         // Vérifier que la demande est acceptée
@@ -1740,8 +1748,17 @@ class SimRequestController extends Controller
                 if ($simRequest->sim_id) {
                     $sim = Sim::find($simRequest->sim_id);
                     if ($sim) {
+                        $assignedUser = $this->resolveRecuperationCollaborator($simRequest);
+                        $wasAssignedByRequest = $sim->histories()
+                            ->where('request_id', $simRequest->id)
+                            ->where('action', 'assigned')
+                            ->exists();
+
                         // Remettre la SIM en libre si elle était réservée pour cette demande
-                        if (empty($sim->assigned_to) || $sim->assigned_to === $simRequest->user_id) {
+                        if ($wasAssignedByRequest
+                            || empty($sim->assigned_to)
+                            || $sim->assigned_to === $simRequest->user_id
+                            || $sim->assigned_to === $assignedUser->id) {
                             $sim->update([
                                 'status' => 'libre',
                                 'assigned_to' => null,
