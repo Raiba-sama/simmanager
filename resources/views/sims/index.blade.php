@@ -530,11 +530,24 @@
                 alert('Une erreur est survenue lors de l\'action en masse.');
             });
         } else if (action === 'unassign') {
-            if (!confirm(`Êtes-vous sûr de vouloir libérer ${ids.length} SIM(s) ?`)) {
-                return;
+            if (window.showConfirmModal) {
+                return window.showConfirmModal(
+                    `Libérer ${ids.length} SIM(s) ?`,
+                    () => executeUnassign(ids),
+                    { confirmText: 'Libérer', confirmVariant: 'danger', title: 'Confirmer la libération' }
+                );
             }
             
-            fetch('{{ route('sims.bulk-unassign') }}', {
+            executeUnassign(ids);
+        } else if (action === 'export') {
+            const params = new URLSearchParams();
+            ids.forEach(id => params.append('ids[]', id));
+            window.location.href = '{{ route('sims.export') }}?format=excel&' + params.toString();
+        }
+    }
+
+    function executeUnassign(ids) {
+        fetch('{{ route('sims.bulk-unassign') }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -557,11 +570,6 @@
                 console.error('Error:', error);
                 alert('Une erreur est survenue lors de l\'action en masse.');
             });
-        } else if (action === 'export') {
-            const params = new URLSearchParams();
-            ids.forEach(id => params.append('ids[]', id));
-            window.location.href = '{{ route('sims.export') }}?format=excel&' + params.toString();
-        }
     }
 </script>
 <style>

@@ -27,17 +27,6 @@
             <div id="step-1" class="step-anchor"></div>
 
             <h5 class="mb-3">Informations du collaborateur</h5>
-            <div class="mb-3">
-                <label for="template_select" class="form-label">Modèle de demande (optionnel)</label>
-                <div class="d-flex gap-2">
-                    <select id="template_select" class="form-select">
-                        <option value="">Aucun modèle</option>
-                    </select>
-                    <button type="button" class="btn btn-outline-secondary" id="template_apply">Appliquer</button>
-                    <button type="button" class="btn btn-outline-primary" id="template_save">Enregistrer</button>
-                </div>
-                <small class="form-text text-muted">Appliquer = pré-remplir. Enregistrer = sauver le formulaire actuel (sur cet appareil).</small>
-            </div>
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label for="collaborator_matricule" class="form-label">Matricule <span class="text-danger">*</span></label>
@@ -134,6 +123,18 @@
                 @error('motif')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
+            </div>
+
+            <div class="mb-3">
+                <label for="template_select" class="form-label">Modèle de demande (optionnel)</label>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <select id="template_select" class="form-select form-select-sm w-auto" style="max-width: 260px;">
+                        <option value="">Aucun modèle</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="template_apply">Appliquer</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="template_save">Enregistrer</button>
+                </div>
+                <small class="form-text text-muted">Appliquer = pré-remplir. Enregistrer = sauver le formulaire actuel (sur cet appareil).</small>
             </div>
 
             <div class="d-flex justify-content-between">

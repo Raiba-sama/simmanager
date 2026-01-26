@@ -325,13 +325,13 @@
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     @if(auth()->user()->canValidateRequests() && $request->isRecuperation() && $request->status === 'en_attente' && $request->created_by !== auth()->id())
-                                        <form method="POST" action="{{ route('sim-requests.approve', $request) }}" class="d-inline" data-confirm="Valider cette demande ?">
+                                        <form method="POST" action="{{ route('sim-requests.approve', $request) }}" class="d-inline" data-confirm="Valider cette demande ?" data-confirm-variant="success" data-confirm-text="Valider">
                                             @csrf
                                             <button type="submit" class="btn btn-sm" style="background: #10b981; border: 1px solid #10b981; color: white; padding: 6px 10px; border-radius: 6px;" data-bs-toggle="tooltip" title="Valider">
                                                 <i class="bi bi-check-circle"></i>
                                             </button>
                                         </form>
-                                        <form method="POST" action="{{ route('sim-requests.reject', $request) }}" class="d-inline" data-confirm="Rejeter cette demande ?">
+                                        <form method="POST" action="{{ route('sim-requests.reject', $request) }}" class="d-inline" data-confirm="Rejeter cette demande ?" data-confirm-variant="danger" data-confirm-text="Rejeter">
                                             @csrf
                                             <button type="submit" class="btn btn-sm" style="background: #ef4444; border: 1px solid #ef4444; color: white; padding: 6px 10px; border-radius: 6px;" data-bs-toggle="tooltip" title="Rejeter">
                                                 <i class="bi bi-x-circle"></i>
@@ -339,21 +339,21 @@
                                         </form>
                                     @endif
                                     @if(auth()->user()->isAdmin())
-                                        <form method="POST" action="{{ route('sim-requests.quick-update-status', $request) }}" class="d-inline" data-confirm="Mettre à jour le statut à Pending ?">
+                                        <form method="POST" action="{{ route('sim-requests.quick-update-status', $request) }}" class="d-inline" data-confirm="Mettre à jour le statut à Pending ?" data-confirm-variant="primary" data-confirm-text="Mettre à jour">
                                             @csrf
                                             <input type="hidden" name="status" value="pending">
                                             <button type="submit" class="btn btn-sm" style="background: {{ $request->status === 'pending' ? '#06b6d4' : 'transparent' }}; border: 1px solid {{ $request->status === 'pending' ? '#06b6d4' : '#e5e7eb' }}; color: {{ $request->status === 'pending' ? 'white' : '#06b6d4' }}; padding: 6px 10px; border-radius: 6px;" data-bs-toggle="tooltip" title="Pending (En attente)">
                                                 <i class="bi bi-clock"></i>
                                             </button>
                                         </form>
-                                        <form method="POST" action="{{ route('sim-requests.quick-update-status', $request) }}" class="d-inline" data-confirm="Mettre à jour le statut à Accepted ?">
+                                        <form method="POST" action="{{ route('sim-requests.quick-update-status', $request) }}" class="d-inline" data-confirm="Mettre à jour le statut à Accepted ?" data-confirm-variant="success" data-confirm-text="Mettre à jour">
                                             @csrf
                                             <input type="hidden" name="status" value="accepted">
                                             <button type="submit" class="btn btn-sm" style="background: {{ $request->status === 'accepted' ? '#10b981' : 'transparent' }}; border: 1px solid {{ $request->status === 'accepted' ? '#10b981' : '#e5e7eb' }}; color: {{ $request->status === 'accepted' ? 'white' : '#10b981' }}; padding: 6px 10px; border-radius: 6px;" data-bs-toggle="tooltip" title="Accepted (Accepté)">
                                                 <i class="bi bi-check-circle"></i>
                                             </button>
                                         </form>
-                                        <form method="POST" action="{{ route('sim-requests.quick-update-status', $request) }}" class="d-inline" data-confirm="Mettre à jour le statut à Refused ?">
+                                        <form method="POST" action="{{ route('sim-requests.quick-update-status', $request) }}" class="d-inline" data-confirm="Mettre à jour le statut à Refused ?" data-confirm-variant="danger" data-confirm-text="Mettre à jour">
                                             @csrf
                                             <input type="hidden" name="status" value="refused">
                                             <button type="submit" class="btn btn-sm" style="background: {{ $request->status === 'refused' ? '#ef4444' : 'transparent' }}; border: 1px solid {{ $request->status === 'refused' ? '#ef4444' : '#e5e7eb' }}; color: {{ $request->status === 'refused' ? 'white' : '#ef4444' }}; padding: 6px 10px; border-radius: 6px;" data-bs-toggle="tooltip" title="Refused (Refusé)">
@@ -378,6 +378,28 @@
             @if($requests->hasPages())
                 {{ $requests->appends(request()->query())->links('pagination::bootstrap-5') }}
             @endif
+        </div>
+    </div>
+</div>
+
+<!-- Modal de rejet en masse -->
+<div class="modal fade" id="bulkRejectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Rejeter des demandes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <p id="bulkRejectDescription" class="mb-2">Vous êtes sur le point de rejeter ces demandes.</p>
+                <label for="bulkRejectReason" class="form-label">Motif de rejet <span class="text-danger">*</span></label>
+                <textarea id="bulkRejectReason" class="form-control" rows="3" placeholder="Ex: informations incomplètes"></textarea>
+                <div id="bulkRejectError" class="text-danger mt-2 d-none" style="font-size: 12px;">Le motif est obligatoire.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="bulkRejectConfirm">Rejeter</button>
+            </div>
         </div>
     </div>
 </div>
@@ -703,6 +725,9 @@
         initializeColumnToggle();
     });
     
+    let bulkRejectModal = null;
+    let bulkRejectIds = [];
+
     function getSelectedIds() {
         const selected = document.querySelectorAll('.request-checkbox:checked');
         return Array.from(selected).map(cb => cb.value);
@@ -715,31 +740,71 @@
             return;
         }
         
-        if (action === 'delete' && !confirm(`Êtes-vous sûr de vouloir supprimer ${ids.length} demande(s) ?`)) {
+        if (action === 'export') {
+            const params = new URLSearchParams();
+            ids.forEach(id => params.append('ids[]', id));
+            window.location.href = '{{ route('sim-requests.export') }}?format=excel&' + params.toString();
             return;
         }
-        
-        if (action === 'approve' && !confirm(`Êtes-vous sûr de vouloir valider ${ids.length} demande(s) ?`)) {
+
+        if (action === 'reject') {
+            bulkRejectIds = ids;
+            const description = document.getElementById('bulkRejectDescription');
+            const reasonInput = document.getElementById('bulkRejectReason');
+            const error = document.getElementById('bulkRejectError');
+            if (description) {
+                description.textContent = `Vous êtes sur le point de rejeter ${ids.length} demande(s).`;
+            }
+            if (reasonInput) {
+                reasonInput.value = '';
+            }
+            if (error) {
+                error.classList.add('d-none');
+            }
+            if (bulkRejectModal) {
+                bulkRejectModal.show();
+            }
             return;
         }
-        
+
+        if (action === 'approve') {
+            return window.showConfirmModal(`Valider ${ids.length} demande(s) ?`, () => executeBulkAction(action, status, { ids }), {
+                confirmText: 'Valider',
+                confirmVariant: 'success',
+                title: 'Confirmer la validation'
+            });
+        }
+
+        if (action === 'delete') {
+            return window.showConfirmModal(`Supprimer ${ids.length} demande(s) ?`, () => executeBulkAction(action, status, { ids }), {
+                confirmText: 'Supprimer',
+                confirmVariant: 'danger',
+                title: 'Confirmer la suppression'
+            });
+        }
+
+        if (action === 'status') {
+            const labels = {
+                pending: 'Pending (En attente)',
+                accepted: 'Accepted (Accepté)',
+                refused: 'Refused (Refusé)'
+            };
+            const label = labels[status] || status;
+            return window.showConfirmModal(`Mettre à jour le statut à "${label}" pour ${ids.length} demande(s) ?`, () => executeBulkAction(action, status, { ids }), {
+                confirmText: 'Mettre à jour',
+                confirmVariant: status === 'refused' ? 'danger' : 'primary',
+                title: 'Confirmer le changement'
+            });
+        }
+
+        executeBulkAction(action, status, { ids });
+    }
+
+    function executeBulkAction(action, status, payload) {
         let url = '';
         let method = 'POST';
-        let data = { ids: ids };
-        
-        // Pour le rejet, demander le motif d'abord
-        if (action === 'reject') {
-            const reason = prompt(`Motif de rejet pour ${ids.length} demande(s) :`);
-            if (!reason || reason.trim() === '') {
-                alert('Le motif de rejet est obligatoire.');
-                return;
-            }
-            if (!confirm(`Êtes-vous sûr de vouloir rejeter ${ids.length} demande(s) avec le motif : "${reason}" ?`)) {
-                return;
-            }
-            data.rejection_reason = reason;
-        }
-        
+        let data = payload || {};
+
         if (action === 'approve') {
             url = '{{ route('sim-requests.bulk-approve') }}';
         } else if (action === 'reject') {
@@ -750,14 +815,8 @@
         } else if (action === 'delete') {
             url = '{{ route('sim-requests.bulk-delete') }}';
             method = 'DELETE';
-        } else if (action === 'export') {
-            // Export des sélectionnés
-            const params = new URLSearchParams();
-            ids.forEach(id => params.append('ids[]', id));
-            window.location.href = '{{ route('sim-requests.export') }}?format=excel&' + params.toString();
-            return;
         }
-        
+
         fetch(url, {
             method: method,
             headers: {
@@ -796,6 +855,35 @@
             }
         });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalEl = document.getElementById('bulkRejectModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+            bulkRejectModal = new bootstrap.Modal(modalEl);
+        }
+        const confirmBtn = document.getElementById('bulkRejectConfirm');
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', function() {
+                const reasonInput = document.getElementById('bulkRejectReason');
+                const error = document.getElementById('bulkRejectError');
+                const reason = reasonInput ? reasonInput.value.trim() : '';
+
+                if (!reason) {
+                    if (error) {
+                        error.classList.remove('d-none');
+                    }
+                    return;
+                }
+                if (error) {
+                    error.classList.add('d-none');
+                }
+                if (bulkRejectModal) {
+                    bulkRejectModal.hide();
+                }
+                executeBulkAction('reject', null, { ids: bulkRejectIds, rejection_reason: reason });
+            });
+        }
+    });
     
 </script>
 <style>

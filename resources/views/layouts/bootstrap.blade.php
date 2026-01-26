@@ -2056,9 +2056,78 @@
         }
     </style>
 
+    <!-- Modal de confirmation global -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" data-confirm-title>Confirmer l'action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0" data-confirm-message>Êtes-vous sûr de vouloir effectuer cette action ?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-confirm-action>Confirmer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Amélioration des tooltips avec Bootstrap si disponible
         document.addEventListener('DOMContentLoaded', function() {
+            let confirmModal = null;
+            let confirmAction = null;
+            const confirmModalEl = document.getElementById('confirmModal');
+            const confirmTitleEl = confirmModalEl ? confirmModalEl.querySelector('[data-confirm-title]') : null;
+            const confirmMessageEl = confirmModalEl ? confirmModalEl.querySelector('[data-confirm-message]') : null;
+            const confirmActionBtn = confirmModalEl ? confirmModalEl.querySelector('[data-confirm-action]') : null;
+
+            if (confirmModalEl && typeof bootstrap !== 'undefined') {
+                confirmModal = new bootstrap.Modal(confirmModalEl);
+
+                if (confirmActionBtn) {
+                    confirmActionBtn.addEventListener('click', function() {
+                        confirmModal.hide();
+                        if (typeof confirmAction === 'function') {
+                            const action = confirmAction;
+                            confirmAction = null;
+                            action();
+                        }
+                    });
+                }
+
+                confirmModalEl.addEventListener('hidden.bs.modal', function() {
+                    confirmAction = null;
+                });
+            }
+
+            window.showConfirmModal = function(message, onConfirm, options = {}) {
+                if (!confirmModal) {
+                    if (window.showToast) {
+                        showToast('Impossible d\'afficher la confirmation.', 'error');
+                    }
+                    return;
+                }
+
+                if (confirmTitleEl) {
+                    confirmTitleEl.textContent = options.title || 'Confirmer l\'action';
+                }
+                if (confirmMessageEl) {
+                    confirmMessageEl.textContent = message || 'Êtes-vous sûr de vouloir effectuer cette action ?';
+                }
+                if (confirmActionBtn) {
+                    confirmActionBtn.textContent = options.confirmText || 'Confirmer';
+                    const variant = options.confirmVariant || 'primary';
+                    confirmActionBtn.className = `btn btn-${variant}`;
+                }
+
+                confirmAction = onConfirm;
+                confirmModal.show();
+            };
+
             // Initialiser les tooltips Bootstrap
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -2076,11 +2145,15 @@
             // Amélioration des confirmations de suppression
             document.querySelectorAll('form[data-confirm]').forEach(form => {
                 form.addEventListener('submit', function(e) {
-                    const message = form.getAttribute('data-confirm');
-                    if (!confirm(message)) {
-                        e.preventDefault();
-                        return false;
-                    }
+                    e.preventDefault();
+                    const message = form.getAttribute('data-confirm') || 'Êtes-vous sûr de vouloir effectuer cette action ?';
+                    const confirmText = form.getAttribute('data-confirm-text') || 'Confirmer';
+                    const confirmVariant = form.getAttribute('data-confirm-variant') || 'primary';
+                    window.showConfirmModal(message, () => form.submit(), {
+                        confirmText,
+                        confirmVariant,
+                        title: 'Confirmation',
+                    });
                 });
             });
 
@@ -2117,31 +2190,19 @@
             // Amélioration des actions de suppression avec confirmation visuelle
             document.querySelectorAll('form[action*="destroy"], form[action*="delete"], form[action*="cancel"]').forEach(form => {
                 form.addEventListener('submit', function(e) {
+                    if (form.hasAttribute('data-confirm')) {
+                        return;
+                    }
                     e.preventDefault();
-                    const formAction = form.action;
-                    const formMethod = form.querySelector('input[name="_method"]')?.value || 'POST';
-                    
-                    // Créer une confirmation visuelle
-                    const overlay = document.createElement('div');
-                    overlay.className = 'confirmation-overlay';
-                    overlay.innerHTML = `
-                        <div class="confirmation-dialog">
-                            <h5 style="margin-bottom: 16px; font-weight: 600; color: #1e293b;">Confirmer l'action</h5>
-                            <p style="margin-bottom: 24px; color: #64748b;">Êtes-vous sûr de vouloir effectuer cette action ? Cette action est irréversible.</p>
-                            <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                                <button type="button" class="btn btn-secondary" onclick="this.closest('.confirmation-overlay').remove()" style="border-radius: 8px;">Annuler</button>
-                                <button type="button" class="btn btn-danger" onclick="this.closest('.confirmation-overlay').remove(); this.closest('form').submit();" style="border-radius: 8px;">Confirmer</button>
-                            </div>
-                        </div>
-                    `;
-                    document.body.appendChild(overlay);
-                    
-                    // Fermer en cliquant sur l'overlay
-                    overlay.addEventListener('click', function(e) {
-                        if (e.target === overlay) {
-                            overlay.remove();
+                    window.showConfirmModal(
+                        'Êtes-vous sûr de vouloir effectuer cette action ? Cette action est irréversible.',
+                        () => form.submit(),
+                        {
+                            confirmText: 'Confirmer',
+                            confirmVariant: 'danger',
+                            title: 'Confirmer l\'action',
                         }
-                    });
+                    );
                 });
             });
         });

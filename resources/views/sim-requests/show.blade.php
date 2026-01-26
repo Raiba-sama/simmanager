@@ -264,7 +264,7 @@
                     <h5 class="mb-0">Mes actions</h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('sim-requests.cancel', $simRequest) }}" data-confirm="Êtes-vous sûr de vouloir annuler cette demande ? Cette action est irréversible.">
+                    <form method="POST" action="{{ route('sim-requests.cancel', $simRequest) }}" data-confirm="Êtes-vous sûr de vouloir annuler cette demande ? Cette action est irréversible." data-confirm-variant="danger" data-confirm-text="Annuler">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-warning w-100" data-tooltip="Annuler votre demande">
@@ -293,17 +293,17 @@
                         </button>
                     </form>
 
-                    <form method="POST" action="{{ route('sim-requests.reject', $simRequest) }}" class="mb-2">
+                    <form method="POST" action="{{ route('sim-requests.reject', $simRequest) }}" class="mb-2" data-confirm="Confirmer le rejet de cette demande ?" data-confirm-variant="danger" data-confirm-text="Rejeter">
                         @csrf
                         <div class="mb-2">
                             <textarea name="rejection_reason" class="form-control" rows="2" placeholder="Raison du rejet *" required></textarea>
                         </div>
-                        <button type="submit" class="btn btn-danger w-100" onclick="return confirm('Êtes-vous sûr de vouloir rejeter cette demande?')">
+                        <button type="submit" class="btn btn-danger w-100">
                             <i class="bi bi-x-circle"></i> Rejeter
                         </button>
                     </form>
 
-                    <form method="POST" action="{{ route('sim-requests.destroy', $simRequest) }}" data-confirm="Êtes-vous sûr de vouloir supprimer cette demande ? Cette action est irréversible.">
+                    <form method="POST" action="{{ route('sim-requests.destroy', $simRequest) }}" data-confirm="Êtes-vous sûr de vouloir supprimer cette demande ? Cette action est irréversible." data-confirm-variant="danger" data-confirm-text="Supprimer">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-outline-danger w-100 mt-2" data-tooltip="Supprimer définitivement cette demande">
@@ -343,7 +343,7 @@
                     {{-- Bouton pour soumettre au webhook --}}
                     {{-- Afficher pour toutes les demandes non rejetées --}}
                     @if(!$simRequest->isRejetee())
-                        <form method="POST" action="{{ route('sim-requests.submit-webhook', $simRequest) }}" class="mb-3" onsubmit="return confirm('Êtes-vous sûr de vouloir soumettre cette demande au webhook ? Un email sera envoyé automatiquement.');">
+                        <form method="POST" action="{{ route('sim-requests.submit-webhook', $simRequest) }}" class="mb-3" data-confirm="Soumettre cette demande au webhook ? Un email sera envoyé automatiquement." data-confirm-variant="primary" data-confirm-text="Soumettre">
                             @csrf
                             <button type="submit" class="btn btn-success w-100">
                                 <i class="bi bi-send"></i> Soumettre la demande au webhook
@@ -355,21 +355,21 @@
                     <div class="mb-3">
                         <label class="form-label">Raccourcis statut opérateur</label>
                         <div class="d-flex gap-2">
-                            <form method="POST" action="{{ route('sim-requests.quick-update-status', $simRequest) }}" class="flex-fill" onsubmit="return confirm('Mettre à jour le statut à Pending (En attente) ?');">
+                            <form method="POST" action="{{ route('sim-requests.quick-update-status', $simRequest) }}" class="flex-fill" data-confirm="Mettre à jour le statut à Pending (En attente) ?" data-confirm-variant="primary" data-confirm-text="Mettre à jour">
                                 @csrf
                                 <input type="hidden" name="status" value="pending">
                                 <button type="submit" class="btn btn-{{ $simRequest->status === 'pending' ? 'primary' : 'outline-primary' }} w-100" title="Pending (En attente)">
                                     <i class="bi bi-clock"></i> Pending
                                 </button>
                             </form>
-                            <form method="POST" action="{{ route('sim-requests.quick-update-status', $simRequest) }}" class="flex-fill" onsubmit="return confirm('Mettre à jour le statut à Accepted (Accepté) ?');">
+                            <form method="POST" action="{{ route('sim-requests.quick-update-status', $simRequest) }}" class="flex-fill" data-confirm="Mettre à jour le statut à Accepted (Accepté) ?" data-confirm-variant="success" data-confirm-text="Mettre à jour">
                                 @csrf
                                 <input type="hidden" name="status" value="accepted">
                                 <button type="submit" class="btn btn-{{ $simRequest->status === 'accepted' ? 'success' : 'outline-success' }} w-100" title="Accepted (Accepté)">
                                     <i class="bi bi-check-circle"></i> Accepted
                                 </button>
                             </form>
-                            <form method="POST" action="{{ route('sim-requests.quick-update-status', $simRequest) }}" class="flex-fill" onsubmit="return confirm('Mettre à jour le statut à Refused (Refusé) ?');">
+                            <form method="POST" action="{{ route('sim-requests.quick-update-status', $simRequest) }}" class="flex-fill" data-confirm="Mettre à jour le statut à Refused (Refusé) ?" data-confirm-variant="danger" data-confirm-text="Mettre à jour">
                                 @csrf
                                 <input type="hidden" name="status" value="refused">
                                 <button type="submit" class="btn btn-{{ $simRequest->status === 'refused' ? 'danger' : 'outline-danger' }} w-100" title="Refused (Refusé)">
