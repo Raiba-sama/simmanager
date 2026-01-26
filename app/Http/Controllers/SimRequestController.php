@@ -631,48 +631,14 @@ class SimRequestController extends Controller
 
         DB::beginTransaction();
         try {
-            // Libérer la SIM si elle était sélectionnée dans la demande
+            $sim = null;
             if ($simRequest->sim_id) {
                 $sim = Sim::find($simRequest->sim_id);
-                if ($sim) {
-                    $oldData = $sim->toArray();
-                    $assignedUser = $this->resolveRecuperationCollaborator($simRequest);
-                    $wasAssignedByRequest = $sim->histories()
-                        ->where('request_id', $simRequest->id)
-                        ->where('action', 'assigned')
-                        ->exists();
-                    
-                    // Remettre la SIM en libre si elle était réservée pour cette demande
-                    // Vérifier que la SIM n'est pas déjà assignée à quelqu'un d'autre
-                    if ($wasAssignedByRequest
-                        || empty($sim->assigned_to)
-                        || $sim->assigned_to === $simRequest->user_id
-                        || $sim->assigned_to === $assignedUser->id) {
-                        $sim->update([
-                            'status' => 'libre',
-                            'assigned_to' => null,
-                            'assigned_to_matricule' => null,
-                            'assigned_at' => null,
-                        ]);
-                        
-                        // Créer un historique pour la libération de la SIM
-                        $sim->histories()->create([
-                            'action' => 'released_from_rejected_request',
-                            'user_id' => auth()->id(),
-                            'user_matricule' => auth()->user()->matricule,
-                            'request_id' => $simRequest->id,
-                            'old_data' => $oldData,
-                            'new_data' => $sim->fresh()->toArray(),
-                            'notes' => "SIM libérée suite au rejet de la demande {$simRequest->request_number}",
-                        ]);
-                        
-                        Log::info('SIM released after request rejection', [
-                            'sim_id' => $sim->id,
-                            'request_number' => $simRequest->request_number,
-                        ]);
-                    }
-                }
             }
+            if (!$sim && $simRequest->phone_number) {
+                $sim = Sim::where('phone_number', $simRequest->phone_number)->first();
+            }
+            $this->releaseSimAfterRejection($simRequest, $sim);
             
             $simRequest->update([
                 'status' => 'rejetee',
@@ -1094,6 +1060,50 @@ class SimRequestController extends Controller
         }
 
         return $assignmentData;
+    }
+
+    private function releaseSimAfterRejection(SimRequest $simRequest, ?Sim $sim): void
+    {
+        if (!$sim) {
+            return;
+        }
+
+        $oldData = $sim->toArray();
+        $assignedUser = $this->resolveRecuperationCollaborator($simRequest);
+        $wasAssignedByRequest = $sim->histories()
+            ->where('request_id', $simRequest->id)
+            ->where('action', 'assigned')
+            ->exists();
+
+        // Remettre la SIM en libre si elle était réservée pour cette demande
+        // Vérifier que la SIM n'est pas déjà assignée à quelqu'un d'autre
+        if ($wasAssignedByRequest
+            || empty($sim->assigned_to)
+            || $sim->assigned_to === $simRequest->user_id
+            || $sim->assigned_to === $assignedUser->id) {
+            $sim->update([
+                'status' => 'libre',
+                'assigned_to' => null,
+                'assigned_to_matricule' => null,
+                'assigned_at' => null,
+            ]);
+
+            // Créer un historique pour la libération de la SIM
+            $sim->histories()->create([
+                'action' => 'released_from_rejected_request',
+                'user_id' => auth()->id(),
+                'user_matricule' => auth()->user()->matricule,
+                'request_id' => $simRequest->id,
+                'old_data' => $oldData,
+                'new_data' => $sim->fresh()->toArray(),
+                'notes' => "SIM libérée suite au rejet de la demande {$simRequest->request_number}",
+            ]);
+
+            Log::info('SIM released after request rejection', [
+                'sim_id' => $sim->id,
+                'request_number' => $simRequest->request_number,
+            ]);
+        }
     }
 
     private function createCreationRequest(array $validated, User $user)
@@ -1794,40 +1804,14 @@ class SimRequestController extends Controller
                     continue;
                 }
 
-                // Libérer la SIM si elle était sélectionnée dans la demande
+                $sim = null;
                 if ($simRequest->sim_id) {
                     $sim = Sim::find($simRequest->sim_id);
-                    if ($sim) {
-                        $assignedUser = $this->resolveRecuperationCollaborator($simRequest);
-                        $wasAssignedByRequest = $sim->histories()
-                            ->where('request_id', $simRequest->id)
-                            ->where('action', 'assigned')
-                            ->exists();
-
-                        // Remettre la SIM en libre si elle était réservée pour cette demande
-                        if ($wasAssignedByRequest
-                            || empty($sim->assigned_to)
-                            || $sim->assigned_to === $simRequest->user_id
-                            || $sim->assigned_to === $assignedUser->id) {
-                            $sim->update([
-                                'status' => 'libre',
-                                'assigned_to' => null,
-                                'assigned_to_matricule' => null,
-                                'assigned_at' => null,
-                            ]);
-                            
-                            // Créer un historique pour la libération de la SIM
-                            $sim->histories()->create([
-                                'action' => 'released_from_rejected_request',
-                                'user_id' => auth()->id(),
-                                'user_matricule' => auth()->user()->matricule,
-                                'request_id' => $simRequest->id,
-                                'new_data' => $sim->fresh()->toArray(),
-                                'notes' => "SIM libérée suite au rejet en masse de la demande {$simRequest->request_number}",
-                            ]);
-                        }
-                    }
                 }
+                if (!$sim && $simRequest->phone_number) {
+                    $sim = Sim::where('phone_number', $simRequest->phone_number)->first();
+                }
+                $this->releaseSimAfterRejection($simRequest, $sim);
 
                 $simRequest->update([
                     'status' => 'rejetee',
