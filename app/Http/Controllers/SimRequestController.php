@@ -152,6 +152,8 @@ class SimRequestController extends Controller
      */
     private function getAvailableSims()
     {
+        $this->releaseRejectedRecuperationSims();
+
         // Statuts de demandes qui indiquent qu'une demande est encore active/en cours
         $activeStatuses = ['en_attente', 'validee', 'demande_envoyee', 'pending', 'accepted'];
         
@@ -174,6 +176,8 @@ class SimRequestController extends Controller
      */
     private function getAvailableSimsForEdit(SimRequest $currentRequest)
     {
+        $this->releaseRejectedRecuperationSims();
+
         // Statuts de demandes qui indiquent qu'une demande est encore active/en cours
         $activeStatuses = ['en_attente', 'validee', 'demande_envoyee', 'pending', 'accepted'];
         
@@ -1144,6 +1148,20 @@ class SimRequestController extends Controller
                 'sim_id' => $sim->id,
                 'request_number' => $simRequest->request_number,
             ]);
+        }
+    }
+
+    private function releaseRejectedRecuperationSims(): void
+    {
+        $requests = SimRequest::whereIn('status', ['rejetee', 'refused'])
+            ->where('request_type', 'recuperation')
+            ->get();
+
+        foreach ($requests as $request) {
+            $sim = $this->resolveSimForRequest($request);
+            if ($sim) {
+                $this->releaseSimAfterRejection($request, $sim);
+            }
         }
     }
 
