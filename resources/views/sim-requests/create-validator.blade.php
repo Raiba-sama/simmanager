@@ -24,6 +24,49 @@
                 @enderror
             </div>
 
+            <div id="collaborator-block" class="form-section-hidden">
+                <h5 class="mb-3">Informations du collaborateur</h5>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="collaborator_matricule" class="form-label">Matricule <span class="text-danger">*</span></label>
+                        <input type="text" name="collaborator_matricule" id="collaborator_matricule"
+                               class="form-control @error('collaborator_matricule') is-invalid @enderror"
+                               value="{{ old('collaborator_matricule') }}"
+                               data-required-for="recuperation,suspension,desactivation,ajustement">
+                        @error('collaborator_matricule')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="collaborator_name" class="form-label">Nom</label>
+                        <input type="text" name="collaborator_name" id="collaborator_name"
+                               class="form-control @error('collaborator_name') is-invalid @enderror"
+                               value="{{ old('collaborator_name') }}">
+                        @error('collaborator_name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="collaborator_first_name" class="form-label">Prénoms</label>
+                        <input type="text" name="collaborator_first_name" id="collaborator_first_name"
+                               class="form-control @error('collaborator_first_name') is-invalid @enderror"
+                               value="{{ old('collaborator_first_name') }}">
+                        @error('collaborator_first_name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="collaborator_agence" class="form-label">Agence</label>
+                    <input type="text" name="collaborator_agence" id="collaborator_agence"
+                           class="form-control @error('collaborator_agence') is-invalid @enderror"
+                           value="{{ old('collaborator_agence') }}">
+                    @error('collaborator_agence')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
+
             <!-- Formulaire pour Création -->
             <div id="creation-form" class="form-section-hidden">
                 <h5 class="mb-3">Informations du bénéficiaire</h5>
@@ -147,47 +190,6 @@
                     @endif
                 </div>
                 @endif
-
-                <h5 class="mb-3">Informations du collaborateur</h5>
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label for="collaborator_matricule" class="form-label">Matricule <span class="text-danger">*</span></label>
-                        <input type="text" name="collaborator_matricule" id="collaborator_matricule"
-                               class="form-control @error('collaborator_matricule') is-invalid @enderror"
-                               value="{{ old('collaborator_matricule') }}"
-                               data-required-for="recuperation">
-                        @error('collaborator_matricule')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="collaborator_name" class="form-label">Nom</label>
-                        <input type="text" name="collaborator_name" id="collaborator_name"
-                               class="form-control @error('collaborator_name') is-invalid @enderror"
-                               value="{{ old('collaborator_name') }}">
-                        @error('collaborator_name')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="collaborator_first_name" class="form-label">Prénoms</label>
-                        <input type="text" name="collaborator_first_name" id="collaborator_first_name"
-                               class="form-control @error('collaborator_first_name') is-invalid @enderror"
-                               value="{{ old('collaborator_first_name') }}">
-                        @error('collaborator_first_name')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="collaborator_agence" class="form-label">Agence</label>
-                    <input type="text" name="collaborator_agence" id="collaborator_agence"
-                           class="form-control @error('collaborator_agence') is-invalid @enderror"
-                           value="{{ old('collaborator_agence') }}">
-                    @error('collaborator_agence')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
 
                 <div class="mb-3">
                     <label for="phone_number_recuperation" class="form-label">Numéro de ligne concerné</label>
@@ -324,6 +326,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const requestType = document.getElementById('request_type');
     const creationForm = document.getElementById('creation-form');
+    const collaboratorBlock = document.getElementById('collaborator-block');
     const recuperationForm = document.getElementById('recuperation-form');
     const suspensionForm = document.getElementById('suspension-desactivation-form');
     const ajustementForm = document.getElementById('ajustement-form');
@@ -358,6 +361,14 @@ document.addEventListener('DOMContentLoaded', function() {
             creationForm.classList.add('form-section-hidden');
             suspensionForm.classList.add('form-section-hidden');
             ajustementForm.classList.add('form-section-hidden');
+        }
+
+        if (collaboratorBlock) {
+            if (type && type !== 'creation') {
+                collaboratorBlock.classList.remove('form-section-hidden');
+            } else {
+                collaboratorBlock.classList.add('form-section-hidden');
+            }
         }
         
         // S'assurer que les champs cachés sont toujours actifs (pas disabled)

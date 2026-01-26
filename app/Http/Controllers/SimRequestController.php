@@ -473,7 +473,13 @@ class SimRequestController extends Controller
                     case 'suspension':
                     case 'desactivation':
                         $validated = $this->validateSuspensionDesactivation($request);
+                        $collaborator = $this->resolveCollaboratorFromValidated($validated);
+                        $collaboratorFields = $this->buildCollaboratorFields($validated, $collaborator);
                         $simRequest->update([
+                            'collaborator_matricule' => $collaboratorFields['collaborator_matricule'],
+                            'collaborator_name' => $collaboratorFields['collaborator_name'],
+                            'collaborator_first_name' => $collaboratorFields['collaborator_first_name'],
+                            'collaborator_agence' => $collaboratorFields['collaborator_agence'],
                             'phone_number' => $validated['phone_number'],
                             'motif' => $validated['motif'],
                             'updated_by' => $user->id,
@@ -481,7 +487,13 @@ class SimRequestController extends Controller
                         break;
                     case 'ajustement':
                         $validated = $this->validateAjustement($request);
+                        $collaborator = $this->resolveCollaboratorFromValidated($validated);
+                        $collaboratorFields = $this->buildCollaboratorFields($validated, $collaborator);
                         $simRequest->update([
+                            'collaborator_matricule' => $collaboratorFields['collaborator_matricule'],
+                            'collaborator_name' => $collaboratorFields['collaborator_name'],
+                            'collaborator_first_name' => $collaboratorFields['collaborator_first_name'],
+                            'collaborator_agence' => $collaboratorFields['collaborator_agence'],
                             'phone_number' => $validated['phone_number'],
                             'plan_id' => $validated['plan_id'],
                             'updated_by' => $user->id,
@@ -898,6 +910,10 @@ class SimRequestController extends Controller
     private function validateSuspensionDesactivation(Request $request)
     {
         return $request->validate([
+            'collaborator_matricule' => 'required|string|max:255|exists:users,matricule',
+            'collaborator_name' => 'nullable|string|max:255',
+            'collaborator_first_name' => 'nullable|string|max:255',
+            'collaborator_agence' => 'nullable|string|max:255',
             'phone_number' => 'required|string|max:255',
             'motif' => 'required|string|max:500',
         ]);
@@ -906,6 +922,10 @@ class SimRequestController extends Controller
     private function validateAjustement(Request $request)
     {
         return $request->validate([
+            'collaborator_matricule' => 'required|string|max:255|exists:users,matricule',
+            'collaborator_name' => 'nullable|string|max:255',
+            'collaborator_first_name' => 'nullable|string|max:255',
+            'collaborator_agence' => 'nullable|string|max:255',
             'phone_number' => 'required|string|max:255',
             'plan_id' => 'required|exists:plans,id',
         ]);
@@ -917,20 +937,8 @@ class SimRequestController extends Controller
     {
         DB::beginTransaction();
         try {
-            $collaborator = null;
-            if (!empty($validated['collaborator_matricule'])) {
-                $collaborator = User::where('matricule', $validated['collaborator_matricule'])->first();
-            }
-
-            $collaboratorName = !empty($validated['collaborator_name'])
-                ? $validated['collaborator_name']
-                : ($collaborator->name ?? null);
-            $collaboratorFirstName = !empty($validated['collaborator_first_name'])
-                ? $validated['collaborator_first_name']
-                : ($collaborator->first_name ?? null);
-            $collaboratorAgence = !empty($validated['collaborator_agence'])
-                ? $validated['collaborator_agence']
-                : ($collaborator->lieu_affectation ?? $collaborator->zone_affectation ?? $collaborator->direction ?? null);
+            $collaborator = $this->resolveCollaboratorFromValidated($validated);
+            $collaboratorFields = $this->buildCollaboratorFields($validated, $collaborator);
 
             // Récupérer le numéro saisi dans le formulaire
             // Vérifier explicitement si le champ est vide (null, '', ou seulement des espaces)
@@ -997,10 +1005,10 @@ class SimRequestController extends Controller
                 'sim_id' => $simId,
                 'requested_iccid' => $validated['requested_iccid'] ?? null,
                 'phone_number' => $phoneNumber,
-                'collaborator_matricule' => $validated['collaborator_matricule'] ?? null,
-                'collaborator_name' => $collaboratorName,
-                'collaborator_first_name' => $collaboratorFirstName,
-                'collaborator_agence' => $collaboratorAgence,
+                'collaborator_matricule' => $collaboratorFields['collaborator_matricule'],
+                'collaborator_name' => $collaboratorFields['collaborator_name'],
+                'collaborator_first_name' => $collaboratorFields['collaborator_first_name'],
+                'collaborator_agence' => $collaboratorFields['collaborator_agence'],
                 'request_type' => 'recuperation',
                 'motif' => $validated['motif'],
                 'status' => 'en_attente',
@@ -1029,6 +1037,35 @@ class SimRequestController extends Controller
             DB::rollBack();
             return null;
         }
+    }
+
+    private function resolveCollaboratorFromValidated(array $validated): ?User
+    {
+        if (!empty($validated['collaborator_matricule'])) {
+            return User::where('matricule', $validated['collaborator_matricule'])->first();
+        }
+
+        return null;
+    }
+
+    private function buildCollaboratorFields(array $validated, ?User $collaborator): array
+    {
+        $collaboratorName = !empty($validated['collaborator_name'])
+            ? $validated['collaborator_name']
+            : ($collaborator->name ?? null);
+        $collaboratorFirstName = !empty($validated['collaborator_first_name'])
+            ? $validated['collaborator_first_name']
+            : ($collaborator->first_name ?? null);
+        $collaboratorAgence = !empty($validated['collaborator_agence'])
+            ? $validated['collaborator_agence']
+            : ($collaborator->lieu_affectation ?? $collaborator->zone_affectation ?? $collaborator->direction ?? null);
+
+        return [
+            'collaborator_matricule' => $validated['collaborator_matricule'] ?? null,
+            'collaborator_name' => $collaboratorName,
+            'collaborator_first_name' => $collaboratorFirstName,
+            'collaborator_agence' => $collaboratorAgence,
+        ];
     }
 
     private function resolveRecuperationCollaborator(SimRequest $simRequest): User
@@ -1104,14 +1141,21 @@ class SimRequestController extends Controller
     {
         DB::beginTransaction();
         try {
+            $collaborator = $this->resolveCollaboratorFromValidated($validated);
+            $collaboratorFields = $this->buildCollaboratorFields($validated, $collaborator);
+
             // Trouver la SIM par numéro de téléphone
             $sim = Sim::where('phone_number', $validated['phone_number'])->first();
 
             $simRequest = SimRequest::create([
                 'request_number' => SimRequest::generateRequestNumber(),
-                'user_id' => $sim ? $sim->assigned_to : $user->id,
+                'user_id' => $sim ? $sim->assigned_to : ($collaborator->id ?? $user->id),
                 'sim_id' => $sim ? $sim->id : null,
                 'phone_number' => $validated['phone_number'],
+                'collaborator_matricule' => $collaboratorFields['collaborator_matricule'],
+                'collaborator_name' => $collaboratorFields['collaborator_name'],
+                'collaborator_first_name' => $collaboratorFields['collaborator_first_name'],
+                'collaborator_agence' => $collaboratorFields['collaborator_agence'],
                 'request_type' => $type,
                 'motif' => $validated['motif'],
                 'status' => 'pending',
@@ -1141,16 +1185,22 @@ class SimRequestController extends Controller
         try {
             $sim = Sim::where('phone_number', $validated['phone_number'])->first();
             $plan = Plan::find($validated['plan_id']);
+            $collaborator = $this->resolveCollaboratorFromValidated($validated);
+            $collaboratorFields = $this->buildCollaboratorFields($validated, $collaborator);
 
             $simRequest = SimRequest::create([
                 'request_number' => SimRequest::generateRequestNumber(),
-                'user_id' => $sim ? $sim->assigned_to : $user->id,
+                'user_id' => $sim ? $sim->assigned_to : ($collaborator->id ?? $user->id),
                 'sim_id' => $sim ? $sim->id : null,
                 'phone_number' => $validated['phone_number'],
                 'request_type' => 'ajustement',
                 'plan_id' => $validated['plan_id'],
                 'limite_credit' => $plan->limite_credit,
                 'limite_data' => $plan->limite_data,
+                'collaborator_matricule' => $collaboratorFields['collaborator_matricule'],
+                'collaborator_name' => $collaboratorFields['collaborator_name'],
+                'collaborator_first_name' => $collaboratorFields['collaborator_first_name'],
+                'collaborator_agence' => $collaboratorFields['collaborator_agence'],
                 'status' => 'pending',
                 'created_by' => $user->id,
             ]);

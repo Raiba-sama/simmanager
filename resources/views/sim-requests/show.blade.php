@@ -129,7 +129,7 @@
                         <dd class="col-sm-8">{{ $simRequest->user->full_name }} ({{ $simRequest->user->matricule }})</dd>
                     @endif
 
-                    @if($simRequest->isRecuperation() && ($simRequest->collaborator_matricule || $simRequest->collaborator_name || $simRequest->collaborator_first_name || $simRequest->collaborator_agence))
+                    @if(!$simRequest->isCreation() && ($simRequest->collaborator_matricule || $simRequest->collaborator_name || $simRequest->collaborator_first_name || $simRequest->collaborator_agence))
                         <dt class="col-sm-4">Collaborateur:</dt>
                         <dd class="col-sm-8">
                             @if($simRequest->collaborator_name || $simRequest->collaborator_first_name)

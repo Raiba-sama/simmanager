@@ -205,21 +205,22 @@
                                 $requester = $request->creator ?? $request->user;
                                 $collaboratorName = null;
                                 $collaboratorMatricule = null;
-                                if ($request->isRecuperation()) {
-                                    $collaboratorName = trim(($request->collaborator_name ?? '') . ' ' . ($request->collaborator_first_name ?? ''));
-                                    if ($collaboratorName === '') {
-                                        $collaboratorName = null;
-                                    }
-                                    $collaboratorMatricule = $request->collaborator_matricule;
-                                } elseif ($request->isCreation()) {
+                                if ($request->isCreation()) {
                                     $collaboratorName = trim(($request->beneficiary_name ?? '') . ' ' . ($request->beneficiary_first_name ?? ''));
                                     if ($collaboratorName === '') {
                                         $collaboratorName = null;
                                     }
                                     $collaboratorMatricule = $request->beneficiary_matricule;
                                 } else {
-                                    $collaboratorName = $request->user->full_name ?? null;
-                                    $collaboratorMatricule = $request->user->matricule ?? null;
+                                    $collaboratorName = trim(($request->collaborator_name ?? '') . ' ' . ($request->collaborator_first_name ?? ''));
+                                    if ($collaboratorName === '') {
+                                        $collaboratorName = null;
+                                    }
+                                    $collaboratorMatricule = $request->collaborator_matricule;
+                                    if (!$collaboratorName && !$collaboratorMatricule) {
+                                        $collaboratorName = $request->user->full_name ?? null;
+                                        $collaboratorMatricule = $request->user->matricule ?? null;
+                                    }
                                 }
                                 $lineNumber = $request->phone_number ?? ($request->sim ? $request->sim->phone_number : null);
                             @endphp
