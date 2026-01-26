@@ -17,12 +17,18 @@
                 <button type="button" class="step-item" data-target="#step-2">2. Détails</button>
                 <button type="button" class="step-item" data-target="#step-3">3. Vérification</button>
             </div>
+            <div class="alert alert-info" style="font-size: 13px;">
+                <div><strong>1.</strong> Choisissez et renseignez le collaborateur.</div>
+                <div><strong>2.</strong> Saisissez la ligne, la SIM/ICCID et le motif.</div>
+                <div><strong>3.</strong> Vérifiez le récapitulatif à droite avant d'envoyer.</div>
+                <div class="text-muted mt-2">Le récapitulatif se met à jour automatiquement. Les modèles sont enregistrés sur cet appareil.</div>
+            </div>
 
             <div id="step-1" class="step-anchor"></div>
 
             <h5 class="mb-3">Informations du collaborateur</h5>
             <div class="mb-3">
-                <label for="template_select" class="form-label">Modèle de demande</label>
+                <label for="template_select" class="form-label">Modèle de demande (optionnel)</label>
                 <div class="d-flex gap-2">
                     <select id="template_select" class="form-select">
                         <option value="">Aucun modèle</option>
@@ -30,7 +36,7 @@
                     <button type="button" class="btn btn-outline-secondary" id="template_apply">Appliquer</button>
                     <button type="button" class="btn btn-outline-primary" id="template_save">Enregistrer</button>
                 </div>
-                <small class="form-text text-muted">Pré-remplissez le formulaire avec un modèle enregistré.</small>
+                <small class="form-text text-muted">Appliquer = pré-remplir. Enregistrer = sauver le formulaire actuel (sur cet appareil).</small>
             </div>
             <div class="row">
                 <div class="col-md-4 mb-3">
@@ -148,6 +154,7 @@
                 <strong>Récapitulatif</strong>
             </div>
             <div class="card-body">
+                <div class="text-muted mb-2" style="font-size: 12px;">Mise à jour automatique</div>
                 <ul class="list-unstyled mb-0 summary-list">
                     <li class="d-flex justify-content-between">
                         <span>Type</span>
