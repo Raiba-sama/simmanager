@@ -1095,6 +1095,9 @@ class SimRequestController extends Controller
 
     private function releaseSimAfterRejection(SimRequest $simRequest, ?Sim $sim): void
     {
+        if (!$simRequest->isRecuperation()) {
+            return;
+        }
         if (!$sim) {
             $sim = $this->resolveSimForRequest($simRequest);
         }
@@ -1108,10 +1111,14 @@ class SimRequestController extends Controller
             ->where('request_id', $simRequest->id)
             ->where('action', 'assigned')
             ->exists();
+        $recentAssignmentForRequest = $sim->assigned_at
+            && $simRequest->created_at
+            && $sim->assigned_at->greaterThanOrEqualTo($simRequest->created_at);
 
         // Remettre la SIM en libre si elle était réservée pour cette demande
         // Vérifier que la SIM n'est pas déjà assignée à quelqu'un d'autre
         if ($wasAssignedByRequest
+            || $recentAssignmentForRequest
             || empty($sim->assigned_to)
             || $sim->assigned_to === $simRequest->user_id
             || $sim->assigned_to === $assignedUser->id) {

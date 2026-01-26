@@ -10,16 +10,6 @@
             @csrf
             <input type="hidden" name="request_type" value="recuperation">
 
-            @if($currentSim)
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle"></i> 
-                <strong>SIM actuelle détectée :</strong> {{ $currentSim->iccid }} 
-                @if($currentSim->phone_number)
-                    - {{ $currentSim->phone_number }}
-                @endif
-            </div>
-            @endif
-
             <h5 class="mb-3">Informations du collaborateur</h5>
             <div class="row">
                 <div class="col-md-4 mb-3">

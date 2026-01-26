@@ -181,16 +181,6 @@
             
             <!-- Formulaire pour Récupération -->
             <div id="recuperation-form" class="form-section-hidden">
-                @if($currentSim ?? null)
-                <div class="alert alert-info mb-3">
-                    <i class="bi bi-info-circle"></i> 
-                    <strong>SIM actuelle détectée :</strong> {{ $currentSim->iccid }} 
-                    @if($currentSim->phone_number)
-                        - {{ $currentSim->phone_number }}
-                    @endif
-                </div>
-                @endif
-
                 <div class="mb-3">
                     <label for="phone_number_recuperation" class="form-label">Numéro de ligne concerné</label>
                     <input type="text" id="phone_number_recuperation" 
