@@ -1017,8 +1017,23 @@ class SimRequestController extends Controller
 
     private function validateRecuperation(Request $request)
     {
+        // Nettoyer le matricule avant validation
+        if ($request->has('collaborator_matricule')) {
+            $request->merge(['collaborator_matricule' => trim($request->collaborator_matricule)]);
+        }
+
         return $request->validate([
-            'collaborator_matricule' => 'required|string|max:255|exists:users,matricule',
+            'collaborator_matricule' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    $exists = User::where('matricule', $value)->exists();
+                    if (!$exists) {
+                        $fail('Le matricule sélectionné n\'existe pas dans la base de données.');
+                    }
+                },
+            ],
             'collaborator_name' => 'nullable|string|max:255',
             'collaborator_first_name' => 'nullable|string|max:255',
             'collaborator_agence' => 'nullable|string|max:255',
@@ -1045,8 +1060,23 @@ class SimRequestController extends Controller
 
     private function validateSuspensionDesactivation(Request $request)
     {
+        // Nettoyer le matricule avant validation
+        if ($request->has('collaborator_matricule')) {
+            $request->merge(['collaborator_matricule' => trim($request->collaborator_matricule)]);
+        }
+
         return $request->validate([
-            'collaborator_matricule' => 'required|string|max:255|exists:users,matricule',
+            'collaborator_matricule' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    $exists = User::where('matricule', $value)->exists();
+                    if (!$exists) {
+                        $fail('Le matricule sélectionné n\'existe pas dans la base de données.');
+                    }
+                },
+            ],
             'collaborator_name' => 'nullable|string|max:255',
             'collaborator_first_name' => 'nullable|string|max:255',
             'collaborator_agence' => 'nullable|string|max:255',
@@ -1057,14 +1087,31 @@ class SimRequestController extends Controller
 
     private function validateAjustement(Request $request)
     {
-        return $request->validate([
-            'collaborator_matricule' => 'required|string|max:255|exists:users,matricule',
+        // Nettoyer le matricule avant validation
+        if ($request->has('collaborator_matricule')) {
+            $request->merge(['collaborator_matricule' => trim($request->collaborator_matricule)]);
+        }
+
+        $validated = $request->validate([
+            'collaborator_matricule' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    $exists = User::where('matricule', $value)->exists();
+                    if (!$exists) {
+                        $fail('Le matricule sélectionné n\'existe pas dans la base de données.');
+                    }
+                },
+            ],
             'collaborator_name' => 'nullable|string|max:255',
             'collaborator_first_name' => 'nullable|string|max:255',
             'collaborator_agence' => 'nullable|string|max:255',
             'phone_number' => 'required|string|max:255',
             'plan_id' => 'required|exists:plans,id',
         ]);
+
+        return $validated;
     }
 
     // ========== Méthodes privées de création ==========
