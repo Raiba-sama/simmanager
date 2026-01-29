@@ -47,14 +47,27 @@ class UserSyncController extends Controller
 
         try {
             $webhookUrl = config('services.webhook_get_users.url', $this->webhookUrl);
+            $hasToken = (bool) config('services.webhook_get_users.token');
+            Log::info('UserSync: calling webhook', [
+                'url' => $webhookUrl,
+                'token_set' => $hasToken,
+                'token_length' => $hasToken ? strlen(config('services.webhook_get_users.token')) : 0,
+            ]);
+
             $http = Http::timeout(30);
-            if (config('services.webhook_get_users.token')) {
+            if ($hasToken) {
                 $http = $http->withToken(config('services.webhook_get_users.token'));
             }
             $response = $http->get($webhookUrl);
 
             if (!$response->successful()) {
-                Log::warning('UserSync: webhook failed', ['status' => $response->status(), 'body' => $response->body()]);
+                Log::warning('UserSync: webhook failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'headers' => $response->headers(),
+                    'url' => $webhookUrl,
+                    'token_set' => $hasToken,
+                ]);
                 $message = 'Le webhook a répondu avec une erreur (HTTP ' . $response->status() . ').';
                 if ($request->expectsJson()) {
                     return response()->json(['success' => false, 'message' => $message], 422);
