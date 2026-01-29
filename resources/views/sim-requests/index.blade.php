@@ -15,7 +15,7 @@
         <!-- Filters -->
         <form method="GET" action="{{ route('sim-requests.index') }}" class="mb-4" id="filters-form">
             <div class="row g-3">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <select name="request_type" id="filter-request-type" class="form-select" style="border-radius: 8px; border: 1px solid #e2e8f0;">
                         <option value="">Tous les types</option>
                         <option value="recuperation" {{ request('request_type') === 'recuperation' ? 'selected' : '' }}>Récupération</option>
@@ -44,16 +44,23 @@
                     </div>
                 </div>
                 <div class="col-md-2">
-                    <button type="button" class="btn btn-outline-primary w-100" style="border-radius: 8px;" onclick="applyFilters()">
+                    <select name="delivered" id="filter-delivered" class="form-select" style="border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <option value="">Livré : tous</option>
+                        <option value="1" {{ request('delivered') === '1' ? 'selected' : '' }}>Livrées</option>
+                        <option value="0" {{ request('delivered') === '0' ? 'selected' : '' }}>Non livrées</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-primary w-100" style="border-radius: 8px;">
                         <i class="bi bi-funnel"></i> Filtrer
                     </button>
                 </div>
-                <div class="col-md-1" id="reset-filter-btn" style="{{ request()->hasAny(['request_type','status','collaborator','agence','phone_number','iccid']) ? '' : 'display: none;' }}">
+                <div class="col-md-1" id="reset-filter-btn" style="{{ request()->hasAny(['request_type','status','delivered','collaborator','agence','phone_number','iccid']) ? '' : 'display: none;' }}">
                     <a href="{{ route('sim-requests.index') }}" class="btn btn-outline-secondary w-100" style="border-radius: 8px;" title="Réinitialiser" onclick="event.preventDefault(); resetFilters();">
                         <i class="bi bi-x-circle"></i>
                     </a>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="btn-group w-100" role="group" id="export-buttons">
                         @php
                             $exportParams = request()->query();
@@ -150,6 +157,7 @@
                         <th class="col-secondary" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Collaborateur concerné</th>
                         <th class="col-secondary" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Ligne concernée</th>
                         <th style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Statut</th>
+                        <th class="col-secondary" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Livré</th>
                         <th class="col-secondary" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Priorité</th>
                         <th class="col-secondary" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Date</th>
                         <th class="sticky-col-right" style="padding: 16px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Actions</th>
@@ -295,6 +303,28 @@
                                 @endif
                             </td>
                             <td class="col-secondary" style="padding: 16px;">
+                                @if($request->isDelivered())
+                                    <span class="badge" style="background: #10b981; color: white; padding: 4px 8px; border-radius: 6px; font-size: 11px;">Livré</span>
+                                    @if(auth()->user()->isValidator())
+                                        <form method="POST" action="{{ route('sim-requests.toggle-delivered', $request) }}" class="d-inline" data-confirm="Retirer la marque « livré » ?" data-confirm-variant="secondary" data-confirm-text="Retirer">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-link p-0 ms-1" style="font-size: 11px;" title="Retirer livré">✕</button>
+                                        </form>
+                                    @endif
+                                @else
+                                    @if(auth()->user()->isValidator())
+                                        <form method="POST" action="{{ route('sim-requests.toggle-delivered', $request) }}" class="d-inline" data-confirm="Marquer cette demande comme livrée ?" data-confirm-variant="success" data-confirm-text="Marquer livré">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-success" style="border-radius: 6px; padding: 4px 8px; font-size: 11px;" title="Marquer livré">
+                                                <i class="bi bi-box-seam"></i> Livré
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="text-muted" style="font-size: 12px;">-</span>
+                                    @endif
+                                @endif
+                            </td>
+                            <td class="col-secondary" style="padding: 16px;">
                                 @if($request->priority)
                                     @php
                                         $priorityColors = [
@@ -366,7 +396,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="text-center" style="padding: 40px; color: #9ca3af;">Aucune demande trouvée</td>
+                            <td colspan="11" class="text-center" style="padding: 40px; color: #9ca3af;">Aucune demande trouvée</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -437,112 +467,21 @@
         }
     }
     
-    // Auto-filter on change
-    document.getElementById('filter-request-type').addEventListener('change', function() {
-        clearTimeout(filterTimeout);
-        filterTimeout = setTimeout(() => {
-            applyFilters();
-        }, 300);
-    });
-    
-    document.getElementById('filter-status').addEventListener('change', function() {
-        clearTimeout(filterTimeout);
-        filterTimeout = setTimeout(() => {
-            applyFilters();
-        }, 300);
-    });
-    
-    function applyFilters() {
-        const requestType = document.getElementById('filter-request-type').value;
-        const status = document.getElementById('filter-status').value;
-        const collaborator = document.querySelector('input[name="collaborator"]')?.value?.trim() || '';
-        const agence = document.querySelector('input[name="agence"]')?.value?.trim() || '';
-        const phoneNumber = document.querySelector('input[name="phone_number"]')?.value?.trim() || '';
-        const iccid = document.querySelector('input[name="iccid"]')?.value?.trim() || '';
-        
-        const params = new URLSearchParams();
-        if (requestType) params.append('request_type', requestType);
-        if (status) params.append('status', status);
-        if (collaborator) params.append('collaborator', collaborator);
-        if (agence) params.append('agence', agence);
-        if (phoneNumber) params.append('phone_number', phoneNumber);
-        if (iccid) params.append('iccid', iccid);
-        const favorites = document.getElementById('filter-favorites');
-        if (favorites && favorites.checked) params.append('favorites', '1');
-        
-        const url = baseUrl + (params.toString() ? '?' + params.toString() : '');
-        
-        // Show loading state
-        const tableBody = document.getElementById('table-body');
-        const paginationContainer = document.getElementById('pagination-container');
-        tableBody.innerHTML = '<tr><td colspan="10" class="text-center" style="padding: 40px;"><i class="bi bi-arrow-repeat spin"></i> Chargement...</td></tr>';
-        
-        // Update URL without reload
-        window.history.pushState({}, '', url);
-        
-        // Fetch new content
-        fetch(url, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'text/html',
+    // Soumission du formulaire au changement des selects (filtres appliqués par rechargement GET)
+    const filtersForm = document.getElementById('filters-form');
+    if (filtersForm) {
+        ['filter-request-type', 'filter-status', 'filter-delivered'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', function() {
+                    filtersForm.submit();
+                });
             }
-        })
-        .then(response => response.text())
-        .then(html => {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            
-            // Update table body
-            const newTableBody = doc.getElementById('table-body');
-            if (newTableBody) {
-                tableBody.innerHTML = newTableBody.innerHTML;
-                // Réinitialiser les checkboxes après le chargement dynamique
-                clearSelection();
-                // Réattacher les event listeners aux nouvelles checkboxes
-                attachCheckboxListeners();
-                // Réappliquer la visibilité des colonnes
-                const stored = localStorage.getItem(detailsStorageKey);
-                applyColumnVisibility(stored === null ? true : stored === 'true');
-            }
-            
-            // Update pagination
-            const newPagination = doc.getElementById('pagination-container');
-            if (newPagination) {
-                paginationContainer.innerHTML = newPagination.innerHTML;
-            }
-            
-            // Update export buttons
-            updateExportButtons(requestType, status);
-            
-            // Update reset button visibility
-            const resetBtn = document.getElementById('reset-filter-btn');
-            const favorites = document.getElementById('filter-favorites');
-            if (requestType || status || collaborator || agence || phoneNumber || iccid || (favorites && favorites.checked)) {
-                resetBtn.style.display = '';
-            } else {
-                resetBtn.style.display = 'none';
-            }
-        })
-        .catch(error => {
-            console.error('Filter error:', error);
-            tableBody.innerHTML = '<tr><td colspan="10" class="text-center" style="padding: 40px; color: #ef4444;">Erreur lors du chargement</td></tr>';
         });
     }
-    
+
     function resetFilters() {
-        document.getElementById('filter-request-type').value = '';
-        document.getElementById('filter-status').value = '';
-        const collaborator = document.querySelector('input[name="collaborator"]');
-        const agence = document.querySelector('input[name="agence"]');
-        const phoneNumber = document.querySelector('input[name="phone_number"]');
-        const iccid = document.querySelector('input[name="iccid"]');
-        if (collaborator) collaborator.value = '';
-        if (agence) agence.value = '';
-        if (phoneNumber) phoneNumber.value = '';
-        if (iccid) iccid.value = '';
-        const favorites = document.getElementById('filter-favorites');
-        if (favorites) favorites.checked = false;
-        applyFilters();
+        window.location.href = baseUrl;
     }
     
     function toggleFavorite(requestId, button) {
@@ -619,7 +558,7 @@
             const url = e.target.closest('.pagination a').href;
             
             const tableBody = document.getElementById('table-body');
-            tableBody.innerHTML = '<tr><td colspan="10" class="text-center" style="padding: 40px;"><i class="bi bi-arrow-repeat spin"></i> Chargement...</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="11" class="text-center" style="padding: 40px;"><i class="bi bi-arrow-repeat spin"></i> Chargement...</td></tr>';
             
             fetch(url, {
                 headers: {

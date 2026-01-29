@@ -48,6 +48,14 @@ class SimRequestController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->has('delivered')) {
+            if ($request->delivered === '1') {
+                $query->whereNotNull('delivered_at');
+            } elseif ($request->delivered === '0') {
+                $query->whereNull('delivered_at');
+            }
+        }
+
         if ($request->has('request_type')) {
             $query->where('request_type', $request->request_type);
         }
@@ -2193,6 +2201,31 @@ class SimRequestController extends Controller
             ]);
         }
         
+        return back()->with('success', $message);
+    }
+
+    public function toggleDelivered(Request $request, SimRequest $simRequest)
+    {
+        if (!auth()->user()->isValidator()) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Accès refusé'], 403);
+            }
+            return back()->with('error', 'Accès refusé.');
+        }
+
+        $simRequest->delivered_at = $simRequest->delivered_at ? null : now();
+        $simRequest->save();
+
+        $message = $simRequest->delivered_at ? 'Demande marquée comme livrée' : 'Marque « livré » retirée';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'is_delivered' => (bool) $simRequest->delivered_at,
+            ]);
+        }
+
         return back()->with('success', $message);
     }
 

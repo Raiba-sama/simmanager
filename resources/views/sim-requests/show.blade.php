@@ -250,6 +250,15 @@
                         <dt class="col-sm-4">Date traitement admin:</dt>
                         <dd class="col-sm-8">{{ $simRequest->admin_processed_at->format('d/m/Y H:i') }}</dd>
                     @endif
+
+                    <dt class="col-sm-4">Livré:</dt>
+                    <dd class="col-sm-8">
+                        @if($simRequest->isDelivered())
+                            <span class="badge bg-success">Livré</span> le {{ $simRequest->delivered_at->format('d/m/Y H:i') }}
+                        @else
+                            <span class="text-muted">Non livré</span>
+                        @endif
+                    </dd>
                 </dl>
             </div>
         </div>
@@ -271,6 +280,32 @@
                             <i class="bi bi-x-circle"></i> Annuler ma demande
                         </button>
                     </form>
+                </div>
+            </div>
+        @endif
+
+        {{-- Marquer comme livré (validateur) --}}
+        @if(auth()->user()->isValidator())
+            <div class="card mb-3" style="border: none; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                <div class="card-header bg-light" style="border-radius: 10px 10px 0 0;">
+                    <h5 class="mb-0">Livraison</h5>
+                </div>
+                <div class="card-body">
+                    @if($simRequest->isDelivered())
+                        <form method="POST" action="{{ route('sim-requests.toggle-delivered', $simRequest) }}" class="d-inline" data-confirm="Retirer la marque « livré » ?" data-confirm-variant="secondary" data-confirm-text="Retirer">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-box-seam"></i> Retirer « livré »
+                            </button>
+                        </form>
+                    @else
+                        <form method="POST" action="{{ route('sim-requests.toggle-delivered', $simRequest) }}" class="d-inline" data-confirm="Marquer cette demande comme livrée ?" data-confirm-variant="success" data-confirm-text="Marquer livré">
+                            @csrf
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-box-seam"></i> Marquer comme livrée
+                            </button>
+                        </form>
+                    @endif
                 </div>
             </div>
         @endif

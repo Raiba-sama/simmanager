@@ -29,6 +29,7 @@ class SimRequest extends Model
         'admin_comment',
         'admin_id',
         'admin_processed_at',
+        'delivered_at',
         'beneficiary_name',
         'beneficiary_first_name',
         'beneficiary_fonction',
@@ -45,6 +46,7 @@ class SimRequest extends Model
     protected $casts = [
         'validated_at' => 'datetime',
         'admin_processed_at' => 'datetime',
+        'delivered_at' => 'datetime',
         'limite_credit' => 'decimal:2',
         'limite_data' => 'decimal:2',
         'request_details' => 'array',
@@ -153,6 +155,11 @@ class SimRequest extends Model
     public function isAccepted(): bool
     {
         return $this->status === 'accepted';
+    }
+
+    public function isDelivered(): bool
+    {
+        return $this->delivered_at !== null;
     }
 
     public function isRecuperation(): bool
