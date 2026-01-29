@@ -90,6 +90,14 @@ class UserSyncController extends Controller
             $errors = [];
 
             foreach ($items as $item) {
+                if (!is_array($item)) {
+                    if (is_string($item) && trim($item) !== '') {
+                        $item = ['matricule' => trim($item)];
+                    } else {
+                        $skipped++;
+                        continue;
+                    }
+                }
                 $matricule = $this->extractMatricule($item);
                 if (empty($matricule)) {
                     $skipped++;
