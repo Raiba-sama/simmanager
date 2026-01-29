@@ -33,11 +33,12 @@ return [
 
     /*
     | Webhook get_users (sync utilisateurs depuis application tierce).
-    | Si le webhook renvoie 401, définir WEBHOOK_GET_USERS_TOKEN avec le token
-    | utilisé en test (Bearer / API key selon le serveur).
+    | Le serveur attend une authentification Basic. Utilise N8N_USERNAME et N8N_PASSWORD.
     */
     'webhook_get_users' => [
         'url' => env('WEBHOOK_GET_USERS_URL', 'https://acepmg.it4life.org/webhook/get_users'),
+        'username' => env('N8N_USERNAME'),
+        'password' => env('N8N_PASSWORD'),
         'token' => env('WEBHOOK_GET_USERS_TOKEN'),
     ],
 

@@ -39,24 +39,28 @@ class UserSyncController extends Controller
     public function syncFromWebhook(Request $request)
     {
         if (!auth()->user()->isAdmin()) {
-            if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => 'Accès refusé.'], 403);
-            }
             return back()->with('error', 'Accès refusé. Réservé aux administrateurs.');
         }
 
         try {
             $webhookUrl = config('services.webhook_get_users.url', $this->webhookUrl);
-            $hasToken = (bool) config('services.webhook_get_users.token');
+            $username = config('services.webhook_get_users.username');
+            $password = config('services.webhook_get_users.password');
+            $token = config('services.webhook_get_users.token');
+            $authBasic = $username !== null && $username !== '' && $password !== null;
+            $authBearer = $token !== null && $token !== '';
+
             Log::info('UserSync: calling webhook', [
                 'url' => $webhookUrl,
-                'token_set' => $hasToken,
-                'token_length' => $hasToken ? strlen(config('services.webhook_get_users.token')) : 0,
+                'auth_basic' => $authBasic,
+                'auth_bearer' => $authBearer,
             ]);
 
             $http = Http::timeout(30);
-            if ($hasToken) {
-                $http = $http->withToken(config('services.webhook_get_users.token'));
+            if ($authBasic) {
+                $http = $http->withBasicAuth($username, $password);
+            } elseif ($authBearer) {
+                $http = $http->withToken($token);
             }
             $response = $http->get($webhookUrl);
 
@@ -66,12 +70,10 @@ class UserSyncController extends Controller
                     'body' => $response->body(),
                     'headers' => $response->headers(),
                     'url' => $webhookUrl,
-                    'token_set' => $hasToken,
+                    'auth_basic' => $authBasic,
+                    'auth_bearer' => $authBearer,
                 ]);
                 $message = 'Le webhook a répondu avec une erreur (HTTP ' . $response->status() . ').';
-                if ($request->expectsJson()) {
-                    return response()->json(['success' => false, 'message' => $message], 422);
-                }
                 return back()->with('error', $message);
             }
 
@@ -80,9 +82,6 @@ class UserSyncController extends Controller
 
             if (!is_array($items)) {
                 $message = 'Format de réponse du webhook invalide (liste d\'utilisateurs attendue).';
-                if ($request->expectsJson()) {
-                    return response()->json(['success' => false, 'message' => $message], 422);
-                }
                 return back()->with('error', $message);
             }
 
@@ -144,31 +143,13 @@ class UserSyncController extends Controller
                 }
             }
 
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => $message,
-                    'created' => $created,
-                    'skipped' => $skipped,
-                    'errors' => $errors,
-                ]);
-            }
-
             return back()->with('success', $message);
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             Log::error('UserSync: connection failed', ['error' => $e->getMessage()]);
-            $message = 'Impossible de joindre le webhook. Vérifiez l\'URL et la connexion.';
-            if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => $message], 502);
-            }
-            return back()->with('error', $message);
+            return back()->with('error', 'Impossible de joindre le webhook. Vérifiez l\'URL et la connexion.');
         } catch (\Exception $e) {
             Log::error('UserSync: error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            $message = 'Erreur lors de la synchronisation : ' . $e->getMessage();
-            if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => $message], 500);
-            }
-            return back()->with('error', $message);
+            return back()->with('error', 'Erreur lors de la synchronisation : ' . $e->getMessage());
         }
     }
 
