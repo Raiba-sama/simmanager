@@ -44,11 +44,12 @@ class SimRequestController extends Controller
             });
         }
 
-        if ($request->has('status')) {
+        // Ne filtrer que si une valeur est réellement choisie (évite where('status','') qui vide les résultats)
+        if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        if ($request->has('delivered')) {
+        if ($request->filled('delivered')) {
             if ($request->delivered === '1') {
                 $query->whereNotNull('delivered_at');
             } elseif ($request->delivered === '0') {
@@ -56,7 +57,7 @@ class SimRequestController extends Controller
             }
         }
 
-        if ($request->has('request_type')) {
+        if ($request->filled('request_type')) {
             $query->where('request_type', $request->request_type);
         }
 
