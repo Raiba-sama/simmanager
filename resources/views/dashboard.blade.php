@@ -163,6 +163,33 @@
     @endif
 </div>
 
+@if($user->isAdmin())
+<!-- Synchronisation utilisateurs depuis le webhook (admin uniquement) -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card" style="border: none; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <div class="card-body" style="padding: 20px 24px;">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                    <div>
+                        <h6 class="mb-1" style="font-weight: 600; color: #1e293b;">
+                            <i class="bi bi-cloud-download" style="color: #00574A; margin-right: 8px;"></i>
+                            Synchronisation utilisateurs (webhook)
+                        </h6>
+                        <p class="mb-0 text-muted small">Récupérer les utilisateurs depuis l'application tierce. Les nouveaux utilisateurs (par matricule) seront créés avec le rôle <strong>admin</strong>.</p>
+                    </div>
+                    <form method="POST" action="{{ route('admin.users.sync-from-webhook') }}" class="mb-0" data-confirm="Synchroniser les utilisateurs depuis le webhook ? Les nouveaux comptes (matricule inexistant) seront créés avec le rôle admin." data-confirm-variant="primary" data-confirm-text="Synchroniser">
+                        @csrf
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-arrow-repeat me-1"></i>Synchroniser les utilisateurs
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <!-- Graphiques (seulement pour validateurs) -->
 @if($isValidator)
 <div class="row mt-4">

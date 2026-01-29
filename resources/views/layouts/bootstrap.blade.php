@@ -829,6 +829,12 @@
                         <span>Utilisateurs</span>
                     </a>
                 </div>
+                <div class="sidebar-menu-item {{ request()->routeIs('sync-users*') ? 'active' : '' }}">
+                    <a href="{{ route('sync-users.form') }}" class="sidebar-menu-link {{ request()->routeIs('sync-users*') ? 'active' : '' }}">
+                        <i class="bi bi-cloud-download"></i>
+                        <span>Sync utilisateurs (webhook)</span>
+                    </a>
+                </div>
                 <div class="sidebar-menu-item">
                     <a href="/admin/activity-logs" class="sidebar-menu-link">
                         <i class="bi bi-clipboard-data"></i>

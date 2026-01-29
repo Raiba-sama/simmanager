@@ -30,6 +30,11 @@ Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'ind
 Route::get('/dashboard/chart-data', [\App\Http\Controllers\DashboardController::class, 'getChartDataApi'])->middleware('auth')->name('dashboard.chart-data');
 
 Route::middleware('auth')->group(function () {
+    // Sync users from webhook (admin only, controller checks isAdmin)
+    Route::get('sync-users', [\App\Http\Controllers\UserSyncController::class, 'showSyncForm'])->name('sync-users.form');
+    Route::post('admin/sync-users-from-webhook', [\App\Http\Controllers\UserSyncController::class, 'syncFromWebhook'])
+        ->name('admin.users.sync-from-webhook');
+
     // Search
     Route::get('/search', [\App\Http\Controllers\SearchController::class, 'search'])->name('search');
     
