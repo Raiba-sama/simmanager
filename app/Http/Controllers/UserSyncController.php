@@ -13,6 +13,9 @@ class UserSyncController extends Controller
 {
     protected string $webhookUrl = 'https://acepmg.it4life.org/webhook/get_users';
 
+    /** Rôles autorisés (doivent correspondre à l'enum users.role). */
+    protected array $allowedRoles = ['admin', 'validator', 'user'];
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -31,7 +34,7 @@ class UserSyncController extends Controller
 
     /**
      * Synchronise les utilisateurs depuis le webhook externe.
-     * Crée les users par matricule s'ils n'existent pas, avec rôle admin.
+     * Crée les users par matricule s'ils n'existent pas ; le rôle vient du webhook.
      */
     public function syncFromWebhook(Request $request)
     {
@@ -43,7 +46,12 @@ class UserSyncController extends Controller
         }
 
         try {
-            $response = Http::timeout(30)->get($this->webhookUrl);
+            $webhookUrl = config('services.webhook_get_users.url', $this->webhookUrl);
+            $request = Http::timeout(30);
+            if (config('services.webhook_get_users.token')) {
+                $request = $request->withToken(config('services.webhook_get_users.token'));
+            }
+            $response = $request->get($webhookUrl);
 
             if (!$response->successful()) {
                 Log::warning('UserSync: webhook failed', ['status' => $response->status(), 'body' => $response->body()]);
@@ -91,6 +99,8 @@ class UserSyncController extends Controller
                     $password = Str::random(16);
                 }
 
+                $role = $this->extractRole($item);
+
                 try {
                     User::create([
                         'matricule' => $matricule,
@@ -98,7 +108,7 @@ class UserSyncController extends Controller
                         'first_name' => $this->extractFirstName($item),
                         'email' => $email,
                         'password' => Hash::make($password),
-                        'role' => 'admin',
+                        'role' => $role,
                         'active' => true,
                         'fonction' => $item['fonction'] ?? $item['function'] ?? null,
                         'lieu_affectation' => $item['lieu_affectation'] ?? $item['agence'] ?? $item['agency'] ?? null,
@@ -113,7 +123,7 @@ class UserSyncController extends Controller
                 }
             }
 
-            $message = $created . ' utilisateur(s) créé(s) (rôle admin). ' . $skipped . ' déjà existant(s) ou ignoré(s).';
+            $message = $created . ' utilisateur(s) créé(s). ' . $skipped . ' déjà existant(s) ou ignoré(s).';
             if (!empty($errors)) {
                 $message .= ' Erreurs : ' . implode(' ; ', array_slice($errors, 0, 5));
                 if (count($errors) > 5) {
@@ -175,5 +185,12 @@ class UserSyncController extends Controller
         $first = $item['first_name'] ?? $item['firstname'] ?? $item['prenom'] ?? $item['prenoms'] ?? '';
         $v = trim((string) $first);
         return $v !== '' ? $v : null;
+    }
+
+    private function extractRole(array $item): string
+    {
+        $value = $item['role'] ?? $item['role_id'] ?? $item['type'] ?? null;
+        $role = $value !== null && $value !== '' ? trim(strtolower((string) $value)) : 'user';
+        return in_array($role, $this->allowedRoles, true) ? $role : 'user';
     }
 }

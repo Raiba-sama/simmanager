@@ -31,4 +31,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /*
+    | Webhook get_users (sync utilisateurs depuis application tierce).
+    | Si le webhook renvoie 401, définir WEBHOOK_GET_USERS_TOKEN avec le token
+    | utilisé en test (Bearer / API key selon le serveur).
+    */
+    'webhook_get_users' => [
+        'url' => env('WEBHOOK_GET_USERS_URL', 'https://acepmg.it4life.org/webhook/get_users'),
+        'token' => env('WEBHOOK_GET_USERS_TOKEN'),
+    ],
+
 ];

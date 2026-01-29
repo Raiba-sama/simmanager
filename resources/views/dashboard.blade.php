@@ -175,9 +175,9 @@
                             <i class="bi bi-cloud-download" style="color: #00574A; margin-right: 8px;"></i>
                             Synchronisation utilisateurs (webhook)
                         </h6>
-                        <p class="mb-0 text-muted small">Récupérer les utilisateurs depuis l'application tierce. Les nouveaux utilisateurs (par matricule) seront créés avec le rôle <strong>admin</strong>.</p>
+                        <p class="mb-0 text-muted small">Récupérer les utilisateurs depuis l'application tierce. Les nouveaux utilisateurs (par matricule) seront créés avec le rôle renvoyé par le webhook.</p>
                     </div>
-                    <form method="POST" action="{{ route('admin.users.sync-from-webhook') }}" class="mb-0" data-confirm="Synchroniser les utilisateurs depuis le webhook ? Les nouveaux comptes (matricule inexistant) seront créés avec le rôle admin." data-confirm-variant="primary" data-confirm-text="Synchroniser">
+                    <form method="POST" action="{{ route('admin.users.sync-from-webhook') }}" class="mb-0" data-confirm="Synchroniser les utilisateurs depuis le webhook ? Les nouveaux comptes (matricule inexistant) seront créés avec le rôle fourni par l'application tierce." data-confirm-variant="primary" data-confirm-text="Synchroniser">
                         @csrf
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-arrow-repeat me-1"></i>Synchroniser les utilisateurs
