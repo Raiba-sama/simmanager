@@ -86,8 +86,14 @@ class UserSyncController extends Controller
             }
 
             $created = 0;
+            $updated = 0;
             $skipped = 0;
             $errors = [];
+
+            $defaultPassword = config('app.webhook_sync_default_password', 'ChangeMe123!');
+            if (empty($defaultPassword) || $defaultPassword === 'ChangeMe123!') {
+                $defaultPassword = null; // on génère un aléatoire par utilisateur si pas de défaut
+            }
 
             foreach ($items as $item) {
                 if (!is_array($item)) {
@@ -104,19 +110,33 @@ class UserSyncController extends Controller
                     continue;
                 }
 
-                if (User::where('matricule', $matricule)->exists()) {
-                    $skipped++;
+                $password = $defaultPassword ?? Str::random(16);
+
+                $existingUser = User::where('matricule', $matricule)->first();
+                if ($existingUser) {
+                    try {
+                        $existingUser->update([
+                            'password' => Hash::make($password),
+                            'name' => $this->extractName($item),
+                            'first_name' => $this->extractFirstName($item),
+                            'role' => $this->extractRole($item),
+                            'fonction' => $item['fonction'] ?? $item['function'] ?? $existingUser->fonction,
+                            'lieu_affectation' => $item['lieu_affectation'] ?? $item['agence'] ?? $item['agency'] ?? $existingUser->lieu_affectation,
+                            'zone_affectation' => $item['zone_affectation'] ?? $item['zone'] ?? $existingUser->zone_affectation,
+                            'direction' => $item['direction'] ?? $existingUser->direction,
+                            'numero_flotte' => $item['numero_flotte'] ?? $existingUser->numero_flotte,
+                        ]);
+                        $updated++;
+                    } catch (\Exception $e) {
+                        Log::error('UserSync: update failed', ['matricule' => $matricule, 'error' => $e->getMessage()]);
+                        $errors[] = $matricule . ': ' . $e->getMessage();
+                    }
                     continue;
                 }
 
                 $email = $this->extractEmail($item, $matricule);
                 if (User::where('email', $email)->exists()) {
                     $email = Str::lower($matricule) . '+' . Str::random(4) . '@synced.local';
-                }
-
-                $password = config('app.webhook_sync_default_password', 'ChangeMe123!');
-                if (empty($password) || $password === 'ChangeMe123!') {
-                    $password = Str::random(16);
                 }
 
                 $role = $this->extractRole($item);
@@ -143,7 +163,7 @@ class UserSyncController extends Controller
                 }
             }
 
-            $message = $created . ' utilisateur(s) créé(s). ' . $skipped . ' déjà existant(s) ou ignoré(s).';
+            $message = $created . ' utilisateur(s) créé(s). ' . $updated . ' mot(s) de passe mis à jour. ' . $skipped . ' ignoré(s).';
             if (!empty($errors)) {
                 $message .= ' Erreurs : ' . implode(' ; ', array_slice($errors, 0, 5));
                 if (count($errors) > 5) {
