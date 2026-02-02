@@ -91,8 +91,12 @@ class EditEquipment extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        // Conserver l'ancien statut (après save(), getOriginal() renvoie la nouvelle valeur)
+        $previousStatus = $this->record->status ?? null;
+
         // Conserver les données d'attribution pour afterSave (getState() peut ne plus les contenir après unset)
         $this->pendingAssignmentData = [
+            'previous_status' => $previousStatus,
             'create_new_user' => $data['create_new_user'] ?? false,
             'new_user_matricule' => $data['new_user_matricule'] ?? null,
             'new_user_name' => $data['new_user_name'] ?? null,
@@ -122,8 +126,11 @@ class EditEquipment extends EditRecord
     {
         $data = $this->form->getState();
         $assign = $this->pendingAssignmentData ?? [];
-        $oldStatus = $this->record->getOriginal('status');
+        // Utiliser le statut sauvegardé AVANT la sauvegarde (après save(), getOriginal() = nouvelle valeur)
+        $oldStatus = $assign['previous_status'] ?? $this->record->getOriginal('status');
         $newStatus = $data['status'] ?? $this->record->status;
+        // Recharger la relation pour avoir l'attribution active à jour (après création en Cas 1)
+        $this->record->unsetRelation('currentAssignment');
         $currentAssignment = $this->record->currentAssignment;
 
         // Résoudre l'ID utilisateur bénéficiaire à partir des données d'attribution
