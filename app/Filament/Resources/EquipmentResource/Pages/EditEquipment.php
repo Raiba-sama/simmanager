@@ -10,12 +10,16 @@ use App\Models\User;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class EditEquipment extends EditRecord
 {
     protected static string $resource = EquipmentResource::class;
+
+    /** Données d'attribution du formulaire (conservées avant mutateFormDataBeforeSave pour afterSave) */
+    protected ?array $pendingAssignmentData = null;
 
     protected function getHeaderActions(): array
     {
@@ -59,7 +63,7 @@ class EditEquipment extends EditRecord
                             ->danger()
                             ->send();
                         
-                        \Log::error('Erreur génération PDF bordereau', [
+                        Log::error('Erreur génération PDF bordereau', [
                             'error' => $e->getMessage(),
                             'trace' => $e->getTraceAsString(),
                             'transmission_sheet_id' => $transmissionSheet->id ?? null,
@@ -87,7 +91,20 @@ class EditEquipment extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // Ne pas sauvegarder les champs temporaires
+        // Conserver les données d'attribution pour afterSave (getState() peut ne plus les contenir après unset)
+        $this->pendingAssignmentData = [
+            'create_new_user' => $data['create_new_user'] ?? false,
+            'new_user_matricule' => $data['new_user_matricule'] ?? null,
+            'new_user_name' => $data['new_user_name'] ?? null,
+            'new_user_first_name' => $data['new_user_first_name'] ?? null,
+            'new_user_email' => $data['new_user_email'] ?? null,
+            'new_user_fonction' => $data['new_user_fonction'] ?? null,
+            'assigned_to_user_id' => $data['assigned_to_user_id'] ?? null,
+            'assignment_date' => $data['assignment_date'] ?? null,
+            'assignment_notes' => $data['assignment_notes'] ?? null,
+        ];
+
+        // Ne pas sauvegarder les champs temporaires sur le modèle Equipment
         unset($data['create_new_user']);
         unset($data['new_user_matricule']);
         unset($data['new_user_name']);
@@ -97,76 +114,111 @@ class EditEquipment extends EditRecord
         unset($data['assignment_date']);
         unset($data['assignment_notes']);
         unset($data['assigned_to_user_id']);
-        
+
         return $data;
     }
 
     protected function afterSave(): void
     {
         $data = $this->form->getState();
+        $assign = $this->pendingAssignmentData ?? [];
         $oldStatus = $this->record->getOriginal('status');
         $newStatus = $data['status'] ?? $this->record->status;
-        
-        // Si le statut passe à "attribué" et qu'il n'y a pas encore d'attribution active
+        $currentAssignment = $this->record->currentAssignment;
+
+        // Résoudre l'ID utilisateur bénéficiaire à partir des données d'attribution
+        $resolveUserId = function () use ($assign) {
+            if ($assign['create_new_user'] ?? false) {
+                $user = User::create([
+                    'matricule' => $assign['new_user_matricule'],
+                    'name' => $assign['new_user_name'],
+                    'first_name' => $assign['new_user_first_name'] ?? null,
+                    'email' => $assign['new_user_email'],
+                    'fonction' => $assign['new_user_fonction'] ?? null,
+                    'password' => bcrypt('password'),
+                    'role' => 'user',
+                    'active' => true,
+                ]);
+                return $user->id;
+            }
+            return !empty($assign['assigned_to_user_id']) ? (int) $assign['assigned_to_user_id'] : null;
+        };
+
+        // Cas 1 : Statut vient de passer à "attribué" et pas encore d'attribution active → créer une nouvelle attribution
         if ($newStatus === 'assigned' && $oldStatus !== 'assigned') {
             $hasActiveAssignment = $this->record->assignments()->whereNull('returned_at')->exists();
-            
             if (!$hasActiveAssignment) {
-                $userId = null;
-                
-                // Si on doit créer un nouvel utilisateur
-                if ($data['create_new_user'] ?? false) {
-                    $user = User::create([
-                        'matricule' => $data['new_user_matricule'],
-                        'name' => $data['new_user_name'],
-                        'first_name' => $data['new_user_first_name'] ?? null,
-                        'email' => $data['new_user_email'],
-                        'fonction' => $data['new_user_fonction'] ?? null,
-                        'password' => bcrypt('password'), // Mot de passe par défaut
-                        'role' => 'user',
-                        'active' => true,
-                    ]);
-                    $userId = $user->id;
-                } elseif (!empty($data['assigned_to_user_id'])) {
-                    $userId = $data['assigned_to_user_id'];
-                }
-                
+                $userId = $resolveUserId();
                 if ($userId) {
-                    DB::transaction(function () use ($userId, $data) {
-                        // Créer le bordereau de transmission
-                        $sheetNumber = 'BT-' . date('Y') . '-' . strtoupper(Str::random(6));
-                        $transmissionSheet = TransmissionSheet::create([
-                            'sheet_number' => $sheetNumber,
-                            'type' => 'assignment',
-                            'to_user_id' => $userId,
-                            'created_by' => auth()->id(),
-                            'transmission_date' => $data['assignment_date'] ?? now(),
-                            'status' => 'completed',
-                            'notes' => $data['assignment_notes'] ?? 'Attribution automatique lors de la modification de l\'équipement',
-                        ]);
-                        
-                        // Créer l'item du bordereau
-                        TransmissionSheetItem::create([
-                            'transmission_sheet_id' => $transmissionSheet->id,
-                            'equipment_id' => $this->record->id,
-                            'quantity' => 1,
-                            'condition_at_transmission' => $this->record->condition ?? 'good',
-                            'notes' => null,
-                        ]);
-                        
-                        // Créer l'attribution
-                        EquipmentAssignment::create([
-                            'equipment_id' => $this->record->id,
-                            'assigned_to_user_id' => $userId,
-                            'assigned_by' => auth()->id(),
-                            'assigned_at' => $data['assignment_date'] ?? now(),
-                            'notes' => $data['assignment_notes'] ?? null,
-                            'transmission_sheet_id' => $transmissionSheet->id,
-                        ]);
-                    });
+                    $this->createAssignmentAndSheet($userId, $assign);
                 }
             }
+            return;
         }
+
+        // Cas 2 : Statut reste "attribué" mais bénéficiaire ou date/notes modifiés → mettre à jour ou réattribuer
+        if ($newStatus === 'assigned' && $currentAssignment) {
+            $assignedAt = isset($assign['assignment_date']) ? \Carbon\Carbon::parse($assign['assignment_date']) : $currentAssignment->assigned_at;
+            $notes = $assign['assignment_notes'] ?? $currentAssignment->notes;
+
+            $beneficiaryChanged = ($assign['create_new_user'] ?? false)
+                || ((int) ($assign['assigned_to_user_id'] ?? 0)) !== (int) $currentAssignment->assigned_to_user_id;
+
+            if ($beneficiaryChanged) {
+                $newUserId = $resolveUserId();
+                if ($newUserId) {
+                    DB::transaction(function () use ($currentAssignment, $newUserId, $assign) {
+                        $currentAssignment->update([
+                            'returned_at' => now(),
+                            'return_reason' => 'Changement de bénéficiaire',
+                        ]);
+                        $this->createAssignmentAndSheet($newUserId, $assign);
+                    });
+                }
+            } else {
+                // Même bénéficiaire : mettre à jour date et notes de l'attribution actuelle uniquement
+                $currentAssignment->update([
+                    'assigned_at' => $assignedAt,
+                    'notes' => $notes,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Crée une attribution et son bordereau de transmission.
+     */
+    protected function createAssignmentAndSheet(int $userId, array $assign): void
+    {
+        DB::transaction(function () use ($userId, $assign) {
+            $sheetNumber = 'BT-' . date('Y') . '-' . strtoupper(Str::random(6));
+            $transmissionSheet = TransmissionSheet::create([
+                'sheet_number' => $sheetNumber,
+                'type' => 'assignment',
+                'to_user_id' => $userId,
+                'created_by' => auth()->id(),
+                'transmission_date' => $assign['assignment_date'] ?? now(),
+                'status' => 'completed',
+                'notes' => $assign['assignment_notes'] ?? 'Attribution automatique lors de la modification de l\'équipement',
+            ]);
+
+            TransmissionSheetItem::create([
+                'transmission_sheet_id' => $transmissionSheet->id,
+                'equipment_id' => $this->record->id,
+                'quantity' => 1,
+                'condition_at_transmission' => $this->record->condition ?? 'good',
+                'notes' => null,
+            ]);
+
+            EquipmentAssignment::create([
+                'equipment_id' => $this->record->id,
+                'assigned_to_user_id' => $userId,
+                'assigned_by' => auth()->id(),
+                'assigned_at' => $assign['assignment_date'] ?? now(),
+                'notes' => $assign['assignment_notes'] ?? null,
+                'transmission_sheet_id' => $transmissionSheet->id,
+            ]);
+        });
     }
     
     /**
