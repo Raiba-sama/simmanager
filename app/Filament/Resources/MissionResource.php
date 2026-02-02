@@ -194,6 +194,16 @@ class MissionResource extends Resource
         return [];
     }
 
+    public static function getWidgets(): array
+    {
+        return [
+            \App\Filament\Widgets\MissionStatsWidget::class,
+            \App\Filament\Widgets\MissionsPerMonthChartWidget::class,
+            \App\Filament\Widgets\MissionsByTypeChartWidget::class,
+            \App\Filament\Widgets\MissionsByAgencyChartWidget::class,
+        ];
+    }
+
     public static function getPages(): array
     {
         return [
