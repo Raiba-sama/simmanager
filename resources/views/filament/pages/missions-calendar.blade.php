@@ -1,43 +1,59 @@
 <x-filament-panels::page>
-    <div class="space-y-6">
-        {{-- Navigation par mois --}}
-        <div class="flex items-center justify-between flex-wrap gap-2">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ $monthName }}</h2>
+    <div class="space-y-5">
+        {{-- En-tête : mois + navigation --}}
+        <div class="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-gradient-to-r from-primary-500/10 to-primary-600/5 dark:from-primary-600/20 dark:to-primary-700/10 border border-primary-200/50 dark:border-primary-800/50 px-5 py-4">
+            <h2 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                {{ $monthName }}
+            </h2>
             <div class="flex gap-2">
-                <x-filament::button wire:click="goPrevMonth" size="sm" color="gray">
+                <x-filament::button wire:click="goPrevMonth" size="sm" color="primary" outlined>
                     <x-heroicon-o-chevron-left class="w-4 h-4" />
-                    Mois précédent
+                    Précédent
                 </x-filament::button>
-                <x-filament::button wire:click="goNextMonth" size="sm" color="gray">
-                    Mois suivant
+                <x-filament::button wire:click="goNextMonth" size="sm" color="primary" outlined>
+                    Suivant
                     <x-heroicon-o-chevron-right class="w-4 h-4" />
                 </x-filament::button>
             </div>
         </div>
 
         {{-- Légende --}}
-        <div class="flex gap-6 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400">
-            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-primary-500"></span> Planifiée</span>
-            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-500"></span> En cours</span>
-            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-gray-500"></span> Terminée</span>
-            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-gray-400 opacity-60"></span> Annulée</span>
+        <div class="flex flex-wrap gap-4 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700">
+            <span class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <span class="w-4 h-4 rounded-md bg-primary-500 shadow-sm"></span>
+                <span>Planifiée</span>
+            </span>
+            <span class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <span class="w-4 h-4 rounded-md bg-amber-500 shadow-sm"></span>
+                <span>En cours</span>
+            </span>
+            <span class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <span class="w-4 h-4 rounded-md bg-emerald-600 shadow-sm"></span>
+                <span>Terminée</span>
+            </span>
+            <span class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <span class="w-4 h-4 rounded-md bg-gray-400 dark:bg-gray-500 opacity-70"></span>
+                <span>Annulée</span>
+            </span>
         </div>
 
-        {{-- Timeline : en-têtes = chaque jour du mois --}}
-        <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800 shadow-sm">
+        {{-- Grille timeline --}}
+        <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800 shadow-sm ring-1 ring-gray-900/5 dark:ring-white/5">
             <div class="overflow-x-auto">
-                <table class="w-full table-fixed" style="min-width: {{ 240 + $daysInMonth * 28 }}px;">
+                <table class="w-full table-fixed" style="min-width: {{ 260 + $daysInMonth * 30 }}px;">
                     <colgroup>
-                        <col class="w-60" style="width: 240px;">
+                        <col style="width: 260px;">
                         @foreach($days as $d)
-                        <col style="width: 28px;">
+                        <col style="width: 30px;">
                         @endforeach
                     </colgroup>
                     <thead>
-                        <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase sticky left-0 bg-gray-50 dark:bg-gray-900/50 z-10">Mission / Agence</th>
+                        <tr class="bg-gray-100 dark:bg-gray-900/80 border-b-2 border-gray-200 dark:border-gray-700">
+                            <th class="py-3.5 px-5 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 sticky left-0 z-10 bg-gray-100 dark:bg-gray-900/80">
+                                Mission / Agence
+                            </th>
                             @foreach($days as $d)
-                            <th class="py-2 px-0.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
+                            <th class="py-2.5 px-0 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">
                                 {{ $d }}
                             </th>
                             @endforeach
@@ -48,46 +64,45 @@
                         @php
                             $m = $row['mission'];
                             $barColor = match($m->status) {
-                                'completed' => 'bg-gray-500 dark:bg-gray-600',
-                                'in_progress' => 'bg-amber-500 dark:bg-amber-600',
+                                'completed' => 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500',
+                                'in_progress' => 'bg-amber-500 hover:bg-amber-600 dark:bg-amber-500 dark:hover:bg-amber-400',
                                 'cancelled' => 'bg-gray-400 dark:bg-gray-500 opacity-60',
-                                default => 'bg-primary-500 dark:bg-primary-600',
+                                default => 'bg-primary-500 hover:bg-primary-600 dark:bg-primary-600 dark:hover:bg-primary-500',
                             };
                             $startDay = $row['start_day'];
                             $endDay = $row['end_day'];
                             $durationDays = $row['duration_days'];
                         @endphp
-                        <tr class="border-b border-gray-100 dark:border-gray-700/50 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-700/20">
-                            <td class="py-2.5 px-4 align-middle sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
-                                <a href="{{ \App\Filament\Resources\MissionResource::getUrl('edit', ['record' => $m]) }}" class="block group">
-                                    <span class="font-medium text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 text-sm">
+                        <tr class="border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                            <td class="py-3 px-5 align-middle sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 group">
+                                <a href="{{ \App\Filament\Resources\MissionResource::getUrl('edit', ['record' => $m]) }}" class="block">
+                                    <span class="font-semibold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 text-sm transition-colors">
                                         {{ \Illuminate\Support\Str::limit($m->title, 32) }}
                                     </span>
-                                    <span class="text-xs text-gray-500 dark:text-gray-400 block mt-0.5">
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 block mt-1">
                                         {{ $m->agency ? $m->agency->code . ' – ' . \Illuminate\Support\Str::limit($m->agency->name, 18) : '—' }}
-                                        · {{ \App\Models\Mission::TYPES[$m->type] ?? $m->type }}
+                                        <span class="text-gray-400 dark:text-gray-500">·</span>
+                                        {{ \App\Models\Mission::TYPES[$m->type] ?? $m->type }}
                                     </span>
                                 </a>
                             </td>
-                            {{-- Cellules vides avant la barre (jours 1 à start_day - 1) --}}
                             @for($d = 1; $d < $startDay; $d++)
-                            <td class="p-0.5 align-middle border-r border-gray-100 dark:border-gray-700/70 bg-gray-50/50 dark:bg-gray-800/50"></td>
+                            <td class="p-0.5 align-middle border-r border-gray-100 dark:border-gray-700/50 bg-gray-50/30 dark:bg-gray-800/30"></td>
                             @endfor
-                            {{-- Barre : une cellule qui span exactement les jours start_day à end_day --}}
-                            <td class="p-0.5 align-middle border-r border-gray-100 dark:border-gray-700/70" colspan="{{ $durationDays }}">
-                                <a href="{{ \App\Filament\Resources\MissionResource::getUrl('edit', ['record' => $m]) }}" class="block h-7 rounded {{ $barColor }} flex items-center justify-center text-white text-xs font-medium shadow-sm hover:opacity-90 transition-opacity" title="{{ $row['start_label'] }} – {{ $row['end_label'] }}">
-                                    <span class="truncate px-1">{{ $row['start_label'] }} – {{ $row['end_label'] }}</span>
+                            <td class="p-1 align-middle border-r border-gray-100 dark:border-gray-700/50" colspan="{{ $durationDays }}">
+                                <a href="{{ \App\Filament\Resources\MissionResource::getUrl('edit', ['record' => $m]) }}" class="block h-8 rounded-lg {{ $barColor }} flex items-center justify-center text-white text-xs font-medium shadow-md transition-all hover:shadow-lg {{ $m->status !== 'cancelled' ? 'border border-white/20' : '' }}" title="{{ $row['start_label'] }} – {{ $row['end_label'] }}">
+                                    <span class="truncate px-2">{{ $row['start_label'] }} – {{ $row['end_label'] }}</span>
                                 </a>
                             </td>
-                            {{-- Cellules vides après la barre (jours end_day + 1 à daysInMonth) --}}
                             @for($d = $endDay + 1; $d <= $daysInMonth; $d++)
-                            <td class="p-0.5 align-middle border-r border-gray-100 dark:border-gray-700/70 bg-gray-50/50 dark:bg-gray-800/50"></td>
+                            <td class="p-0.5 align-middle border-r border-gray-100 dark:border-gray-700/50 bg-gray-50/30 dark:bg-gray-800/30"></td>
                             @endfor
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="{{ $daysInMonth + 1 }}" class="py-12 text-center text-gray-500 dark:text-gray-400">
-                                Aucune mission sur ce mois.
+                            <td colspan="{{ $daysInMonth + 1 }}" class="py-16 text-center">
+                                <p class="text-gray-500 dark:text-gray-400 font-medium">Aucune mission sur ce mois.</p>
+                                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Utilisez les boutons ci-dessus pour changer de mois.</p>
                             </td>
                         </tr>
                         @endforelse
