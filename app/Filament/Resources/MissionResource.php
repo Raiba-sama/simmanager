@@ -45,7 +45,11 @@ class MissionResource extends Resource
                             ->native(false),
                         Forms\Components\Select::make('agency_id')
                             ->label('Agence')
-                            ->relationship('agency', 'name', fn (Builder $q) => $q->where('active', true))
+                            ->relationship(
+                                'agency',
+                                'name',
+                                fn ($query) => $query->where('active', true)->orderBy('code')
+                            )
                             ->getOptionLabelFromRecordUsing(fn ($record) => $record->code . ' - ' . $record->name)
                             ->searchable(['code', 'name'])
                             ->preload()
@@ -84,7 +88,7 @@ class MissionResource extends Resource
                             ->relationship(
                                 'users',
                                 'name',
-                                fn (Builder $q) => $q->where('role', 'admin')->where('active', true)->orderBy('name')
+                                fn ($query) => $query->where('role', 'admin')->where('active', true)->orderBy('name')
                             )
                             ->getOptionLabelFromRecordUsing(fn ($record) => $record->full_name . ' (' . $record->matricule . ')')
                             ->searchable(['name', 'first_name', 'matricule'])
