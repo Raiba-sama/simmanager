@@ -165,7 +165,7 @@ class MissionResource extends Resource
                     ->options(Mission::TYPES),
                 Tables\Filters\SelectFilter::make('agency_id')
                     ->label('Agence')
-                    ->relationship('agency', 'name', fn ($q) => $q->orderBy('code'))
+                    ->relationship('agency', 'name', fn ($query) => $query->orderBy('code'))
                     ->searchable()
                     ->preload(),
                 Tables\Filters\SelectFilter::make('status')
@@ -173,7 +173,7 @@ class MissionResource extends Resource
                     ->options(Mission::STATUSES),
                 Tables\Filters\Filter::make('upcoming')
                     ->label('À venir')
-                    ->query(fn (Builder $q) => $q->where('start_date', '>=', now()->toDateString())->whereIn('status', ['planned', 'in_progress']))
+                    ->query(fn (Builder $query) => $query->where('start_date', '>=', now()->toDateString())->whereIn('status', ['planned', 'in_progress']))
                     ->toggle(),
             ])
             ->actions([
