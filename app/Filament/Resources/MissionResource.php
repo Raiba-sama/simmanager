@@ -19,8 +19,8 @@ class MissionResource extends Resource
     protected static ?string $navigationLabel = 'Missions';
     protected static ?string $modelLabel = 'Mission';
     protected static ?string $pluralModelLabel = 'Missions';
-    protected static ?string $navigationGroup = 'Gestion';
-    protected static ?int $navigationSort = 5;
+    protected static ?string $navigationGroup = 'Missions';
+    protected static ?int $navigationSort = 1;
 
     public static function canAccess(): bool
     {

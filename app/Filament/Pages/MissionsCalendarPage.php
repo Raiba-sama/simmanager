@@ -16,9 +16,9 @@ class MissionsCalendarPage extends Page
 
     protected static ?string $title = 'Calendrier des missions';
 
-    protected static ?string $navigationGroup = 'Gestion';
+    protected static ?string $navigationGroup = 'Missions';
 
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 2;
 
     public ?int $calendarYear = null;
 

@@ -16,8 +16,8 @@ class SimRequestResource extends Resource
 {
     protected static ?string $model = SimRequest::class;
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $navigationGroup = 'Gestion';
-    protected static ?int $navigationSort = 3;
+    protected static ?string $navigationGroup = 'Demandes & SIMs';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {

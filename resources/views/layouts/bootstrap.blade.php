@@ -598,6 +598,19 @@
             background: var(--primary-color);
         }
         
+        .sidebar-section-title {
+            padding: 14px 14px 6px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+        }
+        
+        .sidebar-section {
+            margin-bottom: 8px;
+        }
+        
         .sidebar-logout {
             margin-top: auto;
             padding: 12px;
@@ -740,108 +753,116 @@
             
             <!-- Menu -->
             <nav class="sidebar-menu">
-                <div class="sidebar-menu-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                    <a href="{{ route('dashboard') }}" class="sidebar-menu-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                        <i class="bi bi-house"></i>
-                        <span>Dashboard</span>
-                    </a>
-                </div>
-                
-                <div class="sidebar-menu-item {{ request()->routeIs('sim-requests.*') ? 'active has-submenu' : '' }}">
-                    <a href="{{ route('sim-requests.index') }}" class="sidebar-menu-link {{ request()->routeIs('sim-requests.*') ? 'active' : '' }}">
-                        <i class="bi bi-envelope"></i>
-                        <span>Demandes</span>
-                        @if(auth()->user()->isValidator())
-                            @php
-                                $pendingCount = \App\Models\SimRequest::where('status', 'en_attente')
-                                    ->where('request_type', 'recuperation')
-                                    ->where('created_by', '!=', auth()->id())
-                                    ->count();
-                            @endphp
-                            @if($pendingCount > 0)
-                                <span class="sidebar-menu-badge">{{ $pendingCount }}</span>
+                {{-- Principal --}}
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Principal</div>
+                    <div class="sidebar-menu-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                        <a href="{{ route('dashboard') }}" class="sidebar-menu-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                            <i class="bi bi-house"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </div>
+                    <div class="sidebar-menu-item {{ request()->routeIs('sim-requests.*') ? 'active has-submenu' : '' }}">
+                        <a href="{{ route('sim-requests.index') }}" class="sidebar-menu-link {{ request()->routeIs('sim-requests.*') ? 'active' : '' }}">
+                            <i class="bi bi-envelope"></i>
+                            <span>Demandes</span>
+                            @if(auth()->user()->isValidator())
+                                @php
+                                    $pendingCount = \App\Models\SimRequest::where('status', 'en_attente')
+                                        ->where('request_type', 'recuperation')
+                                        ->where('created_by', '!=', auth()->id())
+                                        ->count();
+                                @endphp
+                                @if($pendingCount > 0)
+                                    <span class="sidebar-menu-badge">{{ $pendingCount }}</span>
+                                @endif
                             @endif
-                        @endif
-                    </a>
-                    <div class="sidebar-submenu">
-                        <a href="{{ route('sim-requests.index', ['status' => 'en_attente']) }}" class="sidebar-submenu-item {{ request('status') === 'en_attente' ? 'active' : '' }}">
-                            <span class="sidebar-submenu-dot"></span>
-                            <span>En attente</span>
                         </a>
-                        <a href="{{ route('sim-requests.index', ['status' => 'validee']) }}" class="sidebar-submenu-item {{ request('status') === 'validee' ? 'active' : '' }}">
-                            <span class="sidebar-submenu-dot"></span>
-                            <span>Validées</span>
+                        <div class="sidebar-submenu">
+                            <a href="{{ route('sim-requests.index', ['status' => 'en_attente']) }}" class="sidebar-submenu-item {{ request('status') === 'en_attente' ? 'active' : '' }}">
+                                <span class="sidebar-submenu-dot"></span>
+                                <span>En attente</span>
+                            </a>
+                            <a href="{{ route('sim-requests.index', ['status' => 'validee']) }}" class="sidebar-submenu-item {{ request('status') === 'validee' ? 'active' : '' }}">
+                                <span class="sidebar-submenu-dot"></span>
+                                <span>Validées</span>
+                            </a>
+                            <a href="{{ route('sim-requests.index', ['status' => 'rejetee']) }}" class="sidebar-submenu-item {{ request('status') === 'rejetee' ? 'active' : '' }}">
+                                <span class="sidebar-submenu-dot"></span>
+                                <span>Rejetées</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="sidebar-menu-item {{ request()->routeIs('sims.*') ? 'active' : '' }}">
+                        <a href="{{ route('sims.index') }}" class="sidebar-menu-link {{ request()->routeIs('sims.*') ? 'active' : '' }}">
+                            <i class="bi bi-grid"></i>
+                            <span>SIMs</span>
                         </a>
-                        <a href="{{ route('sim-requests.index', ['status' => 'rejetee']) }}" class="sidebar-submenu-item {{ request('status') === 'rejetee' ? 'active' : '' }}">
-                            <span class="sidebar-submenu-dot"></span>
-                            <span>Rejetées</span>
+                    </div>
+                    <div class="sidebar-menu-item {{ request()->routeIs('notifications.*') ? 'active has-submenu' : '' }}">
+                        <a href="{{ route('notifications.all') }}" class="sidebar-menu-link {{ request()->routeIs('notifications.*') ? 'active' : '' }}">
+                            <i class="bi bi-bell"></i>
+                            <span>Notifications</span>
+                            @php
+                                $unreadCount = auth()->user()->unreadNotifications()->count();
+                            @endphp
+                            @if($unreadCount > 0)
+                                <span class="sidebar-menu-badge">{{ $unreadCount }}</span>
+                            @endif
+                        </a>
+                        <div class="sidebar-submenu">
+                            <a href="{{ route('notifications.all') }}" class="sidebar-submenu-item {{ request()->routeIs('notifications.all') ? 'active' : '' }}">
+                                <span class="sidebar-submenu-dot"></span>
+                                <span>Toutes les notifications</span>
+                                @if($unreadCount > 0)
+                                    <span class="sidebar-menu-badge" style="margin-left: auto;">{{ $unreadCount }}</span>
+                                @endif
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Documents & Mail --}}
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Documents & Mail</div>
+                    <div class="sidebar-menu-item {{ request()->routeIs('documents.*') ? 'active' : '' }}">
+                        <a href="{{ route('documents.index') }}" class="sidebar-menu-link {{ request()->routeIs('documents.*') ? 'active' : '' }}">
+                            <i class="bi bi-file-earmark"></i>
+                            <span>Documents</span>
+                        </a>
+                    </div>
+                    <div class="sidebar-menu-item {{ request()->routeIs('mail-sent.*') ? 'active' : '' }}">
+                        <a href="{{ route('mail-sent.index') }}" class="sidebar-menu-link {{ request()->routeIs('mail-sent.*') ? 'active' : '' }}">
+                            <i class="bi bi-envelope-check"></i>
+                            <span>Check Mail</span>
                         </a>
                     </div>
                 </div>
-                
-                <div class="sidebar-menu-item {{ request()->routeIs('sims.*') ? 'active' : '' }}">
-                    <a href="{{ route('sims.index') }}" class="sidebar-menu-link {{ request()->routeIs('sims.*') ? 'active' : '' }}">
-                        <i class="bi bi-grid"></i>
-                        <span>SIMs</span>
-                    </a>
-                </div>
-                
-                <div class="sidebar-menu-item {{ request()->routeIs('notifications.*') ? 'active has-submenu' : '' }}">
-                    <a href="{{ route('notifications.all') }}" class="sidebar-menu-link {{ request()->routeIs('notifications.*') ? 'active' : '' }}">
-                        <i class="bi bi-bell"></i>
-                        <span>Notifications</span>
-                        @php
-                            $unreadCount = auth()->user()->unreadNotifications()->count();
-                        @endphp
-                        @if($unreadCount > 0)
-                            <span class="sidebar-menu-badge">{{ $unreadCount }}</span>
-                        @endif
-                    </a>
-                    <div class="sidebar-submenu">
-                        <a href="{{ route('notifications.all') }}" class="sidebar-submenu-item {{ request()->routeIs('notifications.all') ? 'active' : '' }}">
-                            <span class="sidebar-submenu-dot"></span>
-                            <span>Toutes les notifications</span>
-                            @if($unreadCount > 0)
-                                <span class="sidebar-menu-badge" style="margin-left: auto;">{{ $unreadCount }}</span>
-                            @endif
+
+                @if(auth()->user()->isAdmin())
+                {{-- Administration --}}
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Administration</div>
+                    <div class="sidebar-menu-item">
+                        <a href="/admin/users" class="sidebar-menu-link">
+                            <i class="bi bi-people"></i>
+                            <span>Utilisateurs</span>
                         </a>
-            </div>
-        </div>
-                
-                <div class="sidebar-menu-item {{ request()->routeIs('documents.*') ? 'active' : '' }}">
-                    <a href="{{ route('documents.index') }}" class="sidebar-menu-link {{ request()->routeIs('documents.*') ? 'active' : '' }}">
-                        <i class="bi bi-file-earmark"></i>
-                        <span>Documents</span>
-                    </a>
+                    </div>
+                    <div class="sidebar-menu-item {{ request()->routeIs('sync-users*') ? 'active' : '' }}">
+                        <a href="{{ route('sync-users.form') }}" class="sidebar-menu-link {{ request()->routeIs('sync-users*') ? 'active' : '' }}">
+                            <i class="bi bi-cloud-download"></i>
+                            <span>Sync utilisateurs (webhook)</span>
+                        </a>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <a href="/admin/activity-logs" class="sidebar-menu-link">
+                            <i class="bi bi-clipboard-data"></i>
+                            <span>Logs</span>
+                        </a>
+                    </div>
                 </div>
-                
-                <div class="sidebar-menu-item {{ request()->routeIs('mail-sent.*') ? 'active' : '' }}">
-                    <a href="{{ route('mail-sent.index') }}" class="sidebar-menu-link {{ request()->routeIs('mail-sent.*') ? 'active' : '' }}">
-                        <i class="bi bi-envelope-check"></i>
-                        <span>Check Mail</span>
-                    </a>
-                </div>
-                
-                        @if(auth()->user()->isAdmin())
-                <div class="sidebar-menu-item">
-                    <a href="/admin/users" class="sidebar-menu-link">
-                        <i class="bi bi-people"></i>
-                        <span>Utilisateurs</span>
-                    </a>
-                </div>
-                <div class="sidebar-menu-item {{ request()->routeIs('sync-users*') ? 'active' : '' }}">
-                    <a href="{{ route('sync-users.form') }}" class="sidebar-menu-link {{ request()->routeIs('sync-users*') ? 'active' : '' }}">
-                        <i class="bi bi-cloud-download"></i>
-                        <span>Sync utilisateurs (webhook)</span>
-                    </a>
-                </div>
-                <div class="sidebar-menu-item">
-                    <a href="/admin/activity-logs" class="sidebar-menu-link">
-                        <i class="bi bi-clipboard-data"></i>
-                        <span>Logs</span>
-                    </a>
-                </div>
-                        @endif
+                @endif
             </nav>
             
             <!-- Logout -->
