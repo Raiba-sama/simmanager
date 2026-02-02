@@ -22,10 +22,15 @@ class MissionsCalendarPage extends Page
 
     public ?int $calendarYear = null;
 
+    public ?int $calendarMonth = null;
+
     public function mount(): void
     {
         if ($this->calendarYear === null) {
             $this->calendarYear = (int) now()->format('Y');
+        }
+        if ($this->calendarMonth === null) {
+            $this->calendarMonth = (int) now()->format('n');
         }
     }
 
@@ -36,61 +41,73 @@ class MissionsCalendarPage extends Page
 
     public function getViewData(): array
     {
-        $yearStart = Carbon::createFromDate($this->calendarYear, 1, 1)->startOfDay();
-        $yearEnd = Carbon::createFromDate($this->calendarYear, 12, 31)->endOfDay();
-        $daysInYear = $yearStart->diffInDays($yearEnd) + 1;
+        $start = Carbon::createFromDate($this->calendarYear, $this->calendarMonth, 1)->startOfDay();
+        $end = $start->copy()->endOfMonth();
+        $daysInMonth = $start->daysInMonth;
 
         $missions = Mission::with('agency')
-            ->where('start_date', '<=', $yearEnd)
-            ->where(function ($query) use ($yearStart) {
-                $query->where('end_date', '>=', $yearStart)->orWhereNull('end_date');
+            ->where('start_date', '<=', $end)
+            ->where(function ($query) use ($start) {
+                $query->where('end_date', '>=', $start)->orWhereNull('end_date');
             })
             ->orderBy('start_date')
             ->get();
 
-        $months = [];
-        for ($m = 1; $m <= 12; $m++) {
-            $months[] = Carbon::createFromDate($this->calendarYear, $m, 1)->translatedFormat('M');
-        }
+        $days = range(1, $daysInMonth);
 
         $rows = [];
         foreach ($missions as $mission) {
-            $start = Carbon::parse($mission->start_date);
-            $end = $mission->end_date ? Carbon::parse($mission->end_date) : $start;
-            if ($start->lt($yearStart)) {
-                $start = $yearStart->copy();
+            $missionStart = Carbon::parse($mission->start_date);
+            $missionEnd = $mission->end_date ? Carbon::parse($mission->end_date) : $missionStart;
+
+            if ($missionStart->lt($start)) {
+                $missionStart = $start->copy();
             }
-            if ($end->gt($yearEnd)) {
-                $end = $yearEnd->copy();
+            if ($missionEnd->gt($end)) {
+                $missionEnd = $end->copy();
             }
-            $startDayOfYear = $yearStart->copy()->diffInDays($start);
-            $durationDays = $start->diffInDays($end) + 1;
-            $leftPercent = ($startDayOfYear / $daysInYear) * 100;
-            $widthPercent = ($durationDays / $daysInYear) * 100;
+
+            $startDay = (int) $missionStart->format('j');
+            $endDay = (int) $missionEnd->format('j');
+            $durationDays = $endDay - $startDay + 1;
+
+            $leftPercent = (($startDay - 1) / $daysInMonth) * 100;
+            $widthPercent = ($durationDays / $daysInMonth) * 100;
 
             $rows[] = [
                 'mission' => $mission,
                 'left_percent' => round($leftPercent, 2),
-                'width_percent' => round(min($widthPercent, 100 - $leftPercent), 2),
-                'start_label' => $start->format('d/m'),
-                'end_label' => $end->format('d/m'),
+                'width_percent' => round($widthPercent, 2),
+                'start_label' => $missionStart->format('d/m'),
+                'end_label' => $missionEnd->format('d/m'),
             ];
         }
 
         return [
-            'year' => $this->calendarYear,
-            'months' => $months,
+            'monthName' => $start->translatedFormat('F Y'),
+            'daysInMonth' => $daysInMonth,
+            'days' => $days,
             'rows' => $rows,
         ];
     }
 
-    public function goPrevYear(): void
+    public function goPrevMonth(): void
     {
-        $this->calendarYear--;
+        if ($this->calendarMonth <= 1) {
+            $this->calendarMonth = 12;
+            $this->calendarYear--;
+        } else {
+            $this->calendarMonth--;
+        }
     }
 
-    public function goNextYear(): void
+    public function goNextMonth(): void
     {
-        $this->calendarYear++;
+        if ($this->calendarMonth >= 12) {
+            $this->calendarMonth = 1;
+            $this->calendarYear++;
+        } else {
+            $this->calendarMonth++;
+        }
     }
 }
