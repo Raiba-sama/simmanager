@@ -62,6 +62,13 @@ class User extends Authenticatable implements FilamentUser
                     ->withTimestamps();
     }
 
+    public function missions()
+    {
+        return $this->belongsToMany(Mission::class, 'mission_user')
+            ->withPivot('role_in_mission')
+            ->withTimestamps();
+    }
+
     // Helpers
     public function isAdmin(): bool
     {

@@ -46,6 +46,11 @@ class Agency extends Model
         return $this->hasMany(TransmissionSheet::class, 'to_agency_id');
     }
 
+    public function missions(): HasMany
+    {
+        return $this->hasMany(Mission::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {
