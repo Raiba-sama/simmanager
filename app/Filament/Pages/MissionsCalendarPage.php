@@ -22,15 +22,10 @@ class MissionsCalendarPage extends Page
 
     public ?int $calendarYear = null;
 
-    public ?int $calendarMonth = null;
-
     public function mount(): void
     {
         if ($this->calendarYear === null) {
             $this->calendarYear = (int) now()->format('Y');
-        }
-        if ($this->calendarMonth === null) {
-            $this->calendarMonth = (int) now()->format('n');
         }
     }
 
@@ -41,95 +36,61 @@ class MissionsCalendarPage extends Page
 
     public function getViewData(): array
     {
-        $start = Carbon::createFromDate($this->calendarYear, $this->calendarMonth, 1)->startOfMonth();
-        $end = $start->copy()->endOfMonth();
-        $daysInMonth = $start->daysInMonth;
-        $firstDayOfWeek = (int) $start->format('N'); // 1 = Monday
+        $yearStart = Carbon::createFromDate($this->calendarYear, 1, 1)->startOfDay();
+        $yearEnd = Carbon::createFromDate($this->calendarYear, 12, 31)->endOfDay();
+        $daysInYear = $yearStart->diffInDays($yearEnd) + 1;
 
-        // Missions qui chevauchent le mois
         $missions = Mission::with('agency')
-            ->where('start_date', '<=', $end)
-            ->where(function ($query) use ($start) {
-                $query->where('end_date', '>=', $start)->orWhereNull('end_date');
+            ->where('start_date', '<=', $yearEnd)
+            ->where(function ($query) use ($yearStart) {
+                $query->where('end_date', '>=', $yearStart)->orWhereNull('end_date');
             })
             ->orderBy('start_date')
             ->get();
 
-        $missionsByDay = [];
+        $months = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $months[] = Carbon::createFromDate($this->calendarYear, $m, 1)->translatedFormat('M');
+        }
+
+        $rows = [];
         foreach ($missions as $mission) {
-            $missionStart = Carbon::parse($mission->start_date);
-            $missionEnd = $mission->end_date ? Carbon::parse($mission->end_date) : $missionStart;
-            $day = $missionStart->copy();
-            while ($day->lte($missionEnd)) {
-                if ($day->month === $this->calendarMonth && $day->year === $this->calendarYear) {
-                    $key = $day->format('Y-m-d');
-                    if (!isset($missionsByDay[$key])) {
-                        $missionsByDay[$key] = [];
-                    }
-                    $missionsByDay[$key][] = $mission;
-                }
-                $day->addDay();
+            $start = Carbon::parse($mission->start_date);
+            $end = $mission->end_date ? Carbon::parse($mission->end_date) : $start;
+            if ($start->lt($yearStart)) {
+                $start = $yearStart->copy();
             }
-        }
+            if ($end->gt($yearEnd)) {
+                $end = $yearEnd->copy();
+            }
+            $startDayOfYear = $yearStart->copy()->diffInDays($start);
+            $durationDays = $start->diffInDays($end) + 1;
+            $leftPercent = ($startDayOfYear / $daysInYear) * 100;
+            $widthPercent = ($durationDays / $daysInYear) * 100;
 
-        $weeks = [];
-        $week = [];
-        // Jours vides avant le 1er
-        for ($i = 1; $i < $firstDayOfWeek; $i++) {
-            $week[] = null;
-        }
-        for ($d = 1; $d <= $daysInMonth; $d++) {
-            $date = Carbon::createFromDate($this->calendarYear, $this->calendarMonth, $d);
-            $key = $date->format('Y-m-d');
-            $dayMissions = collect($missionsByDay[$key] ?? [])->unique('id')->values()->all();
-            $week[] = [
-                'day' => $d,
-                'date' => $date,
-                'missions' => $dayMissions,
-                'isToday' => $date->isToday(),
+            $rows[] = [
+                'mission' => $mission,
+                'left_percent' => round($leftPercent, 2),
+                'width_percent' => round(min($widthPercent, 100 - $leftPercent), 2),
+                'start_label' => $start->format('d/m'),
+                'end_label' => $end->format('d/m'),
             ];
-            if (count($week) === 7) {
-                $weeks[] = $week;
-                $week = [];
-            }
         }
-        if (!empty($week)) {
-            while (count($week) < 7) {
-                $week[] = null;
-            }
-            $weeks[] = $week;
-        }
-
-        $prevMonth = $start->copy()->subMonth();
-        $nextMonth = $start->copy()->addMonth();
 
         return [
-            'weeks' => $weeks,
-            'monthName' => $start->translatedFormat('F Y'),
-            'prevYear' => $prevMonth->year,
-            'prevMonth' => $prevMonth->month,
-            'nextYear' => $nextMonth->year,
-            'nextMonth' => $nextMonth->month,
+            'year' => $this->calendarYear,
+            'months' => $months,
+            'rows' => $rows,
         ];
     }
 
-    public function goPrevMonth(): void
+    public function goPrevYear(): void
     {
-        if ($this->calendarMonth <= 1) {
-            $this->calendarMonth = 12;
-            $this->calendarYear--;
-        } else {
-            $this->calendarMonth--;
-        }
+        $this->calendarYear--;
     }
 
-    public function goNextMonth(): void
+    public function goNextYear(): void
     {
-        if ($this->calendarMonth >= 12) {
-            $this->calendarMonth = 1;
-            $this->calendarYear++;
-        } else {
-            $this->calendarMonth++;
-        }
+        $this->calendarYear++;
     }
 }
