@@ -26,12 +26,18 @@
         {{-- Timeline : en-têtes = chaque jour du mois --}}
         <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800 shadow-sm">
             <div class="overflow-x-auto">
-                <table class="w-full" style="min-width: {{ 240 + $daysInMonth * 24 }}px;">
+                <table class="w-full table-fixed" style="min-width: {{ 240 + $daysInMonth * 28 }}px;">
+                    <colgroup>
+                        <col class="w-60" style="width: 240px;">
+                        @foreach($days as $d)
+                        <col style="width: 28px;">
+                        @endforeach
+                    </colgroup>
                     <thead>
                         <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase w-60 sticky left-0 bg-gray-50 dark:bg-gray-900/50 z-10">Mission / Agence</th>
+                            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase sticky left-0 bg-gray-50 dark:bg-gray-900/50 z-10">Mission / Agence</th>
                             @foreach($days as $d)
-                            <th class="py-2 px-0.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 w-6 min-w-6">
+                            <th class="py-2 px-0.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
                                 {{ $d }}
                             </th>
                             @endforeach
@@ -47,9 +53,12 @@
                                 'cancelled' => 'bg-gray-400 dark:bg-gray-500 opacity-60',
                                 default => 'bg-primary-500 dark:bg-primary-600',
                             };
+                            $startDay = $row['start_day'];
+                            $endDay = $row['end_day'];
+                            $durationDays = $row['duration_days'];
                         @endphp
                         <tr class="border-b border-gray-100 dark:border-gray-700/50 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-700/20">
-                            <td class="py-2.5 px-4 align-middle sticky left-0 bg-white dark:bg-gray-800 z-10">
+                            <td class="py-2.5 px-4 align-middle sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
                                 <a href="{{ \App\Filament\Resources\MissionResource::getUrl('edit', ['record' => $m]) }}" class="block group">
                                     <span class="font-medium text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 text-sm">
                                         {{ \Illuminate\Support\Str::limit($m->title, 32) }}
@@ -60,26 +69,20 @@
                                     </span>
                                 </a>
                             </td>
-                            <td class="py-2 px-1 align-middle" colspan="{{ $daysInMonth }}">
-                                <div class="relative h-8 flex items-center">
-                                    {{-- Grille : un segment par jour --}}
-                                    <div class="absolute inset-0 flex">
-                                        @foreach($days as $d)
-                                        <div class="flex-1 min-w-0 border-r border-gray-100 dark:border-gray-700/70 last:border-r-0"></div>
-                                        @endforeach
-                                    </div>
-                                    {{-- Barre mission : de la date de début à la date de fin --}}
-                                    <div
-                                        class="absolute h-6 rounded {{ $barColor }} flex items-center justify-center text-white text-xs font-medium shadow-sm pointer-events-none"
-                                        style="left: {{ $row['left_percent'] }}%; width: {{ max($row['width_percent'], 3) }}%;"
-                                        title="{{ $row['start_label'] }} – {{ $row['end_label'] }}"
-                                    >
-                                        @if($row['width_percent'] >= 12)
-                                        <span class="truncate px-1">{{ $row['start_label'] }} – {{ $row['end_label'] }}</span>
-                                        @endif
-                                    </div>
-                                </div>
+                            {{-- Cellules vides avant la barre (jours 1 à start_day - 1) --}}
+                            @for($d = 1; $d < $startDay; $d++)
+                            <td class="p-0.5 align-middle border-r border-gray-100 dark:border-gray-700/70 bg-gray-50/50 dark:bg-gray-800/50"></td>
+                            @endfor
+                            {{-- Barre : une cellule qui span exactement les jours start_day à end_day --}}
+                            <td class="p-0.5 align-middle border-r border-gray-100 dark:border-gray-700/70" colspan="{{ $durationDays }}">
+                                <a href="{{ \App\Filament\Resources\MissionResource::getUrl('edit', ['record' => $m]) }}" class="block h-7 rounded {{ $barColor }} flex items-center justify-center text-white text-xs font-medium shadow-sm hover:opacity-90 transition-opacity" title="{{ $row['start_label'] }} – {{ $row['end_label'] }}">
+                                    <span class="truncate px-1">{{ $row['start_label'] }} – {{ $row['end_label'] }}</span>
+                                </a>
                             </td>
+                            {{-- Cellules vides après la barre (jours end_day + 1 à daysInMonth) --}}
+                            @for($d = $endDay + 1; $d <= $daysInMonth; $d++)
+                            <td class="p-0.5 align-middle border-r border-gray-100 dark:border-gray-700/70 bg-gray-50/50 dark:bg-gray-800/50"></td>
+                            @endfor
                         </tr>
                         @empty
                         <tr>

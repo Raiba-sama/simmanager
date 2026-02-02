@@ -71,13 +71,11 @@ class MissionsCalendarPage extends Page
             $endDay = (int) $missionEnd->format('j');
             $durationDays = $endDay - $startDay + 1;
 
-            $leftPercent = (($startDay - 1) / $daysInMonth) * 100;
-            $widthPercent = ($durationDays / $daysInMonth) * 100;
-
             $rows[] = [
                 'mission' => $mission,
-                'left_percent' => round($leftPercent, 2),
-                'width_percent' => round($widthPercent, 2),
+                'start_day' => $startDay,
+                'end_day' => $endDay,
+                'duration_days' => $durationDays,
                 'start_label' => $missionStart->format('d/m'),
                 'end_label' => $missionEnd->format('d/m'),
             ];
