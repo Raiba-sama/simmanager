@@ -10,6 +10,7 @@ use App\Models\User;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\DB;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -91,21 +92,27 @@ class EditEquipment extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        // Fallback: récupérer l'état brut du formulaire (champs conditionnels parfois absents de $data)
+        $raw = method_exists($this->form, 'getRawState') ? $this->form->getRawState() : [];
+        if (! is_array($raw)) {
+            $raw = [];
+        }
+
         // Conserver l'ancien statut (après save(), getOriginal() renvoie la nouvelle valeur)
         $previousStatus = $this->record->status ?? null;
 
-        // Conserver les données d'attribution pour afterSave (getState() peut ne plus les contenir après unset)
+        // Conserver les données d'attribution pour afterSave (priorité à $data, puis $raw)
         $this->pendingAssignmentData = [
             'previous_status' => $previousStatus,
-            'create_new_user' => $data['create_new_user'] ?? false,
-            'new_user_matricule' => $data['new_user_matricule'] ?? null,
-            'new_user_name' => $data['new_user_name'] ?? null,
-            'new_user_first_name' => $data['new_user_first_name'] ?? null,
-            'new_user_email' => $data['new_user_email'] ?? null,
-            'new_user_fonction' => $data['new_user_fonction'] ?? null,
-            'assigned_to_user_id' => $data['assigned_to_user_id'] ?? null,
-            'assignment_date' => $data['assignment_date'] ?? null,
-            'assignment_notes' => $data['assignment_notes'] ?? null,
+            'create_new_user' => $data['create_new_user'] ?? $raw['create_new_user'] ?? false,
+            'new_user_matricule' => $data['new_user_matricule'] ?? $raw['new_user_matricule'] ?? null,
+            'new_user_name' => $data['new_user_name'] ?? $raw['new_user_name'] ?? null,
+            'new_user_first_name' => $data['new_user_first_name'] ?? $raw['new_user_first_name'] ?? null,
+            'new_user_email' => $data['new_user_email'] ?? $raw['new_user_email'] ?? null,
+            'new_user_fonction' => $data['new_user_fonction'] ?? $raw['new_user_fonction'] ?? null,
+            'assigned_to_user_id' => $data['assigned_to_user_id'] ?? $raw['assigned_to_user_id'] ?? null,
+            'assignment_date' => $data['assignment_date'] ?? $raw['assignment_date'] ?? null,
+            'assignment_notes' => $data['assignment_notes'] ?? $raw['assignment_notes'] ?? null,
         ];
 
         // Ne pas sauvegarder les champs temporaires sur le modèle Equipment
@@ -122,18 +129,60 @@ class EditEquipment extends EditRecord
         return $data;
     }
 
+    /**
+     * Tout le cycle de sauvegarde (équipement + attribution) dans une seule transaction.
+     * Si l'attribution échoue, l'équipement n'est pas mis à jour non plus.
+     */
+    protected function validateFormAndUpdateRecordAndCallHooks(): void
+    {
+        $this->callHook('beforeValidate');
+        $data = $this->form->getState();
+        $this->callHook('afterValidate');
+        $data = $this->mutateFormDataBeforeSave($data);
+        $this->callHook('beforeSave');
+
+        DB::transaction(function () use ($data) {
+            $this->handleRecordUpdate($this->getRecord(), $data);
+            $this->callHook('afterSave');
+        });
+    }
+
     protected function afterSave(): void
+    {
+        try {
+            $this->processAssignmentAfterSave();
+        } catch (\Throwable $e) {
+            Log::error('EditEquipment: erreur attribution après sauvegarde', [
+                'equipment_id' => $this->record->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            Notification::make()
+                ->title('Erreur lors de l\'enregistrement de l\'attribution')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+            throw $e;
+        }
+    }
+
+    protected function processAssignmentAfterSave(): void
     {
         $data = $this->form->getState();
         $assign = $this->pendingAssignmentData ?? [];
-        // Utiliser le statut sauvegardé AVANT la sauvegarde (après save(), getOriginal() = nouvelle valeur)
-        $oldStatus = $assign['previous_status'] ?? $this->record->getOriginal('status');
+
+        // Compléter $assign avec l'état actuel du formulaire au cas où
+        foreach (['assigned_to_user_id', 'assignment_date', 'assignment_notes'] as $key) {
+            if (array_key_exists($key, $data) && ($assign[$key] ?? null) === null) {
+                $assign[$key] = $data[$key];
+            }
+        }
+
+        $oldStatus = $assign['previous_status'] ?? null;
         $newStatus = $data['status'] ?? $this->record->status;
-        // Recharger la relation pour avoir l'attribution active à jour (après création en Cas 1)
         $this->record->unsetRelation('currentAssignment');
         $currentAssignment = $this->record->currentAssignment;
 
-        // Résoudre l'ID utilisateur bénéficiaire à partir des données d'attribution
         $resolveUserId = function () use ($assign) {
             if ($assign['create_new_user'] ?? false) {
                 $user = User::create([
@@ -148,13 +197,14 @@ class EditEquipment extends EditRecord
                 ]);
                 return $user->id;
             }
-            return !empty($assign['assigned_to_user_id']) ? (int) $assign['assigned_to_user_id'] : null;
+            $uid = $assign['assigned_to_user_id'] ?? null;
+            return $uid !== null && $uid !== '' ? (int) $uid : null;
         };
 
-        // Cas 1 : Statut vient de passer à "attribué" et pas encore d'attribution active → créer une nouvelle attribution
-        if ($newStatus === 'assigned' && $oldStatus !== 'assigned') {
+        // Cas 1 : Statut vient de passer à "attribué" OU statut "attribué" sans attribution active → créer attribution
+        if ($newStatus === 'assigned' && ($oldStatus !== 'assigned' || ! $currentAssignment)) {
             $hasActiveAssignment = $this->record->assignments()->whereNull('returned_at')->exists();
-            if (!$hasActiveAssignment) {
+            if (! $hasActiveAssignment) {
                 $userId = $resolveUserId();
                 if ($userId) {
                     $this->createAssignmentAndSheet($userId, $assign);
@@ -163,7 +213,7 @@ class EditEquipment extends EditRecord
             return;
         }
 
-        // Cas 2 : Statut reste "attribué" mais bénéficiaire ou date/notes modifiés → mettre à jour ou réattribuer
+        // Cas 2 : Statut reste "attribué" avec attribution active → mise à jour ou changement de bénéficiaire
         if ($newStatus === 'assigned' && $currentAssignment) {
             $assignedAt = isset($assign['assignment_date']) ? \Carbon\Carbon::parse($assign['assignment_date']) : $currentAssignment->assigned_at;
             $notes = $assign['assignment_notes'] ?? $currentAssignment->notes;
@@ -174,16 +224,13 @@ class EditEquipment extends EditRecord
             if ($beneficiaryChanged) {
                 $newUserId = $resolveUserId();
                 if ($newUserId) {
-                    DB::transaction(function () use ($currentAssignment, $newUserId, $assign) {
-                        $currentAssignment->update([
-                            'returned_at' => now(),
-                            'return_reason' => 'Changement de bénéficiaire',
-                        ]);
-                        $this->createAssignmentAndSheet($newUserId, $assign);
-                    });
+                    $currentAssignment->update([
+                        'returned_at' => now(),
+                        'return_reason' => 'Changement de bénéficiaire',
+                    ]);
+                    $this->createAssignmentAndSheet($newUserId, $assign);
                 }
             } else {
-                // Même bénéficiaire : mettre à jour date et notes de l'attribution actuelle uniquement
                 $currentAssignment->update([
                     'assigned_at' => $assignedAt,
                     'notes' => $notes,
