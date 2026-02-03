@@ -259,8 +259,7 @@ class InventoryPage extends Page implements HasTable
                         }),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc')
-            ->poll('30s');
+            ->defaultSort('created_at', 'desc');
     }
 
     protected function getHeaderActions(): array

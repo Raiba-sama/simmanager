@@ -9,6 +9,8 @@ class InventoryStatusChartWidget extends ChartWidget
 {
     protected static bool $isLazy = false;
 
+    protected static ?string $pollingInterval = null;
+
     protected static ?string $heading = 'Par statut';
 
     protected static ?string $description = 'Répartition des équipements par statut';

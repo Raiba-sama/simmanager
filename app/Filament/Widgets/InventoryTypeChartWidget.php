@@ -9,6 +9,8 @@ class InventoryTypeChartWidget extends ChartWidget
 {
     protected static bool $isLazy = false;
 
+    protected static ?string $pollingInterval = null;
+
     protected static ?string $heading = 'Par type d\'équipement';
 
     protected static ?string $description = 'Nombre d\'équipements par type';

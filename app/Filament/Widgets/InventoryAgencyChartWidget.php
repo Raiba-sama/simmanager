@@ -10,6 +10,8 @@ class InventoryAgencyChartWidget extends ChartWidget
 {
     protected static bool $isLazy = false;
 
+    protected static ?string $pollingInterval = null;
+
     protected static ?string $heading = 'Par agence';
 
     protected static ?string $description = 'Équipements attribués par agence';
