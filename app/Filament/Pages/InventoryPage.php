@@ -2,8 +2,10 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Agency;
 use App\Models\Equipment;
 use App\Models\EquipmentType;
+use App\Models\Zone;
 use App\Exports\EquipmentInventoryExport;
 use Filament\Pages\Page;
 use Filament\Tables;
@@ -112,6 +114,28 @@ class InventoryPage extends Page implements HasTable
                             $q->where('name', 'like', "%{$search}%");
                         });
                     }),
+                Tables\Columns\TextColumn::make('agency_zone')
+                    ->label('Agence / Zone')
+                    ->getStateUsing(function (Equipment $record) {
+                        $assignment = $record->assignments()->whereNull('returned_at')->first();
+                        if ($assignment && $assignment->assignedToAgency) {
+                            $agency = $assignment->assignedToAgency;
+                            $zone = $agency->zone;
+                            return $zone
+                                ? "{$agency->name} ({$zone->name})"
+                                : $agency->name;
+                        }
+                        return '-';
+                    })
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('assignments.assignedToAgency', function ($q) use ($search) {
+                            $q->where('name', 'like', "%{$search}%")
+                                ->orWhereHas('zone', function ($q2) use ($search) {
+                                    $q2->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%");
+                                });
+                        });
+                    })
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('purchase_price')
                     ->label('Prix d\'achat')
                     ->money('XOF')
@@ -124,6 +148,35 @@ class InventoryPage extends Page implements HasTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('zone_id')
+                    ->label('Zone')
+                    ->options(fn () => Zone::query()->orderBy('name')->pluck('name', 'id'))
+                    ->query(function (Builder $query, array $data) {
+                        if (empty($data['value'])) {
+                            return $query;
+                        }
+                        return $query->whereHas('assignments', function ($q) use ($data) {
+                            $q->whereNull('returned_at')
+                                ->whereHas('assignedToAgency', function ($q2) use ($data) {
+                                    $q2->where('zone_id', $data['value']);
+                                });
+                        });
+                    })
+                    ->searchable()
+                    ->preload(),
+                Tables\Filters\SelectFilter::make('agency_id')
+                    ->label('Agence')
+                    ->options(fn () => Agency::query()->orderBy('name')->pluck('name', 'id'))
+                    ->query(function (Builder $query, array $data) {
+                        if (empty($data['value'])) {
+                            return $query;
+                        }
+                        return $query->whereHas('assignments', function ($q) use ($data) {
+                            $q->whereNull('returned_at')->where('assigned_to_agency_id', $data['value']);
+                        });
+                    })
+                    ->searchable()
+                    ->preload(),
                 Tables\Filters\SelectFilter::make('equipment_type_id')
                     ->label('Type d\'équipement')
                     ->relationship('equipmentType', 'name')
@@ -136,6 +189,8 @@ class InventoryPage extends Page implements HasTable
                         'assigned' => 'Attribué',
                         'maintenance' => 'En maintenance',
                         'retired' => 'Retiré',
+                        'lost' => 'Perdu',
+                        'damaged' => 'Endommagé',
                     ]),
                 Tables\Filters\SelectFilter::make('condition')
                     ->label('Condition')
@@ -201,13 +256,14 @@ class InventoryPage extends Page implements HasTable
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('success')
                 ->requiresConfirmation()
-                ->modalHeading('Exporter tout l\'inventaire')
-                ->modalDescription('Cela exportera tous les équipements selon les filtres actifs.')
+                ->modalHeading('Exporter l\'inventaire (Excel)')
+                ->modalDescription('Exporte les équipements selon les filtres actifs du tableau.')
                 ->action(function () {
-                    // Obtenir tous les équipements avec leurs relations
-                    $equipment = Equipment::with(['equipmentType', 'assignments.assignedToUser', 'assignments.assignedToAgency'])->get();
+                    $equipment = $this->getFilteredTableQuery()
+                        ->with(['equipmentType', 'assignments.assignedToUser', 'assignments.assignedToAgency'])
+                        ->get();
                     $export = new EquipmentInventoryExport($equipment);
-                    $filename = 'inventaire_complet_' . now()->format('Y-m-d_His') . '.xlsx';
+                    $filename = 'inventaire_' . now()->format('Y-m-d_His') . '.xlsx';
                     return Excel::download($export, $filename);
                 }),
             \Filament\Actions\Action::make('export_all_pdf')
@@ -215,16 +271,17 @@ class InventoryPage extends Page implements HasTable
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('danger')
                 ->requiresConfirmation()
-                ->modalHeading('Exporter tout l\'inventaire en PDF')
-                ->modalDescription('Cela générera un PDF de tous les équipements selon les filtres actifs.')
+                ->modalHeading('Exporter l\'inventaire (PDF)')
+                ->modalDescription('Génère un PDF des équipements selon les filtres actifs du tableau.')
                 ->action(function () {
-                    // Obtenir tous les équipements avec leurs relations
-                    $equipment = Equipment::with(['equipmentType', 'assignments.assignedToUser', 'assignments.assignedToAgency'])->get();
+                    $equipment = $this->getFilteredTableQuery()
+                        ->with(['equipmentType', 'assignments.assignedToUser', 'assignments.assignedToAgency'])
+                        ->get();
                     $pdf = Pdf::loadView('inventory.pdf', ['equipment' => $equipment]);
                     $pdf->setOption('encoding', 'utf-8');
                     $pdf->setOption('defaultFont', 'DejaVu Sans');
                     $pdf->setPaper('a4', 'landscape');
-                    $filename = 'inventaire_complet_' . now()->format('Y-m-d_His') . '.pdf';
+                    $filename = 'inventaire_' . now()->format('Y-m-d_His') . '.pdf';
                     return response()->streamDownload(function () use ($pdf) {
                         echo $pdf->output();
                     }, $filename);
@@ -234,17 +291,33 @@ class InventoryPage extends Page implements HasTable
 
     protected function getStats(): array
     {
-        $total = Equipment::count();
-        $available = Equipment::where('status', 'available')->count();
-        $assigned = Equipment::where('status', 'assigned')->count();
-        $maintenance = Equipment::where('status', 'maintenance')->count();
-        $retired = Equipment::where('status', 'retired')->count();
-        
-        $totalValue = Equipment::whereNotNull('purchase_price')->sum('purchase_price');
-        
-        $warrantyExpiring = Equipment::whereNotNull('warranty_expires_at')
-            ->where('warranty_expires_at', '<=', now()->addMonths(3))
-            ->where('warranty_expires_at', '>=', now())
+        return $this->computeStats(Equipment::query());
+    }
+
+    /** Statistiques basées sur les filtres actuels du tableau */
+    protected function getFilteredStats(): array
+    {
+        try {
+            $query = $this->getFilteredTableQuery();
+            return $this->computeStats($query);
+        } catch (\Throwable $e) {
+            return $this->getStats();
+        }
+    }
+
+    protected function computeStats(Builder $query): array
+    {
+        $baseQuery = (clone $query)->select('equipment.id');
+        $total = (clone $baseQuery)->count();
+        $available = (clone $baseQuery)->where('equipment.status', 'available')->count();
+        $assigned = (clone $baseQuery)->where('equipment.status', 'assigned')->count();
+        $maintenance = (clone $baseQuery)->where('equipment.status', 'maintenance')->count();
+        $retired = (clone $baseQuery)->whereIn('equipment.status', ['retired', 'lost', 'damaged'])->count();
+        $totalValue = (clone $query)->whereNotNull('equipment.purchase_price')->sum('equipment.purchase_price');
+        $warrantyExpiring = (clone $baseQuery)
+            ->whereNotNull('equipment.warranty_expires_at')
+            ->where('equipment.warranty_expires_at', '<=', now()->addMonths(3))
+            ->where('equipment.warranty_expires_at', '>=', now())
             ->count();
 
         return [
@@ -256,6 +329,70 @@ class InventoryPage extends Page implements HasTable
             'total_value' => $totalValue,
             'warranty_expiring' => $warrantyExpiring,
         ];
+    }
+
+    /** Répartition par zone (équipements attribués à une agence de la zone) */
+    public function getStatsByZone(): \Illuminate\Support\Collection
+    {
+        return Zone::query()
+            ->orderBy('name')
+            ->get()
+            ->map(function (Zone $zone) {
+                $count = Equipment::query()
+                    ->whereHas('assignments', function ($q) {
+                        $q->whereNull('returned_at');
+                    })
+                    ->whereHas('assignments.assignedToAgency', function ($q) use ($zone) {
+                        $q->where('zone_id', $zone->id);
+                    })
+                    ->count();
+                return [
+                    'id' => $zone->id,
+                    'name' => $zone->name,
+                    'code' => $zone->code,
+                    'count' => $count,
+                ];
+            })
+            ->filter(fn ($row) => $row['count'] > 0);
+    }
+
+    /** Répartition par agence (équipements attribués à l'agence) */
+    public function getStatsByAgency(): \Illuminate\Support\Collection
+    {
+        return Agency::query()
+            ->orderBy('name')
+            ->with('zone')
+            ->get()
+            ->map(function (Agency $agency) {
+                $count = Equipment::query()
+                    ->whereHas('assignments', function ($q) use ($agency) {
+                        $q->whereNull('returned_at')->where('assigned_to_agency_id', $agency->id);
+                    })
+                    ->count();
+                return [
+                    'id' => $agency->id,
+                    'name' => $agency->name,
+                    'code' => $agency->code,
+                    'zone_name' => $agency->zone?->name,
+                    'count' => $count,
+                ];
+            })
+            ->filter(fn ($row) => $row['count'] > 0);
+    }
+
+    /** Répartition par type d'équipement */
+    public function getStatsByType(): \Illuminate\Support\Collection
+    {
+        return EquipmentType::query()
+            ->withCount('equipment')
+            ->orderBy('equipment_count', 'desc')
+            ->get()
+            ->map(fn (EquipmentType $type) => [
+                'id' => $type->id,
+                'name' => $type->name,
+                'count' => $type->equipment_count,
+            ])
+            ->filter(fn ($row) => $row['count'] > 0);
     }
 }
 
