@@ -8,96 +8,112 @@
             Les chiffres ci-dessous correspondent aux équipements affichés dans le tableau (filtres appliqués).
         </p>
 
-        {{-- Grille 4 colonnes : 8 cartes en 2 lignes de 4 --}}
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
-            <x-filament::section class="!p-4 min-w-0">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total équipements</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white truncate">{{ $stats['total'] }}</p>
+        {{-- Même grille que les graphiques : 4 colonnes (2 sur petit écran) --}}
+        <x-filament::grid :default="2" :lg="4" class="fi-wi gap-6">
+            <x-filament::grid.column>
+                <x-filament::section class="!p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total équipements</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $stats['total'] }}</p>
+                        </div>
+                        <div class="p-2 rounded-full bg-primary-100 dark:bg-primary-900/30 shrink-0">
+                            <x-filament::icon icon="heroicon-o-clipboard-document-list" class="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                        </div>
                     </div>
-                    <div class="p-2 rounded-full bg-primary-100 dark:bg-primary-900/30 shrink-0">
-                        <x-filament::icon icon="heroicon-o-clipboard-document-list" class="w-6 h-6 text-primary-600 dark:text-primary-400" />
-                    </div>
-                </div>
-            </x-filament::section>
+                </x-filament::section>
+            </x-filament::grid.column>
 
-            <x-filament::section class="!p-4 min-w-0">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Disponibles</p>
-                        <p class="text-2xl font-bold text-success-600 dark:text-success-400 truncate">{{ $stats['available'] }}</p>
+            <x-filament::grid.column>
+                <x-filament::section class="!p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Disponibles</p>
+                            <p class="text-2xl font-bold text-success-600 dark:text-success-400">{{ $stats['available'] }}</p>
+                        </div>
+                        <div class="p-2 rounded-full bg-success-100 dark:bg-success-900/30 shrink-0">
+                            <x-filament::icon icon="heroicon-o-check-circle" class="w-6 h-6 text-success-600 dark:text-success-400" />
+                        </div>
                     </div>
-                    <div class="p-2 rounded-full bg-success-100 dark:bg-success-900/30 shrink-0">
-                        <x-filament::icon icon="heroicon-o-check-circle" class="w-6 h-6 text-success-600 dark:text-success-400" />
-                    </div>
-                </div>
-            </x-filament::section>
+                </x-filament::section>
+            </x-filament::grid.column>
 
-            <x-filament::section class="!p-4 min-w-0">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Attribués</p>
-                        <p class="text-2xl font-bold text-info-600 dark:text-info-400 truncate">{{ $stats['assigned'] }}</p>
+            <x-filament::grid.column>
+                <x-filament::section class="!p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Attribués</p>
+                            <p class="text-2xl font-bold text-info-600 dark:text-info-400">{{ $stats['assigned'] }}</p>
+                        </div>
+                        <div class="p-2 rounded-full bg-info-100 dark:bg-info-900/30 shrink-0">
+                            <x-filament::icon icon="heroicon-o-user-plus" class="w-6 h-6 text-info-600 dark:text-info-400" />
+                        </div>
                     </div>
-                    <div class="p-2 rounded-full bg-info-100 dark:bg-info-900/30 shrink-0">
-                        <x-filament::icon icon="heroicon-o-user-plus" class="w-6 h-6 text-info-600 dark:text-info-400" />
-                    </div>
-                </div>
-            </x-filament::section>
+                </x-filament::section>
+            </x-filament::grid.column>
 
-            <x-filament::section class="!p-4 min-w-0">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Valeur totale</p>
-                        <p class="text-xl font-bold text-gray-900 dark:text-white truncate" title="{{ number_format($stats['total_value'], 0, ',', ' ') }} XOF">{{ number_format($stats['total_value'], 0, ',', ' ') }} XOF</p>
+            <x-filament::grid.column>
+                <x-filament::section class="!p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Valeur totale</p>
+                            <p class="text-xl font-bold text-gray-900 dark:text-white" title="{{ number_format($stats['total_value'], 0, ',', ' ') }} XOF">{{ number_format($stats['total_value'], 0, ',', ' ') }} XOF</p>
+                        </div>
+                        <div class="p-2 rounded-full bg-gray-100 dark:bg-gray-700 shrink-0">
+                            <x-filament::icon icon="heroicon-o-banknotes" class="w-6 h-6 text-gray-600 dark:text-gray-300" />
+                        </div>
                     </div>
-                    <div class="p-2 rounded-full bg-gray-100 dark:bg-gray-700 shrink-0">
-                        <x-filament::icon icon="heroicon-o-banknotes" class="w-6 h-6 text-gray-600 dark:text-gray-300" />
-                    </div>
-                </div>
-            </x-filament::section>
+                </x-filament::section>
+            </x-filament::grid.column>
 
-            <x-filament::section class="!p-4 min-w-0">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">En maintenance</p>
-                        <p class="text-xl font-bold text-warning-600 dark:text-warning-400 truncate">{{ $stats['maintenance'] }}</p>
+            <x-filament::grid.column>
+                <x-filament::section class="!p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">En maintenance</p>
+                            <p class="text-xl font-bold text-warning-600 dark:text-warning-400">{{ $stats['maintenance'] }}</p>
+                        </div>
+                        <x-filament::icon icon="heroicon-o-wrench-screwdriver" class="w-8 h-8 text-warning-500 dark:text-warning-400 shrink-0" />
                     </div>
-                    <x-filament::icon icon="heroicon-o-wrench-screwdriver" class="w-8 h-8 text-warning-500 dark:text-warning-400 shrink-0" />
-                </div>
-            </x-filament::section>
+                </x-filament::section>
+            </x-filament::grid.column>
 
-            <x-filament::section class="!p-4 min-w-0">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Retirés / Perdus / Endommagés</p>
-                        <p class="text-xl font-bold text-danger-600 dark:text-danger-400 truncate">{{ $stats['retired'] }}</p>
+            <x-filament::grid.column>
+                <x-filament::section class="!p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Retirés / Perdus / Endommagés</p>
+                            <p class="text-xl font-bold text-danger-600 dark:text-danger-400">{{ $stats['retired'] }}</p>
+                        </div>
+                        <x-filament::icon icon="heroicon-o-archive-box" class="w-8 h-8 text-danger-500 dark:text-danger-400 shrink-0" />
                     </div>
-                    <x-filament::icon icon="heroicon-o-archive-box" class="w-8 h-8 text-danger-500 dark:text-danger-400 shrink-0" />
-                </div>
-            </x-filament::section>
+                </x-filament::section>
+            </x-filament::grid.column>
 
-            <x-filament::section class="!p-4 min-w-0">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Garantie expirant sous 3 mois</p>
-                        <p class="text-xl font-bold text-warning-600 dark:text-warning-400 truncate">{{ $stats['warranty_expiring'] }}</p>
+            <x-filament::grid.column>
+                <x-filament::section class="!p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Garantie expirant sous 3 mois</p>
+                            <p class="text-xl font-bold text-warning-600 dark:text-warning-400">{{ $stats['warranty_expiring'] }}</p>
+                        </div>
+                        <x-filament::icon icon="heroicon-o-calendar-days" class="w-8 h-8 text-warning-500 dark:text-warning-400 shrink-0" />
                     </div>
-                    <x-filament::icon icon="heroicon-o-calendar-days" class="w-8 h-8 text-warning-500 dark:text-warning-400 shrink-0" />
-                </div>
-            </x-filament::section>
+                </x-filament::section>
+            </x-filament::grid.column>
 
-            <x-filament::section class="!p-4 min-w-0">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Types utilisés</p>
-                        <p class="text-xl font-bold text-gray-900 dark:text-white truncate">{{ $stats['types_count'] ?? 0 }}</p>
+            <x-filament::grid.column>
+                <x-filament::section class="!p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Types utilisés</p>
+                            <p class="text-xl font-bold text-gray-900 dark:text-white">{{ $stats['types_count'] ?? 0 }}</p>
+                        </div>
+                        <x-filament::icon icon="heroicon-o-squares-2x2" class="w-8 h-8 text-gray-500 dark:text-gray-400 shrink-0" />
                     </div>
-                    <x-filament::icon icon="heroicon-o-squares-2x2" class="w-8 h-8 text-gray-500 dark:text-gray-400 shrink-0" />
-                </div>
-            </x-filament::section>
-        </div>
+                </x-filament::section>
+            </x-filament::grid.column>
+        </x-filament::grid>
 
         {{-- Répartition par Zone : grille 4 colonnes --}}
         @php $byZone = $this->getStatsByZone(); @endphp
