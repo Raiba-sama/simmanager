@@ -8,6 +8,8 @@ use Filament\Widgets\ChartWidget;
 
 class InventoryZoneChartWidget extends ChartWidget
 {
+    protected static bool $isLazy = false;
+
     protected static ?string $heading = 'Par zone';
 
     protected static ?string $description = 'Équipements attribués par zone';

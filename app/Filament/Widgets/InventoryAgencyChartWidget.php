@@ -8,6 +8,8 @@ use Filament\Widgets\ChartWidget;
 
 class InventoryAgencyChartWidget extends ChartWidget
 {
+    protected static bool $isLazy = false;
+
     protected static ?string $heading = 'Par agence';
 
     protected static ?string $description = 'Équipements attribués par agence';
