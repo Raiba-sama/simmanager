@@ -33,6 +33,21 @@ class InventoryPage extends Page implements HasTable
         return auth()->user()?->isAdmin() ?? false;
     }
 
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            \App\Filament\Widgets\InventoryStatusChartWidget::class,
+            \App\Filament\Widgets\InventoryTypeChartWidget::class,
+            \App\Filament\Widgets\InventoryZoneChartWidget::class,
+            \App\Filament\Widgets\InventoryAgencyChartWidget::class,
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int | array
+    {
+        return 4;
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -320,6 +335,8 @@ class InventoryPage extends Page implements HasTable
             ->where('equipment.warranty_expires_at', '>=', now())
             ->count();
 
+        $typesCount = (clone $query)->distinct()->count('equipment.equipment_type_id');
+
         return [
             'total' => $total,
             'available' => $available,
@@ -328,6 +345,7 @@ class InventoryPage extends Page implements HasTable
             'retired' => $retired,
             'total_value' => $totalValue,
             'warranty_expiring' => $warrantyExpiring,
+            'types_count' => $typesCount,
         ];
     }
 

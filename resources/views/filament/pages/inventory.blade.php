@@ -4,12 +4,11 @@
             $stats = $this->getFilteredStats();
         @endphp
 
-        {{-- Indicateur vue filtrée --}}
         <p class="text-sm text-gray-500 dark:text-gray-400">
             Les chiffres ci-dessous correspondent aux équipements affichés dans le tableau (filtres appliqués).
         </p>
 
-        {{-- Ligne 1 : Total, Disponibles, Attribués, Valeur totale --}}
+        {{-- Ligne 1 : 4 KPIs --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <x-filament::section>
                 <div class="flex items-center justify-between">
@@ -60,8 +59,8 @@
             </x-filament::section>
         </div>
 
-        {{-- Ligne 2 : Maintenance, Retirés/Perdus/Endommagés, Garantie --}}
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {{-- Ligne 2 : 4 KPIs --}}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <x-filament::section>
                 <div class="flex items-center justify-between">
                     <div>
@@ -91,9 +90,19 @@
                     <x-filament::icon icon="heroicon-o-calendar-days" class="w-8 h-8 text-warning-500 dark:text-warning-400" />
                 </div>
             </x-filament::section>
+
+            <x-filament::section>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Types utilisés</p>
+                        <p class="text-xl font-bold text-gray-900 dark:text-white">{{ $stats['types_count'] ?? 0 }}</p>
+                    </div>
+                    <x-filament::icon icon="heroicon-o-squares-2x2" class="w-8 h-8 text-gray-500 dark:text-gray-400" />
+                </div>
+            </x-filament::section>
         </div>
 
-        {{-- Répartition par Zone --}}
+        {{-- Répartition par Zone : grille 4 colonnes --}}
         @php $byZone = $this->getStatsByZone(); @endphp
         @if($byZone->isNotEmpty())
             <x-filament::section>
@@ -103,7 +112,7 @@
                 <x-slot name="description">
                     Équipements actuellement attribués à une agence de chaque zone.
                 </x-slot>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     @foreach($byZone as $row)
                         <div class="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-600 px-4 py-3">
                             <div>
@@ -119,7 +128,7 @@
             </x-filament::section>
         @endif
 
-        {{-- Répartition par Agence --}}
+        {{-- Répartition par Agence : grille 4 colonnes --}}
         @php $byAgency = $this->getStatsByAgency(); @endphp
         @if($byAgency->isNotEmpty())
             <x-filament::section>
@@ -129,7 +138,7 @@
                 <x-slot name="description">
                     Équipements actuellement attribués à chaque agence.
                 </x-slot>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     @foreach($byAgency as $row)
                         <div class="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-600 px-4 py-3">
                             <div>
@@ -145,7 +154,7 @@
             </x-filament::section>
         @endif
 
-        {{-- Répartition par type d'équipement --}}
+        {{-- Répartition par type d'équipement : grille 4 colonnes --}}
         @php $byType = $this->getStatsByType(); @endphp
         @if($byType->isNotEmpty())
             <x-filament::section>
@@ -155,7 +164,7 @@
                 <x-slot name="description">
                     Nombre d'équipements par type (tout statut confondu).
                 </x-slot>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     @foreach($byType as $row)
                         <div class="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-600 px-4 py-3">
                             <p class="font-medium text-gray-900 dark:text-white">{{ $row['name'] }}</p>
