@@ -299,18 +299,43 @@
                     @enderror
                 </div>
 
+                <div class="mb-3 p-3 bg-light rounded">
+                    <strong class="d-block mb-2">Modification partielle (optionnel)</strong>
+                    <p class="text-muted small mb-2">Modifier uniquement la limite crédit (LC) et/ou la data sans changer l'autre. Si vous renseignez une valeur ci-dessous, l'autre limite reste celle du forfait actuel.</p>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label for="limite_credit_override" class="form-label small">Limite crédit uniquement (ariary)</label>
+                            <input type="number" name="limite_credit_override" id="limite_credit_override" min="0" step="1"
+                                   class="form-control form-control-sm @error('limite_credit_override') is-invalid @enderror"
+                                   value="{{ old('limite_credit_override', $prefill['limite_credit_override'] ?? '') }}" placeholder="Ex: 25000">
+                            @error('limite_credit_override')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-6">
+                            <label for="limite_data_override" class="form-label small">Limite data uniquement (Go)</label>
+                            <input type="number" name="limite_data_override" id="limite_data_override" min="0" step="0.1"
+                                   class="form-control form-control-sm @error('limite_data_override') is-invalid @enderror"
+                                   value="{{ old('limite_data_override', $prefill['limite_data_override'] ?? '') }}" placeholder="Ex: 4.5">
+                            @error('limite_data_override')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mb-3">
-                    <label for="plan_id_ajustement" class="form-label">Nouveau forfait <span class="text-danger">*</span></label>
+                    <label for="plan_id_ajustement" class="form-label">Nouveau forfait complet</label>
                     <select id="plan_id_ajustement" class="form-select @error('plan_id') is-invalid @enderror"
-                            data-required-for="ajustement"
                             onchange="document.getElementById('plan_id_hidden').value = this.value">
-                        <option value="">Sélectionner un forfait...</option>
+                        <option value="">Sélectionner un forfait (ou utiliser la modification partielle ci-dessus)...</option>
                         @foreach($plans as $plan)
                             <option value="{{ $plan->id }}" data-credit="{{ $plan->limite_credit }}" data-data="{{ $plan->limite_data }}" {{ old('plan_id', $prefill['plan_id'] ?? '') == $plan->id ? 'selected' : '' }}>
                                 {{ $plan->name }} - {{ number_format($plan->limite_credit, 0, ',', ' ') }} ariary / {{ $plan->limite_data }} GB
                             </option>
                         @endforeach
                     </select>
+                    <small class="form-text text-muted">Forfait complet OU au moins une limite (crédit ou data) ci-dessus.</small>
                     @error('plan_id')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -640,7 +665,18 @@ document.addEventListener('DOMContentLoaded', function() {
             ajustement: document.getElementById('plan_id_ajustement'),
         };
         const planSelect = planByType[type] || null;
-        const planLabel = planSelect && planSelect.value ? planSelect.options[planSelect.selectedIndex].text : '';
+        let planLabel = planSelect && planSelect.value ? planSelect.options[planSelect.selectedIndex].text : '';
+        if (type === 'ajustement') {
+            const co = document.getElementById('limite_credit_override')?.value;
+            const dto = document.getElementById('limite_data_override')?.value;
+            if (co || dto) {
+                const parts = [];
+                if (co) parts.push('LC: ' + co + ' ar');
+                if (dto) parts.push('Data: ' + dto + ' Go');
+                if (planLabel) planLabel = parts.join(' / ') + ' (partiel) — ' + planLabel;
+                else planLabel = parts.join(' / ') + ' (partiel)';
+            }
+        }
 
         const motifByType = {
             recuperation: document.getElementById('motif_recuperation')?.value?.trim() || '',
@@ -709,6 +745,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 requested_iccid_recuperation: document.getElementById('requested_iccid_recuperation')?.value || '',
                 plan_id_creation: document.getElementById('plan_id_creation')?.value || '',
                 plan_id_ajustement: document.getElementById('plan_id_ajustement')?.value || '',
+                limite_credit_override: document.getElementById('limite_credit_override')?.value || '',
+                limite_data_override: document.getElementById('limite_data_override')?.value || '',
                 motif_creation: document.getElementById('motif_creation')?.value || '',
                 motif_recuperation: document.getElementById('motif_recuperation')?.value || '',
                 motif_suspension: document.getElementById('motif_suspension')?.value || '',
@@ -896,6 +934,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const phoneNumberHidden = document.getElementById('phone_number_hidden');
             const planId = document.getElementById('plan_id_ajustement');
             const planIdHidden = document.getElementById('plan_id_hidden');
+            const creditOverride = document.getElementById('limite_credit_override');
+            const dataOverride = document.getElementById('limite_data_override');
             
             // S'assurer que le formulaire d'ajustement est visible avant soumission
             ajustementForm.classList.remove('form-section-hidden');
@@ -921,13 +961,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             const planValue = planId ? planId.value : (planIdHidden ? planIdHidden.value : '');
-            if (!planValue) {
+            const hasCreditOverride = creditOverride && creditOverride.value !== '' && creditOverride.value !== null;
+            const hasDataOverride = dataOverride && dataOverride.value !== '' && dataOverride.value !== null;
+            if (!planValue && !hasCreditOverride && !hasDataOverride) {
                 e.preventDefault();
                 if (planId) {
                     planId.focus();
                     planId.classList.add('is-invalid');
                 }
-                alert('Le forfait est requis.');
+                alert('Veuillez sélectionner un forfait complet ou renseigner une limite crédit et/ou data à modifier.');
                 return false;
             }
         }

@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 class SimRequestController extends Controller
@@ -434,35 +435,42 @@ class SimRequestController extends Controller
         $user = auth()->user();
         $requestType = $request->input('request_type');
 
-        // Validation selon le type de demande
-        if ($requestType === 'recuperation') {
-            // Tout le monde peut créer une récupération
-            $validated = $this->validateRecuperation($request);
-            $simRequest = $this->createRecuperationRequest($validated, $user);
-            
-        } else {
-            // Seul un validator peut créer les autres types
-            if (!$user->isValidator()) {
-                return back()->with('error', 'Seuls les validateurs peuvent créer ce type de demande.');
-            }
+        try {
+            // Validation selon le type de demande
+            if ($requestType === 'recuperation') {
+                // Tout le monde peut créer une récupération
+                $validated = $this->validateRecuperation($request);
+                $simRequest = $this->createRecuperationRequest($validated, $user);
+                
+            } else {
+                // Seul un validator peut créer les autres types
+                if (!$user->isValidator()) {
+                    return back()->with('error', 'Seuls les validateurs peuvent créer ce type de demande.');
+                }
 
-            switch ($requestType) {
-                case 'creation':
-                    $validated = $this->validateCreation($request);
-                    $simRequest = $this->createCreationRequest($validated, $user);
-                    break;
-                case 'suspension':
-                case 'desactivation':
-                    $validated = $this->validateSuspensionDesactivation($request);
-                    $simRequest = $this->createSuspensionDesactivationRequest($validated, $user, $requestType);
-                    break;
-                case 'ajustement':
-                    $validated = $this->validateAjustement($request);
-                    $simRequest = $this->createAjustementRequest($validated, $user);
-                    break;
-                default:
-                    return back()->with('error', 'Type de demande invalide.');
+                switch ($requestType) {
+                    case 'creation':
+                        $validated = $this->validateCreation($request);
+                        $simRequest = $this->createCreationRequest($validated, $user);
+                        break;
+                    case 'suspension':
+                    case 'desactivation':
+                        $validated = $this->validateSuspensionDesactivation($request);
+                        $simRequest = $this->createSuspensionDesactivationRequest($validated, $user, $requestType);
+                        break;
+                    case 'ajustement':
+                        $validated = $this->validateAjustement($request);
+                        $simRequest = $this->createAjustementRequest($validated, $user);
+                        break;
+                    default:
+                        return back()->with('error', 'Type de demande invalide.');
+                }
             }
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('Store sim request error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return back()->withInput()->with('error', 'Erreur lors de la création de la demande : ' . $e->getMessage());
         }
 
         if ($simRequest) {
@@ -640,15 +648,29 @@ class SimRequestController extends Controller
                         break;
                     case 'ajustement':
                         $validated = $this->validateAjustement($request);
+                        $this->ensureOrCreateCollaboratorUser($validated);
                         $collaborator = $this->resolveCollaboratorFromValidated($validated);
                         $collaboratorFields = $this->buildCollaboratorFields($validated, $collaborator);
+                        $plan = !empty($validated['plan_id']) ? Plan::find($validated['plan_id']) : null;
+                        $current = $this->getCurrentLimitsForPhone($validated['phone_number']);
+                        $creditOverride = isset($validated['limite_credit_override']) && $validated['limite_credit_override'] !== '' ? (float) $validated['limite_credit_override'] : null;
+                        $dataOverride = isset($validated['limite_data_override']) && $validated['limite_data_override'] !== '' ? (float) $validated['limite_data_override'] : null;
+                        if ($creditOverride !== null || $dataOverride !== null) {
+                            $limite_credit = $creditOverride !== null ? $creditOverride : ($current['limite_credit'] ?? ($plan ? $plan->limite_credit : $simRequest->limite_credit));
+                            $limite_data = $dataOverride !== null ? $dataOverride : ($current['limite_data'] ?? ($plan ? $plan->limite_data : $simRequest->limite_data));
+                        } else {
+                            $limite_credit = $plan ? $plan->limite_credit : ($simRequest->limite_credit ?? $current['limite_credit']);
+                            $limite_data = $plan ? $plan->limite_data : ($simRequest->limite_data ?? $current['limite_data']);
+                        }
                         $simRequest->update([
                             'collaborator_matricule' => $collaboratorFields['collaborator_matricule'],
                             'collaborator_name' => $collaboratorFields['collaborator_name'],
                             'collaborator_first_name' => $collaboratorFields['collaborator_first_name'],
                             'collaborator_agence' => $collaboratorFields['collaborator_agence'],
                             'phone_number' => $validated['phone_number'],
-                            'plan_id' => $validated['plan_id'],
+                            'plan_id' => $validated['plan_id'] ?? null,
+                            'limite_credit' => $limite_credit,
+                            'limite_data' => $limite_data,
                             'updated_by' => $user->id,
                         ]);
                         break;
@@ -1102,23 +1124,25 @@ class SimRequestController extends Controller
         }
 
         $validated = $request->validate([
-            'collaborator_matricule' => [
-                'required',
-                'string',
-                'max:255',
-                function ($attribute, $value, $fail) {
-                    $exists = User::where('matricule', $value)->exists();
-                    if (!$exists) {
-                        $fail('Le matricule sélectionné n\'existe pas dans la base de données.');
-                    }
-                },
-            ],
+            'collaborator_matricule' => 'required|string|max:255',
             'collaborator_name' => 'nullable|string|max:255',
             'collaborator_first_name' => 'nullable|string|max:255',
             'collaborator_agence' => 'nullable|string|max:255',
             'phone_number' => 'required|string|max:255',
-            'plan_id' => 'required|exists:plans,id',
+            'plan_id' => 'nullable|exists:plans,id',
+            'limite_credit_override' => 'nullable|numeric|min:0',
+            'limite_data_override' => 'nullable|numeric|min:0',
         ]);
+
+        // Au moins un des trois : forfait complet OU modification partielle (LC ou Data)
+        $hasPlan = !empty($validated['plan_id']);
+        $hasCreditOverride = isset($validated['limite_credit_override']) && $validated['limite_credit_override'] !== '' && $validated['limite_credit_override'] !== null;
+        $hasDataOverride = isset($validated['limite_data_override']) && $validated['limite_data_override'] !== '' && $validated['limite_data_override'] !== null;
+        if (!$hasPlan && !$hasCreditOverride && !$hasDataOverride) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'plan_id' => ['Veuillez sélectionner un forfait complet ou renseigner une limite crédit et/ou data à modifier.'],
+            ]);
+        }
 
         return $validated;
     }
@@ -1379,10 +1403,89 @@ class SimRequestController extends Controller
         }
     }
 
+    /**
+     * Crée l'utilisateur bénéficiaire s'il n'existe pas (matricule), avec rôle "user" et mdp "azerty".
+     */
+    private function ensureOrCreateBeneficiaryUser(array $validated): void
+    {
+        $matricule = trim($validated['beneficiary_matricule'] ?? '');
+        if ($matricule === '') {
+            return;
+        }
+        if (User::where('matricule', $matricule)->exists()) {
+            return;
+        }
+        $baseEmail = strtolower(preg_replace('/[^a-z0-9]/i', '', $matricule)) ?: 'user';
+        $email = $baseEmail . '@simmanager.local';
+        $c = 0;
+        while (User::where('email', $email)->exists()) {
+            $email = $baseEmail . '.' . (++$c) . '@simmanager.local';
+        }
+        User::create([
+            'matricule' => $matricule,
+            'name' => $validated['beneficiary_name'] ?? '',
+            'first_name' => $validated['beneficiary_first_name'] ?? null,
+            'fonction' => $validated['beneficiary_fonction'] ?? null,
+            'email' => $email,
+            'password' => Hash::make('azerty'),
+            'role' => 'user',
+            'active' => true,
+        ]);
+    }
+
+    /**
+     * Crée l'utilisateur collaborateur s'il n'existe pas (matricule), avec rôle "user" et mdp "azerty".
+     */
+    private function ensureOrCreateCollaboratorUser(array $validated): void
+    {
+        $matricule = trim($validated['collaborator_matricule'] ?? '');
+        if ($matricule === '') {
+            return;
+        }
+        if (User::where('matricule', $matricule)->exists()) {
+            return;
+        }
+        $baseEmail = strtolower(preg_replace('/[^a-z0-9]/i', '', $matricule)) ?: 'user';
+        $email = $baseEmail . '@simmanager.local';
+        $c = 0;
+        while (User::where('email', $email)->exists()) {
+            $email = $baseEmail . '.' . (++$c) . '@simmanager.local';
+        }
+        User::create([
+            'matricule' => $matricule,
+            'name' => $validated['collaborator_name'] ?? '',
+            'first_name' => $validated['collaborator_first_name'] ?? null,
+            'email' => $email,
+            'password' => Hash::make('azerty'),
+            'role' => 'user',
+            'active' => true,
+        ]);
+    }
+
+    /**
+     * Retourne les limites actuelles (LC, Data) pour une ligne à partir de la dernière demande création/ajustement.
+     */
+    private function getCurrentLimitsForPhone(string $phoneNumber): array
+    {
+        $request = SimRequest::where('phone_number', $phoneNumber)
+            ->whereIn('request_type', ['creation', 'ajustement'])
+            ->orderByDesc('created_at')
+            ->first();
+        if (!$request) {
+            return ['limite_credit' => null, 'limite_data' => null];
+        }
+        return [
+            'limite_credit' => $request->limite_credit,
+            'limite_data' => $request->limite_data,
+        ];
+    }
+
     private function createCreationRequest(array $validated, User $user)
     {
         DB::beginTransaction();
         try {
+            $this->ensureOrCreateBeneficiaryUser($validated);
+
             $plan = Plan::find($validated['plan_id']);
 
             $simRequest = SimRequest::create([
@@ -1466,20 +1569,35 @@ class SimRequestController extends Controller
     {
         DB::beginTransaction();
         try {
+            $this->ensureOrCreateCollaboratorUser($validated);
+
             $sim = Sim::where('phone_number', $validated['phone_number'])->first();
-            $plan = Plan::find($validated['plan_id']);
+            $plan = !empty($validated['plan_id']) ? Plan::find($validated['plan_id']) : null;
             $collaborator = $this->resolveCollaboratorFromValidated($validated);
             $collaboratorFields = $this->buildCollaboratorFields($validated, $collaborator);
 
+            // Ajustement partiel : utiliser overrides ou forfait actuel, sans casser l'autre limite
+            $current = $this->getCurrentLimitsForPhone($validated['phone_number']);
+            $creditOverride = isset($validated['limite_credit_override']) && $validated['limite_credit_override'] !== '' ? (float) $validated['limite_credit_override'] : null;
+            $dataOverride = isset($validated['limite_data_override']) && $validated['limite_data_override'] !== '' ? (float) $validated['limite_data_override'] : null;
+
+            if ($creditOverride !== null || $dataOverride !== null) {
+                $limite_credit = $creditOverride !== null ? $creditOverride : ($current['limite_credit'] ?? ($plan ? $plan->limite_credit : null));
+                $limite_data = $dataOverride !== null ? $dataOverride : ($current['limite_data'] ?? ($plan ? $plan->limite_data : null));
+            } else {
+                $limite_credit = $plan ? $plan->limite_credit : ($current['limite_credit'] ?? null);
+                $limite_data = $plan ? $plan->limite_data : ($current['limite_data'] ?? null);
+            }
+
             $simRequest = SimRequest::create([
                 'request_number' => SimRequest::generateRequestNumber(),
-                'user_id' => $sim ? $sim->assigned_to : ($collaborator->id ?? $user->id),
+                'user_id' => $sim ? $sim->assigned_to : ($collaborator?->id ?? $user->id),
                 'sim_id' => $sim ? $sim->id : null,
                 'phone_number' => $validated['phone_number'],
                 'request_type' => 'ajustement',
-                'plan_id' => $validated['plan_id'],
-                'limite_credit' => $plan->limite_credit,
-                'limite_data' => $plan->limite_data,
+                'plan_id' => $validated['plan_id'] ?? null,
+                'limite_credit' => $limite_credit,
+                'limite_data' => $limite_data,
                 'collaborator_matricule' => $collaboratorFields['collaborator_matricule'],
                 'collaborator_name' => $collaboratorFields['collaborator_name'],
                 'collaborator_first_name' => $collaboratorFields['collaborator_first_name'],
@@ -1500,8 +1618,14 @@ class SimRequestController extends Controller
             DB::commit();
             return $simRequest;
         } catch (\Exception $e) {
+            Log::error('Error creating ajustement request', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'phone_number' => $validated['phone_number'] ?? null,
+                'collaborator_matricule' => $validated['collaborator_matricule'] ?? null,
+            ]);
             DB::rollBack();
-            return null;
+            throw $e;
         }
     }
 
