@@ -132,39 +132,80 @@
                         </span>
                     </dd>
 
+                    @php
+                        $collaboratorUser = $simRequest->collaborator_matricule ? \App\Models\User::where('matricule', $simRequest->collaborator_matricule)->first() : null;
+                        $beneficiaryUser = $simRequest->beneficiary_matricule ? \App\Models\User::where('matricule', $simRequest->beneficiary_matricule)->first() : null;
+                    @endphp
+
+                    @if($simRequest->creator)
+                        <dt class="col-sm-4">Demandeur / Créé par:</dt>
+                        <dd class="col-sm-8">
+                            <div class="d-flex align-items-center gap-2">
+                                <img src="{{ $simRequest->creator->avatar }}" alt="" class="rounded-circle" style="width: 36px; height: 36px; object-fit: cover;">
+                                <span>{{ $simRequest->creator->full_name }}</span>
+                                @if($simRequest->creator->matricule)
+                                    <small class="text-muted">({{ $simRequest->creator->matricule }})</small>
+                                @endif
+                            </div>
+                        </dd>
+                    @endif
+
                     @if($simRequest->isRecuperation())
                         <dt class="col-sm-4">Utilisateur:</dt>
-                        <dd class="col-sm-8">{{ $simRequest->user->full_name }} ({{ $simRequest->user->matricule }})</dd>
+                        <dd class="col-sm-8">
+                            <div class="d-flex align-items-center gap-2">
+                                @if($simRequest->user)
+                                    <img src="{{ $simRequest->user->avatar }}" alt="" class="rounded-circle" style="width: 36px; height: 36px; object-fit: cover;">
+                                    <span>{{ $simRequest->user->full_name }} ({{ $simRequest->user->matricule }})</span>
+                                @else
+                                    —
+                                @endif
+                            </div>
+                        </dd>
                     @endif
 
                     @if(!$simRequest->isCreation() && ($simRequest->collaborator_matricule || $simRequest->collaborator_name || $simRequest->collaborator_first_name || $simRequest->collaborator_agence))
                         <dt class="col-sm-4">Collaborateur:</dt>
                         <dd class="col-sm-8">
-                            @if($simRequest->collaborator_name || $simRequest->collaborator_first_name)
-                                <strong>{{ trim(($simRequest->collaborator_name ?? '') . ' ' . ($simRequest->collaborator_first_name ?? '')) }}</strong>
-                            @endif
-                            @if($simRequest->collaborator_matricule)
-                                <br><small class="text-muted">Matricule: {{ $simRequest->collaborator_matricule }}</small>
-                            @endif
-                            @if($simRequest->collaborator_agence)
-                                <br><small class="text-muted">Agence: {{ $simRequest->collaborator_agence }}</small>
-                            @endif
+                            <div class="d-flex align-items-center gap-2">
+                                @if($collaboratorUser)
+                                    <img src="{{ $collaboratorUser->avatar }}" alt="" class="rounded-circle" style="width: 36px; height: 36px; object-fit: cover;">
+                                @endif
+                                <div>
+                                    @if($simRequest->collaborator_name || $simRequest->collaborator_first_name)
+                                        <strong>{{ trim(($simRequest->collaborator_name ?? '') . ' ' . ($simRequest->collaborator_first_name ?? '')) }}</strong>
+                                    @endif
+                                    @if($simRequest->collaborator_matricule)
+                                        <br><small class="text-muted">Matricule: {{ $simRequest->collaborator_matricule }}</small>
+                                    @endif
+                                    @if($simRequest->collaborator_agence)
+                                        <br><small class="text-muted">Agence: {{ $simRequest->collaborator_agence }}</small>
+                                    @endif
+                                </div>
+                            </div>
                         </dd>
                     @endif
 
                     @if($simRequest->isCreation())
                         <dt class="col-sm-4">Bénéficiaire:</dt>
                         <dd class="col-sm-8">
-                            <strong>{{ $simRequest->beneficiary_name }}</strong>
-                            @if($simRequest->beneficiary_first_name)
-                                {{ $simRequest->beneficiary_first_name }}
-                            @endif
-                            @if($simRequest->beneficiary_matricule)
-                                <br><small class="text-muted">Matricule: {{ $simRequest->beneficiary_matricule }}</small>
-                            @endif
-                            @if($simRequest->beneficiary_fonction)
-                                <br><small class="text-muted">Fonction: {{ $simRequest->beneficiary_fonction }}</small>
-                            @endif
+                            <div class="d-flex align-items-center gap-2">
+                                @if($beneficiaryUser)
+                                    <img src="{{ $beneficiaryUser->avatar }}" alt="" class="rounded-circle" style="width: 36px; height: 36px; object-fit: cover;">
+                                @endif
+                                <div>
+                                    <strong>{{ $simRequest->beneficiary_name }}</strong>
+                                    @if($simRequest->beneficiary_first_name)
+                                        {{ $simRequest->beneficiary_first_name }}
+                                    @endif
+                                    @if($simRequest->beneficiary_matricule)
+                                        <br><small class="text-muted">Matricule: {{ $simRequest->beneficiary_matricule }}</small>
+                                    @endif
+                                    @if($simRequest->beneficiary_fonction)
+                                        <br><small class="text-muted">Fonction: {{ $simRequest->beneficiary_fonction }}</small>
+                                    @endif
+                                </div>
+                            </div>
                         </dd>
                     @endif
 

@@ -103,11 +103,10 @@ class User extends Authenticatable implements FilamentUser
     public function getAvatarAttribute(): string
     {
         if ($this->avatar_url) {
-            // If it's a local storage path, use asset()
+            // Local storage: serve via route so it works without symlink
             if (strpos($this->avatar_url, 'storage/') !== false) {
-                return asset($this->avatar_url);
+                return route('avatar.show', $this);
             }
-            // Otherwise, it's an external URL
             return $this->avatar_url;
         }
         return 'https://ui-avatars.com/api/?name=' . urlencode($this->full_name) . '&background=0d6efd&color=fff';

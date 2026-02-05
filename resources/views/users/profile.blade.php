@@ -245,13 +245,7 @@
                 <div class="d-flex align-items-center gap-3">
                     <div>
                         <img id="avatar-preview" 
-                             @if($user->avatar_url && strpos($user->avatar_url, 'storage/') !== false)
-                                 src="{{ asset($user->avatar_url) }}"
-                             @elseif($user->avatar_url)
-                                 src="{{ $user->avatar_url }}"
-                             @else
-                                 src="{{ $user->avatar }}"
-                             @endif
+                             src="{{ $user->avatar }}" 
                              alt="Avatar actuel" 
                              style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
                     </div>

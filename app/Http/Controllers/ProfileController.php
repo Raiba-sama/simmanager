@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProfileController extends Controller
 {
@@ -59,6 +61,22 @@ class ProfileController extends Controller
         $user->save();
 
         return Redirect::route('profile.edit')->with('success', 'Profil mis à jour avec succès.');
+    }
+
+    /**
+     * Serve the user's avatar image (works without storage symlink).
+     */
+    public function avatar(User $user): BinaryFileResponse
+    {
+        if (!$user->avatar_url || strpos($user->avatar_url, 'storage/') === false) {
+            abort(404);
+        }
+        $path = str_replace('storage/', '', $user->avatar_url);
+        $fullPath = storage_path('app/public/' . $path);
+        if (!is_file($fullPath)) {
+            abort(404);
+        }
+        return response()->file($fullPath);
     }
 
     /**
