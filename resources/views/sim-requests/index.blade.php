@@ -265,10 +265,15 @@
                             </td>
                             <td class="col-secondary" style="padding: 16px; color: #4b5563;">
                                 @if($requester)
-                                    {{ $requester->full_name }}
-                                    @if($requester->matricule)
-                                        <br><small class="text-muted">Mat: {{ $requester->matricule }}</small>
-                                    @endif
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img src="{{ $requester->avatar }}" alt="" class="rounded-circle flex-shrink-0" style="width: 32px; height: 32px; object-fit: cover;">
+                                        <div>
+                                            {{ $requester->full_name }}
+                                            @if($requester->matricule)
+                                                <br><small class="text-muted">Mat: {{ $requester->matricule }}</small>
+                                            @endif
+                                        </div>
+                                    </div>
                                 @else
                                     <span class="text-muted" style="color: #9ca3af;">-</span>
                                 @endif
