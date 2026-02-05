@@ -52,7 +52,7 @@
 <!-- Statistiques de base -->
 <div class="row">
     @if($isValidator)
-        <!-- Statistiques pour Validator/Admin -->
+        <!-- Ligne 1 : indicateurs principaux -->
         <div class="col-md-3 mb-4">
             <div class="card text-white" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);">
                 <div class="card-body" style="padding: 24px;">
@@ -61,9 +61,7 @@
                             <h6 class="card-title mb-2" style="opacity: 0.95; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">SIMS LIBRES</h6>
                             <h2 class="mb-0" style="font-weight: 700; font-size: 2.5rem;">{{ $stats['sims_libres'] }}</h2>
                         </div>
-                        <div style="font-size: 3.5rem; opacity: 0.25;">
-                            <i class="bi bi-phone"></i>
-                        </div>
+                        <div style="font-size: 3.5rem; opacity: 0.25;"><i class="bi bi-phone"></i></div>
                     </div>
                 </div>
             </div>
@@ -76,9 +74,7 @@
                             <h6 class="card-title mb-2" style="opacity: 0.95; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">SIMS ATTRIBUÉES</h6>
                             <h2 class="mb-0" style="font-weight: 700; font-size: 2.5rem;">{{ $stats['sims_attribuees'] }}</h2>
                         </div>
-                        <div style="font-size: 3.5rem; opacity: 0.25;">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
+                        <div style="font-size: 3.5rem; opacity: 0.25;"><i class="bi bi-check-circle"></i></div>
                     </div>
                 </div>
             </div>
@@ -91,9 +87,7 @@
                             <h6 class="card-title mb-2" style="opacity: 0.95; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">DEMANDES EN ATTENTE</h6>
                             <h2 class="mb-0" style="font-weight: 700; font-size: 2.5rem;">{{ $stats['demandes_en_attente'] }}</h2>
                         </div>
-                        <div style="font-size: 3.5rem; opacity: 0.25;">
-                            <i class="bi bi-clock-history"></i>
-                        </div>
+                        <div style="font-size: 3.5rem; opacity: 0.25;"><i class="bi bi-clock-history"></i></div>
                     </div>
                 </div>
             </div>
@@ -106,9 +100,47 @@
                             <h6 class="card-title mb-2" style="opacity: 0.95; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">TOTAL UTILISATEURS</h6>
                             <h2 class="mb-0" style="font-weight: 700; font-size: 2.5rem;">{{ $stats['total_utilisateurs'] }}</h2>
                         </div>
-                        <div style="font-size: 3.5rem; opacity: 0.25;">
-                            <i class="bi bi-people"></i>
+                        <div style="font-size: 3.5rem; opacity: 0.25;"><i class="bi bi-people"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Ligne 2 : total SIMs, envoyées, suspendues -->
+        <div class="col-md-4 mb-4">
+            <div class="card" style="border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+                <div class="card-body" style="padding: 20px;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1" style="font-size: 0.8rem; font-weight: 600;">TOTAL SIMS</h6>
+                            <h4 class="mb-0" style="font-weight: 700; color: #1e293b;">{{ $stats['total_sims'] ?? 0 }}</h4>
                         </div>
+                        <i class="bi bi-database" style="font-size: 2rem; color: #cbd5e1;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card" style="border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+                <div class="card-body" style="padding: 20px;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1" style="font-size: 0.8rem; font-weight: 600;">DEMANDES ENVOYÉES</h6>
+                            <h4 class="mb-0" style="font-weight: 700; color: #1e293b;">{{ $stats['demandes_envoyees'] ?? 0 }}</h4>
+                        </div>
+                        <i class="bi bi-send-check" style="font-size: 2rem; color: #06b6d4;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card" style="border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+                <div class="card-body" style="padding: 20px;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1" style="font-size: 0.8rem; font-weight: 600;">SIMS SUSPENDUES</h6>
+                            <h4 class="mb-0" style="font-weight: 700; color: #1e293b;">{{ $stats['sims_suspendues'] ?? 0 }}</h4>
+                        </div>
+                        <i class="bi bi-pause-circle" style="font-size: 2rem; color: #f59e0b;"></i>
                     </div>
                 </div>
             </div>
@@ -285,6 +317,31 @@
 </div>
 @endif
 
+@endif
+
+@if($isValidator)
+<!-- Liens rapides (validateurs) -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card" style="border: none; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <div class="card-body" style="padding: 20px 24px;">
+                <h6 class="mb-3" style="font-weight: 600; color: #1e293b;"><i class="bi bi-link-45deg me-2" style="color: #00574A;"></i>Liens rapides</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ route('sim-requests.index') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-list-ul me-1"></i>Toutes les demandes</a>
+                    <a href="{{ route('sim-requests.index', ['status' => 'en_attente']) }}" class="btn btn-outline-warning btn-sm"><i class="bi bi-clock me-1"></i>En attente</a>
+                    <a href="{{ route('sim-requests.index', ['status' => 'pending']) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-hourglass-split me-1"></i>Pending</a>
+                    <a href="{{ route('sim-requests.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle me-1"></i>Nouvelle demande</a>
+                    @if($user->isAdmin())
+                    <a href="{{ route('sims.index') }}" class="btn btn-outline-success btn-sm"><i class="bi bi-phone me-1"></i>Gestion SIMs</a>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+@if($isValidator)
 <!-- Statistiques avancées -->
 <div class="row mt-4">
     <div class="col-md-12">
@@ -292,54 +349,66 @@
             <div class="card-header" style="background: white; border-bottom: 1px solid #e5e7eb; padding: 20px; border-radius: 12px 12px 0 0;">
                 <h5 class="mb-0" style="font-weight: 600; font-size: 18px; color: #1a1a1a;">
                     <i class="bi bi-speedometer2" style="color: #00574A; margin-right: 8px;"></i>
-                    Statistiques avancées
+                    Statistiques avancées (période sélectionnée)
                 </h5>
             </div>
             <div class="card-body" style="padding: 24px;">
                 <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <div style="text-align: center; padding: 20px; background: #f9fafb; border-radius: 8px;">
-                            <div style="font-size: 32px; font-weight: 700; color: #00574A; margin-bottom: 8px;">{{ $advancedStats['validation_rate'] ?? 0 }}%</div>
-                            <div style="font-size: 14px; color: #64748b; font-weight: 500;">Taux de validation</div>
+                    <div class="col-md-2 col-4 mb-3">
+                        <div style="text-align: center; padding: 16px; background: #f9fafb; border-radius: 8px;">
+                            <div style="font-size: 26px; font-weight: 700; color: #1e293b;">{{ $advancedStats['total_requests'] ?? 0 }}</div>
+                            <div style="font-size: 12px; color: #64748b; font-weight: 500;">Total demandes</div>
                         </div>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <div style="text-align: center; padding: 20px; background: #f9fafb; border-radius: 8px;">
-                            <div style="font-size: 32px; font-weight: 700; color: #00574A; margin-bottom: 8px;">{{ $advancedStats['avg_processing_time'] ?? 0 }}</div>
-                            <div style="font-size: 14px; color: #64748b; font-weight: 500;">Délai moyen (jours)</div>
+                    <div class="col-md-2 col-4 mb-3">
+                        <div style="text-align: center; padding: 16px; background: #ecfdf5; border-radius: 8px;">
+                            <div style="font-size: 26px; font-weight: 700; color: #059669;">{{ $advancedStats['validated_requests'] ?? 0 }}</div>
+                            <div style="font-size: 12px; color: #64748b; font-weight: 500;">Validées / Acceptées</div>
                         </div>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <div style="text-align: center; padding: 20px; background: #f9fafb; border-radius: 8px;">
-                            <div style="font-size: 32px; font-weight: 700; color: #00574A; margin-bottom: 8px;">{{ $advancedStats['total_requests'] ?? 0 }}</div>
-                            <div style="font-size: 14px; color: #64748b; font-weight: 500;">Total demandes</div>
+                    <div class="col-md-2 col-4 mb-3">
+                        <div style="text-align: center; padding: 16px; background: #fef2f2; border-radius: 8px;">
+                            <div style="font-size: 26px; font-weight: 700; color: #dc2626;">{{ $advancedStats['rejected_requests'] ?? 0 }}</div>
+                            <div style="font-size: 12px; color: #64748b; font-weight: 500;">Rejetées / Refusées</div>
                         </div>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <div style="text-align: center; padding: 20px; background: #f9fafb; border-radius: 8px;">
-                            <div style="font-size: 32px; font-weight: 700; color: #10b981; margin-bottom: 8px;">{{ $advancedStats['validated_requests'] ?? 0 }}</div>
-                            <div style="font-size: 14px; color: #64748b; font-weight: 500;">Demandes validées</div>
+                    <div class="col-md-2 col-4 mb-3">
+                        <div style="text-align: center; padding: 16px; background: #fffbeb; border-radius: 8px;">
+                            <div style="font-size: 26px; font-weight: 700; color: #d97706;">{{ $advancedStats['pending_requests'] ?? 0 }}</div>
+                            <div style="font-size: 12px; color: #64748b; font-weight: 500;">En attente</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4 mb-3">
+                        <div style="text-align: center; padding: 16px; background: #ecfeff; border-radius: 8px;">
+                            <div style="font-size: 26px; font-weight: 700; color: #0891b2;">{{ $advancedStats['sent_requests'] ?? 0 }}</div>
+                            <div style="font-size: 12px; color: #64748b; font-weight: 500;">Envoyées</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4 mb-3">
+                        <div style="text-align: center; padding: 16px; background: #f0fdf4; border-radius: 8px;">
+                            <div style="font-size: 26px; font-weight: 700; color: #00574A;">{{ $advancedStats['validation_rate'] ?? 0 }}%</div>
+                            <div style="font-size: 12px; color: #64748b; font-weight: 500;">Taux validation</div>
                         </div>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-md-3 mb-3">
-                        <div style="text-align: center; padding: 20px; background: #fef2f2; border-radius: 8px;">
-                            <div style="font-size: 32px; font-weight: 700; color: #ef4444; margin-bottom: 8px;">{{ $advancedStats['rejection_rate'] ?? 0 }}%</div>
-                            <div style="font-size: 14px; color: #64748b; font-weight: 500;">Taux de rejet</div>
+                        <div style="text-align: center; padding: 16px; background: #fef2f2; border-radius: 8px;">
+                            <div style="font-size: 26px; font-weight: 700; color: #ef4444;">{{ $advancedStats['rejection_rate'] ?? 0 }}%</div>
+                            <div style="font-size: 12px; color: #64748b; font-weight: 500;">Taux de rejet</div>
                         </div>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <div style="text-align: center; padding: 20px; background: #fef2f2; border-radius: 8px;">
-                            <div style="font-size: 32px; font-weight: 700; color: #ef4444; margin-bottom: 8px;">{{ $advancedStats['rejected_requests'] ?? 0 }}</div>
-                            <div style="font-size: 14px; color: #64748b; font-weight: 500;">Demandes rejetées</div>
+                        <div style="text-align: center; padding: 16px; background: #f9fafb; border-radius: 8px;">
+                            <div style="font-size: 26px; font-weight: 700; color: #00574A;">{{ $advancedStats['avg_processing_time'] ?? 0 }}</div>
+                            <div style="font-size: 12px; color: #64748b; font-weight: 500;">Délai moyen (jours)</div>
                         </div>
                     </div>
                 </div>
                 
                 @if(isset($advancedStats['top_requesters']) && $advancedStats['top_requesters']->count() > 0)
                 <div class="mt-4">
-                    <h6 style="font-weight: 600; color: #1e293b; margin-bottom: 16px;">Top 5 demandeurs</h6>
+                    <h6 style="font-weight: 600; color: #1e293b; margin-bottom: 16px;">Top 5 créateurs de demandes</h6>
                     <div class="table-responsive">
                         <table class="table table-sm mb-0" style="background: white;">
                             <thead style="background: #f9fafb;">
@@ -427,7 +496,7 @@
                                         @if($request->isCreation() && $request->beneficiary_name)
                                             {{ $request->beneficiary_name }} {{ $request->beneficiary_first_name ?? '' }}
                                         @else
-                                            {{ $request->user->full_name }}
+                                            {{ $request->user?->full_name ?? '—' }}
                                         @endif
                                     </td>
                                     <td style="padding: 16px;">
@@ -566,13 +635,17 @@
         // Graphique par type (camembert)
         const typeCtx = document.getElementById('requestsByTypeChart');
         if (typeCtx && chartData.requests_by_type) {
+            const typeLabels = chartData.requests_by_type.labels || [];
+            const typeData = chartData.requests_by_type.data || [];
+            const typeColors = chartData.requests_by_type.colors || [];
+            const typeSum = typeData.reduce((a, b) => a + b, 0);
             charts.type = new Chart(typeCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: chartData.requests_by_type.labels,
+                    labels: typeSum > 0 ? typeLabels : ['Aucune donnée'],
                     datasets: [{
-                        data: chartData.requests_by_type.data,
-                        backgroundColor: chartData.requests_by_type.colors,
+                        data: typeSum > 0 ? typeData : [1],
+                        backgroundColor: typeSum > 0 ? typeColors : ['#e5e7eb'],
                         borderWidth: 0,
                     }]
                 },
@@ -821,9 +894,17 @@
             }
             
             if (charts.type && data.requests_by_type) {
-                charts.type.data.labels = data.requests_by_type.labels;
-                charts.type.data.datasets[0].data = data.requests_by_type.data;
-                charts.type.data.datasets[0].backgroundColor = data.requests_by_type.colors;
+                const d = data.requests_by_type.data || [];
+                const sum = d.reduce((a, b) => a + b, 0);
+                if (sum > 0) {
+                    charts.type.data.labels = data.requests_by_type.labels;
+                    charts.type.data.datasets[0].data = data.requests_by_type.data;
+                    charts.type.data.datasets[0].backgroundColor = data.requests_by_type.colors;
+                } else {
+                    charts.type.data.labels = ['Aucune donnée'];
+                    charts.type.data.datasets[0].data = [1];
+                    charts.type.data.datasets[0].backgroundColor = ['#e5e7eb'];
+                }
                 charts.type.update();
             }
             

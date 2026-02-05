@@ -93,7 +93,11 @@ class DashboardController extends Controller
             return [
                 'sims_libres' => Sim::libre()->count(),
                 'sims_attribuees' => Sim::attribue()->count(),
-                'demandes_en_attente' => SimRequest::enAttente()->count(),
+                'sims_suspendues' => Sim::where('status', 'suspendu')->count(),
+                'sims_defectueuses' => Sim::where('status', 'defectueuse')->count(),
+                'total_sims' => Sim::count(),
+                'demandes_en_attente' => SimRequest::whereIn('status', ['en_attente', 'pending'])->count(),
+                'demandes_envoyees' => SimRequest::where('status', 'demande_envoyee')->count(),
                 'total_utilisateurs' => User::where('active', true)->count(),
             ];
         } else {
@@ -244,18 +248,10 @@ class DashboardController extends Controller
 
         $results = $query->select('request_type', DB::raw('COUNT(*) as count'))
                          ->groupBy('request_type')
-                         ->get();
+                         ->get()
+                         ->pluck('count', 'request_type');
 
-        $labels = [];
-        $data = [];
-        $colors = [
-            'recuperation' => '#f59e0b',
-            'creation' => '#10b981',
-            'suspension' => '#3b82f6',
-            'desactivation' => '#ef4444',
-            'ajustement' => '#8b5cf6',
-        ];
-
+        $typeOrder = ['recuperation', 'creation', 'suspension', 'desactivation', 'ajustement'];
         $typeLabels = [
             'recuperation' => 'Récupération',
             'creation' => 'Création',
@@ -263,16 +259,27 @@ class DashboardController extends Controller
             'desactivation' => 'Désactivation',
             'ajustement' => 'Ajustement',
         ];
+        $typeColors = [
+            'recuperation' => '#f59e0b',
+            'creation' => '#10b981',
+            'suspension' => '#3b82f6',
+            'desactivation' => '#ef4444',
+            'ajustement' => '#8b5cf6',
+        ];
 
-        foreach ($results as $result) {
-            $labels[] = $typeLabels[$result->request_type] ?? ucfirst($result->request_type);
-            $data[] = $result->count;
+        $labels = [];
+        $data = [];
+        $colors = [];
+        foreach ($typeOrder as $type) {
+            $labels[] = $typeLabels[$type];
+            $data[] = (int) ($results[$type] ?? 0);
+            $colors[] = $typeColors[$type];
         }
 
         return [
             'labels' => $labels,
             'data' => $data,
-            'colors' => array_values($colors),
+            'colors' => $colors,
         ];
     }
 
@@ -286,20 +293,10 @@ class DashboardController extends Controller
 
         $results = $query->select('status', DB::raw('COUNT(*) as count'))
                          ->groupBy('status')
-                         ->get();
+                         ->get()
+                         ->pluck('count', 'status');
 
-        $labels = [];
-        $data = [];
-        $colors = [
-            'en_attente' => '#f59e0b',
-            'validee' => '#10b981',
-            'rejetee' => '#ef4444',
-            'demande_envoyee' => '#06b6d4',
-            'pending' => '#06b6d4',
-            'accepted' => '#10b981',
-            'refused' => '#ef4444',
-        ];
-
+        $statusOrder = ['en_attente', 'pending', 'validee', 'accepted', 'demande_envoyee', 'rejetee', 'refused'];
         $statusLabels = [
             'en_attente' => 'En attente',
             'validee' => 'Validée',
@@ -309,16 +306,29 @@ class DashboardController extends Controller
             'accepted' => 'Acceptée',
             'refused' => 'Refusée',
         ];
+        $statusColors = [
+            'en_attente' => '#f59e0b',
+            'pending' => '#94a3b8',
+            'validee' => '#10b981',
+            'accepted' => '#059669',
+            'demande_envoyee' => '#06b6d4',
+            'rejetee' => '#ef4444',
+            'refused' => '#dc2626',
+        ];
 
-        foreach ($results as $result) {
-            $labels[] = $statusLabels[$result->status] ?? ucfirst($result->status);
-            $data[] = $result->count;
+        $labels = [];
+        $data = [];
+        $colors = [];
+        foreach ($statusOrder as $status) {
+            $labels[] = $statusLabels[$status] ?? ucfirst($status);
+            $data[] = (int) ($results[$status] ?? 0);
+            $colors[] = $statusColors[$status] ?? '#6b7280';
         }
 
         return [
             'labels' => $labels,
             'data' => $data,
-            'colors' => array_values($colors),
+            'colors' => $colors,
         ];
     }
 
@@ -469,41 +479,44 @@ class DashboardController extends Controller
 
     private function getAdvancedStats($startDate, $endDate)
     {
-        $totalRequests = SimRequest::whereBetween('created_at', [$startDate, $endDate])->count();
-        $validatedRequests = SimRequest::whereBetween('created_at', [$startDate, $endDate])
-                                       ->where('status', 'validee')
-                                       ->count();
-        $rejectedRequests = SimRequest::whereBetween('created_at', [$startDate, $endDate])
-                                      ->where('status', 'rejetee')
-                                      ->count();
+        $baseQuery = SimRequest::whereBetween('created_at', [$startDate, $endDate]);
+        $totalRequests = (clone $baseQuery)->count();
+
+        // Validées = validee (récupération) ou accepted (autres types)
+        $validatedRequests = (clone $baseQuery)->whereIn('status', ['validee', 'accepted'])->count();
+        $rejectedRequests = (clone $baseQuery)->whereIn('status', ['rejetee', 'refused'])->count();
+        $pendingRequests = (clone $baseQuery)->whereIn('status', ['en_attente', 'pending'])->count();
+        $sentRequests = (clone $baseQuery)->where('status', 'demande_envoyee')->count();
 
         $validationRate = $totalRequests > 0 ? round(($validatedRequests / $totalRequests) * 100, 1) : 0;
         $rejectionRate = $totalRequests > 0 ? round(($rejectedRequests / $totalRequests) * 100, 1) : 0;
 
-        // Délai moyen de traitement (en jours)
-        $avgProcessingTime = SimRequest::whereBetween('created_at', [$startDate, $endDate])
-                                       ->whereNotNull('validated_at')
-                                       ->selectRaw('AVG(DATEDIFF(validated_at, created_at)) as avg_days')
-                                       ->first()
-                                       ->avg_days ?? 0;
+        // Délai moyen : jours entre création et (validated_at ou admin_processed_at)
+        $avgRow = SimRequest::whereBetween('created_at', [$startDate, $endDate])
+            ->whereRaw('(validated_at IS NOT NULL OR admin_processed_at IS NOT NULL)')
+            ->selectRaw('AVG(DATEDIFF(COALESCE(admin_processed_at, validated_at), created_at)) as avg_days')
+            ->first();
+        $avgProcessingTime = $avgRow && $avgRow->avg_days !== null ? round((float) $avgRow->avg_days, 1) : 0;
 
-        // Top demandeurs
-        $topRequesters = SimRequest::whereBetween('created_at', [$startDate, $endDate])
-                                   ->select('user_id', DB::raw('COUNT(*) as count'))
-                                   ->groupBy('user_id')
-                                   ->orderBy('count', 'desc')
-                                   ->limit(5)
-                                   ->with('user')
-                                   ->get()
-                                   ->map(function ($item) {
-                                       return [
-                                           'name' => $item->user->full_name ?? 'Utilisateur inconnu',
-                                           'count' => $item->count,
-                                       ];
-                                   });
+        // Top créateurs de demandes (created_by = validateur/admin)
+        $topCreators = SimRequest::whereBetween('created_at', [$startDate, $endDate])
+            ->whereNotNull('created_by')
+            ->select('created_by', DB::raw('COUNT(*) as count'))
+            ->groupBy('created_by')
+            ->orderBy('count', 'desc')
+            ->limit(5)
+            ->with('creator')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'name' => $item->creator ? $item->creator->full_name : 'N/A',
+                    'count' => $item->count,
+                ];
+            });
 
         $topMotifs = SimRequest::whereBetween('created_at', [$startDate, $endDate])
             ->whereNotNull('motif')
+            ->where('motif', '!=', '')
             ->select('motif', DB::raw('COUNT(*) as count'))
             ->groupBy('motif')
             ->orderBy('count', 'desc')
@@ -514,10 +527,12 @@ class DashboardController extends Controller
             'total_requests' => $totalRequests,
             'validated_requests' => $validatedRequests,
             'rejected_requests' => $rejectedRequests,
+            'pending_requests' => $pendingRequests,
+            'sent_requests' => $sentRequests,
             'validation_rate' => $validationRate,
             'rejection_rate' => $rejectionRate,
-            'avg_processing_time' => round($avgProcessingTime, 1),
-            'top_requesters' => $topRequesters,
+            'avg_processing_time' => $avgProcessingTime,
+            'top_requesters' => $topCreators,
             'top_motifs' => $topMotifs,
         ];
     }
