@@ -523,6 +523,16 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
+        // Top 10 numéros les plus souvent récupérés (demandes de type récupération uniquement)
+        $topRecuperationNumbers = SimRequest::where('request_type', 'recuperation')
+            ->whereNotNull('phone_number')
+            ->where('phone_number', '!=', '')
+            ->select('phone_number', DB::raw('COUNT(*) as count'))
+            ->groupBy('phone_number')
+            ->orderBy('count', 'desc')
+            ->limit(10)
+            ->get();
+
         return [
             'total_requests' => $totalRequests,
             'validated_requests' => $validatedRequests,
@@ -534,6 +544,7 @@ class DashboardController extends Controller
             'avg_processing_time' => $avgProcessingTime,
             'top_requesters' => $topCreators,
             'top_motifs' => $topMotifs,
+            'top_recuperation_numbers' => $topRecuperationNumbers,
         ];
     }
 }

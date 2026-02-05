@@ -455,6 +455,33 @@
                     </div>
                 </div>
                 @endif
+
+                @if(isset($advancedStats['top_recuperation_numbers']) && $advancedStats['top_recuperation_numbers']->count() > 0)
+                <div class="mt-4">
+                    <h6 style="font-weight: 600; color: #1e293b; margin-bottom: 16px;"><i class="bi bi-telephone me-1" style="color: #00574A;"></i>Top 10 numéros les plus récupérés</h6>
+                    <p class="text-muted small mb-2">Numéros de ligne les plus souvent concernés par une demande de récupération (toutes périodes).</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0" style="background: white;">
+                            <thead style="background: #f9fafb;">
+                                <tr>
+                                    <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase;">Rang</th>
+                                    <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase;">Numéro</th>
+                                    <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase; text-align: right;">Nb récupérations</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($advancedStats['top_recuperation_numbers'] as $index => $row)
+                                <tr>
+                                    <td style="padding: 12px; color: #64748b; font-weight: 600;">#{{ $index + 1 }}</td>
+                                    <td style="padding: 12px; color: #1e293b; font-weight: 500;">{{ $row->phone_number }}</td>
+                                    <td style="padding: 12px; text-align: right; color: #00574A; font-weight: 600;">{{ $row->count }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
             </div>
         </div>
     </div>
