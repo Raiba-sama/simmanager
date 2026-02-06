@@ -523,7 +523,7 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        // Top 10 numéros les plus souvent récupérés (demandes de type récupération uniquement) + demandeur et bénéficiaire
+        // Top 10 numéros les plus souvent récupérés + demandeur et titulaire de la ligne (bénéficiaire)
         $topRecuperationNumbers = SimRequest::where('request_type', 'recuperation')
             ->whereNotNull('phone_number')
             ->where('phone_number', '!=', '')
@@ -536,26 +536,32 @@ class DashboardController extends Controller
                 $lastRequest = SimRequest::where('request_type', 'recuperation')
                     ->where('phone_number', $row->phone_number)
                     ->orderBy('created_at', 'desc')
-                    ->with(['user', 'creator'])
+                    ->with(['creator'])
                     ->first();
-                $beneficiaryName = null;
-                $beneficiaryMatricule = null;
+                // Titulaire de la ligne = collaborateur de la demande (celui à qui la ligne est / sera attribuée)
+                $titulaireName = null;
+                $titulaireMatricule = null;
+                $titulaireUser = null;
                 if ($lastRequest) {
-                    if ($lastRequest->user) {
-                        $beneficiaryName = $lastRequest->user->full_name;
-                        $beneficiaryMatricule = $lastRequest->user->matricule;
-                    } else {
-                        $beneficiaryName = trim(($lastRequest->collaborator_name ?? '') . ' ' . ($lastRequest->collaborator_first_name ?? ''));
-                        $beneficiaryMatricule = $lastRequest->collaborator_matricule;
+                    $titulaireMatricule = $lastRequest->collaborator_matricule;
+                    $titulaireName = trim(($lastRequest->collaborator_name ?? '') . ' ' . ($lastRequest->collaborator_first_name ?? ''));
+                    if ($titulaireMatricule) {
+                        $titulaireUser = User::where('matricule', $titulaireMatricule)->first();
+                        if ($titulaireUser && empty($titulaireName)) {
+                            $titulaireName = $titulaireUser->full_name;
+                        }
+                    }
+                    if (empty($titulaireName)) {
+                        $titulaireName = $titulaireUser ? $titulaireUser->full_name : null;
                     }
                 }
                 return (object) [
                     'phone_number' => $row->phone_number,
                     'count' => $row->count,
                     'demandeur' => $lastRequest?->creator,
-                    'beneficiary_user' => $lastRequest?->user,
-                    'beneficiary_name' => $beneficiaryName ?: null,
-                    'beneficiary_matricule' => $beneficiaryMatricule,
+                    'titulaire_name' => $titulaireName ?: null,
+                    'titulaire_matricule' => $titulaireMatricule,
+                    'titulaire_user' => $titulaireUser,
                 ];
             });
 

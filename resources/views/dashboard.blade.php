@@ -467,7 +467,7 @@
                                     <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase;">Rang</th>
                                     <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase;">Numéro</th>
                                     <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase;">Demandeur</th>
-                                    <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase;">Bénéficiaire</th>
+                                    <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase;">Titulaire de la ligne</th>
                                     <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase; text-align: right;">Nb récupérations</th>
                                 </tr>
                             </thead>
@@ -487,15 +487,10 @@
                                         @endif
                                     </td>
                                     <td style="padding: 12px; color: #1e293b;">
-                                        @if($row->beneficiary_user)
-                                            <div>{{ $row->beneficiary_user->full_name }}</div>
-                                            @if($row->beneficiary_user->matricule)
-                                                <small class="text-muted">Mat: {{ $row->beneficiary_user->matricule }}</small>
-                                            @endif
-                                        @elseif(!empty($row->beneficiary_name) || !empty($row->beneficiary_matricule))
-                                            <div>{{ $row->beneficiary_name ?: '—' }}</div>
-                                            @if(!empty($row->beneficiary_matricule))
-                                                <small class="text-muted">Mat: {{ $row->beneficiary_matricule }}</small>
+                                        @if(!empty($row->titulaire_name) || !empty($row->titulaire_matricule))
+                                            <div>{{ $row->titulaire_name ?: '—' }}</div>
+                                            @if(!empty($row->titulaire_matricule))
+                                                <small class="text-muted">Mat: {{ $row->titulaire_matricule }}</small>
                                             @endif
                                         @else
                                             <span class="text-muted">—</span>
