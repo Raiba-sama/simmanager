@@ -656,8 +656,9 @@ class SimRequestController extends Controller
                         $creditOverride = isset($validated['limite_credit_override']) && $validated['limite_credit_override'] !== '' ? (float) $validated['limite_credit_override'] : null;
                         $dataOverride = isset($validated['limite_data_override']) && $validated['limite_data_override'] !== '' ? (float) $validated['limite_data_override'] : null;
                         if ($creditOverride !== null || $dataOverride !== null) {
-                            $limite_credit = $creditOverride !== null ? $creditOverride : ($current['limite_credit'] ?? ($plan ? $plan->limite_credit : $simRequest->limite_credit));
-                            $limite_data = $dataOverride !== null ? $dataOverride : ($current['limite_data'] ?? ($plan ? $plan->limite_data : $simRequest->limite_data));
+                            // Option non choisie = null (ne pas changer), jamais 0
+                            $limite_credit = $creditOverride !== null ? $creditOverride : null;
+                            $limite_data = $dataOverride !== null ? $dataOverride : null;
                         } else {
                             $limite_credit = $plan ? $plan->limite_credit : ($simRequest->limite_credit ?? $current['limite_credit']);
                             $limite_data = $plan ? $plan->limite_data : ($simRequest->limite_data ?? $current['limite_data']);
@@ -1582,8 +1583,9 @@ class SimRequestController extends Controller
             $dataOverride = isset($validated['limite_data_override']) && $validated['limite_data_override'] !== '' ? (float) $validated['limite_data_override'] : null;
 
             if ($creditOverride !== null || $dataOverride !== null) {
-                $limite_credit = $creditOverride !== null ? $creditOverride : ($current['limite_credit'] ?? ($plan ? $plan->limite_credit : null));
-                $limite_data = $dataOverride !== null ? $dataOverride : ($current['limite_data'] ?? ($plan ? $plan->limite_data : null));
+                // Option non choisie = null (ne pas changer), jamais 0
+                $limite_credit = $creditOverride !== null ? $creditOverride : null;
+                $limite_data = $dataOverride !== null ? $dataOverride : null;
             } else {
                 $limite_credit = $plan ? $plan->limite_credit : ($current['limite_credit'] ?? null);
                 $limite_data = $plan ? $plan->limite_data : ($current['limite_data'] ?? null);
@@ -1763,20 +1765,14 @@ class SimRequestController extends Controller
                         $limiteData = (float) $simRequest->plan->limite_data;
                         $params['limite_credit'] = $limiteCredit == (int) $limiteCredit ? (int) $limiteCredit : $limiteCredit;
                         $params['limite_data'] = $limiteData == (int) $limiteData ? (int) $limiteData : $limiteData;
-                    } elseif ($simRequest->limite_credit || $simRequest->limite_data) {
-                        // Si pas de plan mais des limites dans la demande, utiliser celles-ci
-                        if ($simRequest->limite_credit) {
-                            $limiteCredit = (float) $simRequest->limite_credit;
-                            $params['limite_credit'] = $limiteCredit == (int) $limiteCredit ? (int) $limiteCredit : $limiteCredit;
-                        } else {
-                            $params['limite_credit'] = '';
-                        }
-                        if ($simRequest->limite_data) {
-                            $limiteData = (float) $simRequest->limite_data;
-                            $params['limite_data'] = $limiteData == (int) $limiteData ? (int) $limiteData : $limiteData;
-                        } else {
-                            $params['limite_data'] = '';
-                        }
+                    } else {
+                        // Ajustement sans forfait complet : envoyer valeur ou "ne pas changer" (jamais 0 pour une option non choisie)
+                        $params['limite_credit'] = $simRequest->limite_credit !== null
+                            ? ($simRequest->limite_credit == (int) $simRequest->limite_credit ? (int) $simRequest->limite_credit : (float) $simRequest->limite_credit)
+                            : 'ne pas changer';
+                        $params['limite_data'] = $simRequest->limite_data !== null
+                            ? ($simRequest->limite_data == (int) $simRequest->limite_data ? (int) $simRequest->limite_data : (float) $simRequest->limite_data)
+                            : 'ne pas changer';
                     }
                     if ($simRequest->request_type === 'creation') {
                         $params['beneficiary_name'] = $simRequest->beneficiary_name ?? '';

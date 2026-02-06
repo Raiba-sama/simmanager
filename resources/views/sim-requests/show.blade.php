@@ -226,21 +226,15 @@
                         <dd class="col-sm-8">{{ $simRequest->requested_iccid }}</dd>
                     @endif
 
-                    @if($simRequest->plan)
+                    @if($simRequest->plan || $simRequest->limite_credit !== null || $simRequest->limite_data !== null)
                         <dt class="col-sm-4">Forfait:</dt>
                         <dd class="col-sm-8">
-                            <strong>{{ $simRequest->plan->name }}</strong><br>
+                            @if($simRequest->plan)
+                                <strong>{{ $simRequest->plan->name }}</strong><br>
+                            @endif
                             <small class="text-muted">
-                                Limite crédit: {{ number_format($simRequest->limite_credit ?? $simRequest->plan->limite_credit, 0, ',', ' ') }} XOF<br>
-                                Limite data: {{ $simRequest->limite_data ?? $simRequest->plan->limite_data }} GB
-                            </small>
-                        </dd>
-                    @elseif($simRequest->limite_credit || $simRequest->limite_data)
-                        <dt class="col-sm-4">Forfait:</dt>
-                        <dd class="col-sm-8">
-                            <small class="text-muted">
-                                Limite crédit: {{ number_format($simRequest->limite_credit, 0, ',', ' ') }} XOF<br>
-                                Limite data: {{ $simRequest->limite_data }} GB
+                                Limite crédit: @if($simRequest->limite_credit !== null){{ number_format($simRequest->limite_credit, 0, ',', ' ') }} XOF@else<span class="text-muted">Ne pas changer</span>@endif<br>
+                                Limite data: @if($simRequest->limite_data !== null){{ $simRequest->limite_data }} GB@else<span class="text-muted">Ne pas changer</span>@endif
                             </small>
                         </dd>
                     @endif

@@ -227,7 +227,7 @@
                             <label for="limite_credit_override" class="form-label small">Limite crédit uniquement (ariary)</label>
                             <input type="number" name="limite_credit_override" id="limite_credit_override" min="0" step="1"
                                    class="form-control form-control-sm @error('limite_credit_override') is-invalid @enderror"
-                                   value="{{ old('limite_credit_override', $simRequest->limite_credit) }}" placeholder="Ex: 25000">
+                                   value="{{ old('limite_credit_override', $simRequest->limite_credit !== null ? $simRequest->limite_credit : '') }}" placeholder="Ex: 25000 (vide = ne pas changer)">
                             @error('limite_credit_override')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -236,7 +236,7 @@
                             <label for="limite_data_override" class="form-label small">Limite data uniquement (Go)</label>
                             <input type="number" name="limite_data_override" id="limite_data_override" min="0" step="0.1"
                                    class="form-control form-control-sm @error('limite_data_override') is-invalid @enderror"
-                                   value="{{ old('limite_data_override', $simRequest->limite_data) }}" placeholder="Ex: 4.5">
+                                   value="{{ old('limite_data_override', $simRequest->limite_data !== null ? $simRequest->limite_data : '') }}" placeholder="Ex: 4.5 (vide = ne pas changer)">
                             @error('limite_data_override')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
