@@ -523,7 +523,7 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        // Top 10 numéros les plus souvent récupérés (demandes de type récupération uniquement)
+        // Top 10 numéros les plus souvent récupérés (demandes de type récupération uniquement) + infos utilisateur
         $topRecuperationNumbers = SimRequest::where('request_type', 'recuperation')
             ->whereNotNull('phone_number')
             ->where('phone_number', '!=', '')
@@ -531,7 +531,21 @@ class DashboardController extends Controller
             ->groupBy('phone_number')
             ->orderBy('count', 'desc')
             ->limit(10)
-            ->get();
+            ->get()
+            ->map(function ($row) {
+                $lastRequest = SimRequest::where('request_type', 'recuperation')
+                    ->where('phone_number', $row->phone_number)
+                    ->orderBy('created_at', 'desc')
+                    ->with('user')
+                    ->first();
+                return (object) [
+                    'phone_number' => $row->phone_number,
+                    'count' => $row->count,
+                    'user' => $lastRequest?->user,
+                    'collaborator_name' => $lastRequest ? trim(($lastRequest->collaborator_name ?? '') . ' ' . ($lastRequest->collaborator_first_name ?? '')) : null,
+                    'collaborator_matricule' => $lastRequest->collaborator_matricule ?? null,
+                ];
+            });
 
         return [
             'total_requests' => $totalRequests,
