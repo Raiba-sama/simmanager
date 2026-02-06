@@ -1766,13 +1766,13 @@ class SimRequestController extends Controller
                         $params['limite_credit'] = $limiteCredit == (int) $limiteCredit ? (int) $limiteCredit : $limiteCredit;
                         $params['limite_data'] = $limiteData == (int) $limiteData ? (int) $limiteData : $limiteData;
                     } else {
-                        // Ajustement sans forfait complet : envoyer valeur ou "ne pas changer" (jamais 0 pour une option non choisie)
+                        // Ajustement sans forfait complet : envoyer valeur ou "Inchangé" (jamais 0 pour une option non choisie)
                         $params['limite_credit'] = $simRequest->limite_credit !== null
                             ? ($simRequest->limite_credit == (int) $simRequest->limite_credit ? (int) $simRequest->limite_credit : (float) $simRequest->limite_credit)
-                            : 'ne pas changer';
+                            : 'Inchangé';
                         $params['limite_data'] = $simRequest->limite_data !== null
                             ? ($simRequest->limite_data == (int) $simRequest->limite_data ? (int) $simRequest->limite_data : (float) $simRequest->limite_data)
-                            : 'ne pas changer';
+                            : 'Inchangé';
                     }
                     if ($simRequest->request_type === 'creation') {
                         $params['beneficiary_name'] = $simRequest->beneficiary_name ?? '';

@@ -233,8 +233,19 @@
                                 <strong>{{ $simRequest->plan->name }}</strong><br>
                             @endif
                             <small class="text-muted">
-                                Limite crédit: @if($simRequest->limite_credit !== null){{ number_format($simRequest->limite_credit, 0, ',', ' ') }} XOF@else<span class="text-muted">Ne pas changer</span>@endif<br>
-                                Limite data: @if($simRequest->limite_data !== null){{ $simRequest->limite_data }} GB@else<span class="text-muted">Ne pas changer</span>@endif
+                                Limite crédit:
+                                @if($simRequest->limite_credit !== null)
+                                    {{ number_format($simRequest->limite_credit, 0, ',', ' ') }} XOF
+                                @else
+                                    <span class="text-muted">Inchangé</span>
+                                @endif
+                                <br>
+                                Limite data:
+                                @if($simRequest->limite_data !== null)
+                                    {{ $simRequest->limite_data }} GB
+                                @else
+                                    <span class="text-muted">Inchangé</span>
+                                @endif
                             </small>
                         </dd>
                     @endif
