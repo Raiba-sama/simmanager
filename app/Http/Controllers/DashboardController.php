@@ -523,7 +523,7 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        // Top 10 numéros les plus souvent récupérés (demandes de type récupération uniquement) + infos utilisateur
+        // Top 10 numéros les plus souvent récupérés (demandes de type récupération uniquement) + demandeur et bénéficiaire
         $topRecuperationNumbers = SimRequest::where('request_type', 'recuperation')
             ->whereNotNull('phone_number')
             ->where('phone_number', '!=', '')
@@ -536,14 +536,26 @@ class DashboardController extends Controller
                 $lastRequest = SimRequest::where('request_type', 'recuperation')
                     ->where('phone_number', $row->phone_number)
                     ->orderBy('created_at', 'desc')
-                    ->with('user')
+                    ->with(['user', 'creator'])
                     ->first();
+                $beneficiaryName = null;
+                $beneficiaryMatricule = null;
+                if ($lastRequest) {
+                    if ($lastRequest->user) {
+                        $beneficiaryName = $lastRequest->user->full_name;
+                        $beneficiaryMatricule = $lastRequest->user->matricule;
+                    } else {
+                        $beneficiaryName = trim(($lastRequest->collaborator_name ?? '') . ' ' . ($lastRequest->collaborator_first_name ?? ''));
+                        $beneficiaryMatricule = $lastRequest->collaborator_matricule;
+                    }
+                }
                 return (object) [
                     'phone_number' => $row->phone_number,
                     'count' => $row->count,
-                    'user' => $lastRequest?->user,
-                    'collaborator_name' => $lastRequest ? trim(($lastRequest->collaborator_name ?? '') . ' ' . ($lastRequest->collaborator_first_name ?? '')) : null,
-                    'collaborator_matricule' => $lastRequest->collaborator_matricule ?? null,
+                    'demandeur' => $lastRequest?->creator,
+                    'beneficiary_user' => $lastRequest?->user,
+                    'beneficiary_name' => $beneficiaryName ?: null,
+                    'beneficiary_matricule' => $beneficiaryMatricule,
                 ];
             });
 

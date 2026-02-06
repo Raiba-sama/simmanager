@@ -459,14 +459,15 @@
                 @if(isset($advancedStats['top_recuperation_numbers']) && $advancedStats['top_recuperation_numbers']->count() > 0)
                 <div class="mt-4">
                     <h6 style="font-weight: 600; color: #1e293b; margin-bottom: 16px;"><i class="bi bi-telephone me-1" style="color: #00574A;"></i>Top 10 numéros les plus récupérés</h6>
-                    <p class="text-muted small mb-2">Numéros de ligne les plus souvent concernés par une demande de récupération (toutes périodes). Utilisateur = dernière demande.</p>
+                    <p class="text-muted small mb-2">Numéros de ligne les plus souvent concernés par une demande de récupération (toutes périodes). Données = dernière demande.</p>
                     <div class="table-responsive">
                         <table class="table table-sm mb-0" style="background: white;">
                             <thead style="background: #f9fafb;">
                                 <tr>
                                     <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase;">Rang</th>
                                     <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase;">Numéro</th>
-                                    <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase;">Utilisateur</th>
+                                    <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase;">Demandeur</th>
+                                    <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase;">Bénéficiaire</th>
                                     <th style="padding: 12px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase; text-align: right;">Nb récupérations</th>
                                 </tr>
                             </thead>
@@ -476,15 +477,25 @@
                                     <td style="padding: 12px; color: #64748b; font-weight: 600;">#{{ $index + 1 }}</td>
                                     <td style="padding: 12px; color: #1e293b; font-weight: 500;">{{ $row->phone_number }}</td>
                                     <td style="padding: 12px; color: #1e293b;">
-                                        @if($row->user)
-                                            <div>{{ $row->user->full_name }}</div>
-                                            @if($row->user->matricule)
-                                                <small class="text-muted">Mat: {{ $row->user->matricule }}</small>
+                                        @if($row->demandeur)
+                                            <div>{{ $row->demandeur->full_name }}</div>
+                                            @if($row->demandeur->matricule)
+                                                <small class="text-muted">Mat: {{ $row->demandeur->matricule }}</small>
                                             @endif
-                                        @elseif(!empty($row->collaborator_name) || !empty($row->collaborator_matricule))
-                                            <div>{{ $row->collaborator_name ?: '—' }}</div>
-                                            @if(!empty($row->collaborator_matricule))
-                                                <small class="text-muted">Mat: {{ $row->collaborator_matricule }}</small>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td style="padding: 12px; color: #1e293b;">
+                                        @if($row->beneficiary_user)
+                                            <div>{{ $row->beneficiary_user->full_name }}</div>
+                                            @if($row->beneficiary_user->matricule)
+                                                <small class="text-muted">Mat: {{ $row->beneficiary_user->matricule }}</small>
+                                            @endif
+                                        @elseif(!empty($row->beneficiary_name) || !empty($row->beneficiary_matricule))
+                                            <div>{{ $row->beneficiary_name ?: '—' }}</div>
+                                            @if(!empty($row->beneficiary_matricule))
+                                                <small class="text-muted">Mat: {{ $row->beneficiary_matricule }}</small>
                                             @endif
                                         @else
                                             <span class="text-muted">—</span>
