@@ -15,7 +15,15 @@
         <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
             <p><strong>N° Demande:</strong> {{ $request->request_number }}</p>
             <p><strong>Utilisateur:</strong> {{ $user->full_name }} ({{ $user->matricule }})</p>
-            <p><strong>Type:</strong> {{ ucfirst($request->request_type) }}</p>
+            <p><strong>Type:</strong> {{ $request->request_type === 'ajustement' && $request->is_temporary ? 'Ajustement temporaire' : ucfirst($request->request_type) }}</p>
+            @if($request->request_type === 'ajustement' && $request->is_temporary)
+                @if($request->temporary_start_date)
+                    <p><strong>Date de début d'ajustement:</strong> {{ $request->temporary_start_date->format('d/m/Y') }}</p>
+                @endif
+                @if($request->temporary_end_date)
+                    <p><strong>Date de fin:</strong> {{ $request->temporary_end_date->format('d/m/Y') }}</p>
+                @endif
+            @endif
             <p><strong>Priorité:</strong> {{ ucfirst($request->priority) }}</p>
             @if($request->justification)
                 <p><strong>Justification:</strong> {{ $request->justification }}</p>

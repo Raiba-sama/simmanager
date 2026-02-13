@@ -663,7 +663,10 @@ class SimRequestController extends Controller
                             $limite_credit = $plan ? $plan->limite_credit : ($simRequest->limite_credit ?? $current['limite_credit']);
                             $limite_data = $plan ? $plan->limite_data : ($simRequest->limite_data ?? $current['limite_data']);
                         }
-                        $simRequest->update([
+
+                        // Si ajustement temporaire, sauvegarder les valeurs précédentes si pas déjà sauvegardées
+                        $isTemporary = isset($validated['is_temporary']) && $validated['is_temporary'];
+                        $updateData = [
                             'collaborator_matricule' => $collaboratorFields['collaborator_matricule'],
                             'collaborator_name' => $collaboratorFields['collaborator_name'],
                             'collaborator_first_name' => $collaboratorFields['collaborator_first_name'],
@@ -672,8 +675,40 @@ class SimRequestController extends Controller
                             'plan_id' => $validated['plan_id'] ?? null,
                             'limite_credit' => $limite_credit,
                             'limite_data' => $limite_data,
+                            'is_temporary' => $isTemporary,
+                            'temporary_start_date' => $isTemporary && isset($validated['temporary_start_date']) ? $validated['temporary_start_date'] : null,
+                            'temporary_end_date' => $isTemporary && isset($validated['temporary_end_date']) ? $validated['temporary_end_date'] : null,
                             'updated_by' => $user->id,
-                        ]);
+                        ];
+
+                        // Si nouvel ajustement temporaire et valeurs précédentes non sauvegardées
+                        if ($isTemporary && !$simRequest->previous_limite_credit && !$simRequest->previous_limite_data && !$simRequest->previous_plan_id) {
+                            $lastDeliveredRequest = SimRequest::where('phone_number', $validated['phone_number'])
+                                ->whereIn('request_type', ['creation', 'ajustement'])
+                                ->whereNotNull('delivered_at')
+                                ->where('id', '!=', $simRequest->id)
+                                ->orderByDesc('delivered_at')
+                                ->first();
+
+                            if ($lastDeliveredRequest) {
+                                $updateData['previous_limite_credit'] = $lastDeliveredRequest->limite_credit;
+                                $updateData['previous_limite_data'] = $lastDeliveredRequest->limite_data;
+                                $updateData['previous_plan_id'] = $lastDeliveredRequest->plan_id;
+                            } else {
+                                $updateData['previous_limite_credit'] = $current['limite_credit'];
+                                $updateData['previous_limite_data'] = $current['limite_data'];
+                                $updateData['previous_plan_id'] = $current['plan_id'];
+                            }
+                        } elseif (!$isTemporary) {
+                            // Si on désactive le mode temporaire, nettoyer les champs
+                            $updateData['previous_limite_credit'] = null;
+                            $updateData['previous_limite_data'] = null;
+                            $updateData['previous_plan_id'] = null;
+                            $updateData['temporary_start_date'] = null;
+                            $updateData['temporary_end_date'] = null;
+                        }
+
+                        $simRequest->update($updateData);
                         break;
                 }
             }
@@ -1133,7 +1168,24 @@ class SimRequestController extends Controller
             'plan_id' => 'nullable|exists:plans,id',
             'limite_credit_override' => 'nullable|numeric|min:0',
             'limite_data_override' => 'nullable|numeric|min:0',
+            'is_temporary' => 'nullable|boolean',
+            'temporary_start_date' => 'nullable|date',
+            'temporary_end_date' => 'nullable|date|after:today',
         ]);
+
+        // Si ajustement temporaire : date de fin requise et postérieure à la date de début
+        if (!empty($validated['is_temporary'])) {
+            if (empty($validated['temporary_end_date'])) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'temporary_end_date' => ['La date de fin est requise pour un ajustement temporaire.'],
+                ]);
+            }
+            if (!empty($validated['temporary_start_date']) && $validated['temporary_start_date'] >= $validated['temporary_end_date']) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'temporary_end_date' => ['La date de fin doit être postérieure à la date de début.'],
+                ]);
+            }
+        }
 
         // Au moins un des trois : forfait complet OU modification partielle (LC ou Data)
         $hasPlan = !empty($validated['plan_id']);
@@ -1473,11 +1525,12 @@ class SimRequestController extends Controller
             ->orderByDesc('created_at')
             ->first();
         if (!$request) {
-            return ['limite_credit' => null, 'limite_data' => null];
+            return ['limite_credit' => null, 'limite_data' => null, 'plan_id' => null];
         }
         return [
             'limite_credit' => $request->limite_credit,
             'limite_data' => $request->limite_data,
+            'plan_id' => $request->plan_id,
         ];
     }
 
@@ -1591,6 +1644,32 @@ class SimRequestController extends Controller
                 $limite_data = $plan ? $plan->limite_data : ($current['limite_data'] ?? null);
             }
 
+            // Si ajustement temporaire, sauvegarder les valeurs précédentes
+            $isTemporary = isset($validated['is_temporary']) && $validated['is_temporary'];
+            $previousLimiteCredit = null;
+            $previousLimiteData = null;
+            $previousPlanId = null;
+
+            if ($isTemporary) {
+                // Récupérer les valeurs actuelles depuis la dernière demande livrée
+                $lastDeliveredRequest = SimRequest::where('phone_number', $validated['phone_number'])
+                    ->whereIn('request_type', ['creation', 'ajustement'])
+                    ->whereNotNull('delivered_at')
+                    ->orderByDesc('delivered_at')
+                    ->first();
+
+                if ($lastDeliveredRequest) {
+                    $previousLimiteCredit = $lastDeliveredRequest->limite_credit;
+                    $previousLimiteData = $lastDeliveredRequest->limite_data;
+                    $previousPlanId = $lastDeliveredRequest->plan_id;
+                } else {
+                    // Si aucune demande livrée, utiliser les valeurs actuelles
+                    $previousLimiteCredit = $current['limite_credit'];
+                    $previousLimiteData = $current['limite_data'];
+                    $previousPlanId = $current['plan_id'];
+                }
+            }
+
             $simRequest = SimRequest::create([
                 'request_number' => SimRequest::generateRequestNumber(),
                 'user_id' => $sim ? $sim->assigned_to : ($collaborator?->id ?? $user->id),
@@ -1600,6 +1679,12 @@ class SimRequestController extends Controller
                 'plan_id' => $validated['plan_id'] ?? null,
                 'limite_credit' => $limite_credit,
                 'limite_data' => $limite_data,
+                'is_temporary' => $isTemporary,
+                'temporary_start_date' => $isTemporary && isset($validated['temporary_start_date']) ? $validated['temporary_start_date'] : null,
+                'temporary_end_date' => $isTemporary && isset($validated['temporary_end_date']) ? $validated['temporary_end_date'] : null,
+                'previous_limite_credit' => $previousLimiteCredit,
+                'previous_limite_data' => $previousLimiteData,
+                'previous_plan_id' => $previousPlanId,
                 'collaborator_matricule' => $collaboratorFields['collaborator_matricule'],
                 'collaborator_name' => $collaboratorFields['collaborator_name'],
                 'collaborator_first_name' => $collaboratorFields['collaborator_first_name'],
@@ -1774,6 +1859,26 @@ class SimRequestController extends Controller
                             ? ($simRequest->limite_data == (int) $simRequest->limite_data ? (int) $simRequest->limite_data : (float) $simRequest->limite_data)
                             : 'Inchangé';
                     }
+                    
+                    // Ajouter les informations d'ajustement temporaire si applicable
+                    if ($simRequest->request_type === 'ajustement' && $simRequest->is_temporary) {
+                        $params['is_temporary'] = '1';
+                        $params['temporary_start_date'] = $simRequest->temporary_start_date ? $simRequest->temporary_start_date->format('Y-m-d') : '';
+                        $params['temporary_end_date'] = $simRequest->temporary_end_date ? $simRequest->temporary_end_date->format('Y-m-d') : '';
+                        if ($simRequest->previous_limite_credit !== null) {
+                            $params['previous_limite_credit'] = $simRequest->previous_limite_credit == (int) $simRequest->previous_limite_credit 
+                                ? (int) $simRequest->previous_limite_credit 
+                                : (float) $simRequest->previous_limite_credit;
+                        }
+                        if ($simRequest->previous_limite_data !== null) {
+                            $params['previous_limite_data'] = $simRequest->previous_limite_data == (int) $simRequest->previous_limite_data 
+                                ? (int) $simRequest->previous_limite_data 
+                                : (float) $simRequest->previous_limite_data;
+                        }
+                        if ($simRequest->previous_plan_id) {
+                            $params['previous_plan_id'] = $simRequest->previous_plan_id;
+                        }
+                    }
                     if ($simRequest->request_type === 'creation') {
                         $params['beneficiary_name'] = $simRequest->beneficiary_name ?? '';
                         $params['beneficiary_first_name'] = $simRequest->beneficiary_first_name ?? '';
@@ -1923,6 +2028,9 @@ class SimRequestController extends Controller
                                 'ajustement' => 'Ajustement',
                             ];
                             $typeLabel = $typeLabels[$simRequest->request_type] ?? ucfirst($simRequest->request_type);
+                            if ($simRequest->request_type === 'ajustement' && $simRequest->is_temporary) {
+                                $typeLabel = 'Ajustement temporaire';
+                            }
                             $mailData['message_subject'] = "Demande {$typeLabel} - {$simRequest->request_number}";
                         }
                         

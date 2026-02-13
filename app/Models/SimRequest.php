@@ -19,6 +19,12 @@ class SimRequest extends Model
         'plan_id',
         'limite_credit',
         'limite_data',
+        'is_temporary',
+        'temporary_start_date',
+        'temporary_end_date',
+        'previous_limite_credit',
+        'previous_limite_data',
+        'previous_plan_id',
         'motif',
         'justification',
         'priority',
@@ -47,8 +53,13 @@ class SimRequest extends Model
         'validated_at' => 'datetime',
         'admin_processed_at' => 'datetime',
         'delivered_at' => 'datetime',
+        'temporary_start_date' => 'date',
+        'temporary_end_date' => 'date',
         'limite_credit' => 'decimal:2',
         'limite_data' => 'decimal:2',
+        'previous_limite_credit' => 'decimal:2',
+        'previous_limite_data' => 'decimal:2',
+        'is_temporary' => 'boolean',
         'request_details' => 'array',
     ];
 
@@ -86,6 +97,21 @@ class SimRequest extends Model
     public function plan()
     {
         return $this->belongsTo(Plan::class);
+    }
+
+    public function previousPlan()
+    {
+        return $this->belongsTo(Plan::class, 'previous_plan_id');
+    }
+
+    public function isTemporary(): bool
+    {
+        return $this->is_temporary === true;
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->is_temporary && $this->temporary_end_date && $this->temporary_end_date->isPast();
     }
 
     public function histories()

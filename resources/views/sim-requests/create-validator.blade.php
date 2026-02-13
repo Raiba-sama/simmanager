@@ -340,6 +340,43 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
+
+                <div class="mb-3 p-3 border rounded">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="is_temporary" id="is_temporary_ajustement" 
+                               value="1" {{ old('is_temporary', $prefill['is_temporary'] ?? false) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="is_temporary_ajustement">
+                            <strong>Ajustement temporaire</strong>
+                        </label>
+                        <small class="form-text text-muted d-block">Cochez cette case si l'ajustement doit être temporaire et revenir automatiquement aux valeurs précédentes après la date de fin.</small>
+                    </div>
+                    <div id="temporary_date_group" class="mt-3" style="display: none;">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label for="temporary_start_date_ajustement" class="form-label">Date de début d'ajustement</label>
+                                <input type="date" name="temporary_start_date" id="temporary_start_date_ajustement" 
+                                       class="form-control @error('temporary_start_date') is-invalid @enderror"
+                                       value="{{ old('temporary_start_date', $prefill['temporary_start_date'] ?? date('Y-m-d')) }}"
+                                       min="{{ date('Y-m-d') }}">
+                                <small class="form-text text-muted">À partir de quand l'ajustement s'applique (optionnel, défaut: aujourd'hui).</small>
+                                @error('temporary_start_date')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label for="temporary_end_date_ajustement" class="form-label">Date de fin <span class="text-danger">*</span></label>
+                                <input type="date" name="temporary_end_date" id="temporary_end_date_ajustement" 
+                                       class="form-control @error('temporary_end_date') is-invalid @enderror"
+                                       value="{{ old('temporary_end_date', $prefill['temporary_end_date'] ?? '') }}"
+                                       min="{{ date('Y-m-d', strtotime('+1 day')) }}">
+                                <small class="form-text text-muted">L'ajustement sera restauré aux valeurs précédentes après cette date.</small>
+                                @error('temporary_end_date')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div id="step-3" class="step-anchor"></div>
@@ -972,8 +1009,78 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Veuillez sélectionner un forfait complet ou renseigner une limite crédit et/ou data à modifier.');
                 return false;
             }
+            
+            // Validation pour ajustement temporaire
+            const isTemporary = document.getElementById('is_temporary_ajustement');
+            const temporaryStartDate = document.getElementById('temporary_start_date_ajustement');
+            const temporaryEndDate = document.getElementById('temporary_end_date_ajustement');
+            if (isTemporary && isTemporary.checked) {
+                if (!temporaryEndDate || !temporaryEndDate.value) {
+                    e.preventDefault();
+                    if (temporaryEndDate) {
+                        temporaryEndDate.focus();
+                        temporaryEndDate.classList.add('is-invalid');
+                    }
+                    alert('La date de fin est requise pour un ajustement temporaire.');
+                    return false;
+                }
+                if (temporaryStartDate && temporaryStartDate.value && temporaryEndDate.value && temporaryStartDate.value >= temporaryEndDate.value) {
+                    e.preventDefault();
+                    temporaryEndDate.classList.add('is-invalid');
+                    alert('La date de fin doit être postérieure à la date de début.');
+                    return false;
+                }
+            }
         }
     });
+
+    // Afficher/masquer les champs date de début et date de fin pour ajustement temporaire
+    function toggleTemporaryDate(checkbox) {
+        const dateGroup = document.getElementById('temporary_date_group');
+        const endDateInput = document.getElementById('temporary_end_date_ajustement');
+        if (!dateGroup) return;
+        if (checkbox && checkbox.checked) {
+            dateGroup.style.display = 'block';
+            if (endDateInput) {
+                endDateInput.setAttribute('required', 'required');
+            }
+        } else {
+            dateGroup.style.display = 'none';
+            if (endDateInput) {
+                endDateInput.removeAttribute('required');
+                endDateInput.value = '';
+            }
+            const startDateInput = document.getElementById('temporary_start_date_ajustement');
+            if (startDateInput) {
+                startDateInput.value = '';
+            }
+        }
+    }
+
+    // Rendre la fonction disponible globalement pour le HTML et l'appeler au clic sur la checkbox
+    window.toggleTemporaryDate = toggleTemporaryDate;
+
+    // Écouter le clic sur la checkbox (au cas où le formulaire ajustement est affiché)
+    const isTemporaryCheckbox = document.getElementById('is_temporary_ajustement');
+    if (isTemporaryCheckbox) {
+        isTemporaryCheckbox.addEventListener('change', function() {
+            toggleTemporaryDate(this);
+        });
+        // Initialiser l'affichage au chargement (si déjà coché)
+        toggleTemporaryDate(isTemporaryCheckbox);
+    }
+
+    // Réafficher les dates quand on bascule sur le formulaire ajustement
+    const origToggleForms = toggleForms;
+    toggleForms = function() {
+        origToggleForms();
+        const cb = document.getElementById('is_temporary_ajustement');
+        if (cb && requestType.value === 'ajustement') {
+            toggleTemporaryDate(cb);
+        }
+    };
+    requestType.removeEventListener('change', origToggleForms);
+    requestType.addEventListener('change', toggleForms);
 
     form.addEventListener('input', updateSummary);
     form.addEventListener('change', updateSummary);

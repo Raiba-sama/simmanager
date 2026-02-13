@@ -16,6 +16,11 @@ class Kernel extends ConsoleKernel
         $schedule->command('requests:check-pending --days=3')
             ->dailyAt('09:00')
             ->timezone('Indian/Antananarivo');
+        
+        // Restaurer les ajustements temporaires expirés chaque jour à 8h00
+        $schedule->command('adjustments:restore-expired')
+            ->dailyAt('08:00')
+            ->timezone('Indian/Antananarivo');
     }
 
     /**

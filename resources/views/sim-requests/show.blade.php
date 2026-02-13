@@ -232,6 +232,24 @@
                             @if($simRequest->plan)
                                 <strong>{{ $simRequest->plan->name }}</strong><br>
                             @endif
+                            @if($simRequest->is_temporary)
+                                <span class="badge bg-warning text-dark mb-2">
+                                    <i class="bi bi-clock"></i> Ajustement temporaire
+                                </span>
+                                <br>
+                                <small class="text-muted">
+                                    @if($simRequest->temporary_start_date)
+                                        <strong>Date de début:</strong> {{ $simRequest->temporary_start_date->format('d/m/Y') }}<br>
+                                    @endif
+                                    <strong>Date de fin:</strong> {{ $simRequest->temporary_end_date ? $simRequest->temporary_end_date->format('d/m/Y') : 'Non définie' }}
+                                    @if($simRequest->temporary_end_date && $simRequest->temporary_end_date->isPast())
+                                        <span class="badge bg-danger ms-2">Expiré</span>
+                                    @elseif($simRequest->temporary_end_date && $simRequest->temporary_end_date->diffInDays(now()) <= 7)
+                                        <span class="badge bg-warning text-dark ms-2">Expire bientôt</span>
+                                    @endif
+                                </small>
+                                <br>
+                            @endif
                             <small class="text-muted">
                                 Limite crédit:
                                 @if($simRequest->limite_credit !== null)
@@ -247,6 +265,21 @@
                                     <span class="text-muted">Inchangé</span>
                                 @endif
                             </small>
+                            @if($simRequest->is_temporary && ($simRequest->previous_limite_credit !== null || $simRequest->previous_limite_data !== null || $simRequest->previous_plan_id))
+                                <br>
+                                <small class="text-muted mt-2 d-block">
+                                    <strong>Valeurs précédentes (seront restaurées):</strong><br>
+                                    @if($simRequest->previous_plan_id && $simRequest->previousPlan)
+                                        Forfait: {{ $simRequest->previousPlan->name }}<br>
+                                    @endif
+                                    @if($simRequest->previous_limite_credit !== null)
+                                        Limite crédit: {{ number_format($simRequest->previous_limite_credit, 0, ',', ' ') }} XOF<br>
+                                    @endif
+                                    @if($simRequest->previous_limite_data !== null)
+                                        Limite data: {{ $simRequest->previous_limite_data }} GB
+                                    @endif
+                                </small>
+                            @endif
                         </dd>
                     @endif
 
