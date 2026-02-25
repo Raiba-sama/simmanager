@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 
@@ -115,17 +114,19 @@ class UserSyncController extends Controller
                 $existingUser = User::where('matricule', $matricule)->first();
                 if ($existingUser) {
                     try {
-                        $existingUser->update([
-                            'password' => Hash::make($password),
+                        // Mot de passe : passer la valeur brute pour que le cast 'hashed' du modèle le hash une seule fois
+                        $updateData = [
+                            'password' => $password,
                             'name' => $this->extractName($item),
                             'first_name' => $this->extractFirstName($item),
                             'role' => $this->extractRole($item),
-                            'fonction' => $item['fonction'] ?? $item['function'] ?? $existingUser->fonction,
-                            'lieu_affectation' => $item['lieu_affectation'] ?? $item['agence'] ?? $item['agency'] ?? $existingUser->lieu_affectation,
-                            'zone_affectation' => $item['zone_affectation'] ?? $item['zone'] ?? $existingUser->zone_affectation,
-                            'direction' => $item['direction'] ?? $existingUser->direction,
-                            'numero_flotte' => $item['numero_flotte'] ?? $existingUser->numero_flotte,
-                        ]);
+                            'fonction' => $this->extractString($item, ['fonction', 'function'], $existingUser->fonction),
+                            'lieu_affectation' => $this->extractString($item, ['lieu_affectation', 'agence', 'agency'], $existingUser->lieu_affectation),
+                            'zone_affectation' => $this->extractString($item, ['zone_affectation', 'zone'], $existingUser->zone_affectation),
+                            'direction' => $this->extractString($item, ['direction'], $existingUser->direction),
+                            'numero_flotte' => $this->extractString($item, ['numero_flotte'], $existingUser->numero_flotte),
+                        ];
+                        $existingUser->update($updateData);
                         $updated++;
                     } catch (\Exception $e) {
                         Log::error('UserSync: update failed', ['matricule' => $matricule, 'error' => $e->getMessage()]);
@@ -142,19 +143,20 @@ class UserSyncController extends Controller
                 $role = $this->extractRole($item);
 
                 try {
+                    // Mot de passe : valeur brute pour que le cast 'hashed' du modèle le hash une seule fois
                     User::create([
                         'matricule' => $matricule,
                         'name' => $this->extractName($item),
                         'first_name' => $this->extractFirstName($item),
                         'email' => $email,
-                        'password' => Hash::make($password),
+                        'password' => $password,
                         'role' => $role,
                         'active' => true,
-                        'fonction' => $item['fonction'] ?? $item['function'] ?? null,
-                        'lieu_affectation' => $item['lieu_affectation'] ?? $item['agence'] ?? $item['agency'] ?? null,
-                        'zone_affectation' => $item['zone_affectation'] ?? $item['zone'] ?? null,
-                        'direction' => $item['direction'] ?? null,
-                        'numero_flotte' => $item['numero_flotte'] ?? $item['numero_flotte'] ?? null,
+                        'fonction' => $this->extractString($item, ['fonction', 'function']),
+                        'lieu_affectation' => $this->extractString($item, ['lieu_affectation', 'agence', 'agency']),
+                        'zone_affectation' => $this->extractString($item, ['zone_affectation', 'zone']),
+                        'direction' => $this->extractString($item, ['direction']),
+                        'numero_flotte' => $this->extractString($item, ['numero_flotte']),
                     ]);
                     $created++;
                 } catch (\Exception $e) {
@@ -214,5 +216,23 @@ class UserSyncController extends Controller
         $value = $item['role'] ?? $item['role_id'] ?? $item['type'] ?? null;
         $role = $value !== null && $value !== '' ? trim(strtolower((string) $value)) : 'user';
         return in_array($role, $this->allowedRoles, true) ? $role : 'user';
+    }
+
+    /**
+     * Retourne la première valeur non vide trouvée dans $item pour les clés $keys, sinon $default.
+     * Évite d'écraser les valeurs existantes avec des chaînes vides venant du webhook.
+     */
+    private function extractString(array $item, array $keys, ?string $default = null): ?string
+    {
+        foreach ($keys as $key) {
+            $value = $item[$key] ?? null;
+            if ($value !== null && $value !== '') {
+                $trimmed = trim((string) $value);
+                if ($trimmed !== '') {
+                    return $trimmed;
+                }
+            }
+        }
+        return $default;
     }
 }
