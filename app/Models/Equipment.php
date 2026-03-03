@@ -75,6 +75,19 @@ class Equipment extends Model
         return $this->hasMany(TransmissionSheetItem::class);
     }
 
+    public function repairSendouts(): HasMany
+    {
+        return $this->hasMany(EquipmentRepairSendout::class);
+    }
+
+    public function currentRepairSendout(): HasOne
+    {
+        return $this->hasOne(EquipmentRepairSendout::class)
+            ->whereNull('returned_at')
+            ->whereIn('status', [EquipmentRepairSendout::STATUS_SENT, EquipmentRepairSendout::STATUS_IN_REPAIR])
+            ->latest('sent_at');
+    }
+
     // Scopes
     public function scopeAvailable($query)
     {

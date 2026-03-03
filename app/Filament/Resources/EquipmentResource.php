@@ -348,6 +348,7 @@ class EquipmentResource extends Resource
     {
         return [
             RelationManagers\AssignmentsRelationManager::class,
+            RelationManagers\RepairSendoutsRelationManager::class,
             RelationManagers\MaintenanceRelationManager::class,
             RelationManagers\HistoryRelationManager::class,
         ];
