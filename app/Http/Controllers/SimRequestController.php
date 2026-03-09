@@ -1065,15 +1065,15 @@ class SimRequestController extends Controller
     }
 
     /**
-     * Suppression d'une demande par le validateur
+     * Suppression d'une demande (admin/validateur)
      */
     public function destroy(SimRequest $simRequest)
     {
         $user = auth()->user();
 
-        // Vérifier que c'est un validateur
-        if (!$user->isValidator()) {
-            abort(403, 'Seuls les validateurs peuvent supprimer une demande.');
+        // Cohérence avec la policy : l'admin peut supprimer, le validateur aussi
+        if (!$user->isValidator() && !$user->isAdmin()) {
+            abort(403, 'Seuls les validateurs ou administrateurs peuvent supprimer une demande.');
         }
 
         DB::beginTransaction();

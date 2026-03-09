@@ -64,7 +64,8 @@ Route::middleware('auth')->group(function () {
     
     // SIM Requests
     Route::get('sim-requests/export', [\App\Http\Controllers\SimRequestController::class, 'export'])->name('sim-requests.export');
-    Route::resource('sim-requests', \App\Http\Controllers\SimRequestController::class);
+    // IMPORTANT: placer les routes "bulk-*" avant la resource pour éviter que "{simRequest}"
+    // capture "bulk-delete" (et autres) via le route-model binding.
     Route::post('sim-requests/{simRequest}/approve', [\App\Http\Controllers\SimRequestController::class, 'approve'])
         ->name('sim-requests.approve');
     Route::post('sim-requests/{simRequest}/reject', [\App\Http\Controllers\SimRequestController::class, 'reject'])
@@ -89,6 +90,7 @@ Route::middleware('auth')->group(function () {
         ->name('sim-requests.bulk-update-status');
     Route::delete('sim-requests/bulk-delete', [\App\Http\Controllers\SimRequestController::class, 'bulkDelete'])
         ->name('sim-requests.bulk-delete');
+    Route::resource('sim-requests', \App\Http\Controllers\SimRequestController::class);
     Route::post('sim-requests/{simRequest}/toggle-favorite', [\App\Http\Controllers\SimRequestController::class, 'toggleFavorite'])
         ->name('sim-requests.toggle-favorite');
     Route::post('sim-requests/{simRequest}/toggle-delivered', [\App\Http\Controllers\SimRequestController::class, 'toggleDelivered'])
