@@ -43,6 +43,12 @@
                         <input class="form-check-input" type="checkbox" name="favorites" id="filter-favorites" value="1" {{ request('favorites') === '1' ? 'checked' : '' }} style="cursor: pointer;">
                     </div>
                 </div>
+                <div class="col-md-1">
+                    <label class="form-check-label" style="font-size: 12px; color: #64748b; margin-bottom: 4px; display: block;">Groupées</label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="grouped" id="filter-grouped" value="1" {{ request('grouped') === '1' ? 'checked' : '' }} style="cursor: pointer;">
+                    </div>
+                </div>
                 <div class="col-md-2">
                     <select name="delivered" id="filter-delivered" class="form-select" style="border-radius: 8px; border: 1px solid #e2e8f0;">
                         <option value="">Livré : tous</option>
@@ -55,7 +61,7 @@
                         <i class="bi bi-funnel"></i> Filtrer
                     </button>
                 </div>
-                <div class="col-md-1" id="reset-filter-btn" style="{{ request()->hasAny(['request_type','status','delivered','collaborator','agence','phone_number','iccid']) ? '' : 'display: none;' }}">
+                <div class="col-md-1" id="reset-filter-btn" style="{{ request()->hasAny(['request_type','status','delivered','grouped','collaborator','agence','phone_number','iccid']) ? '' : 'display: none;' }}">
                     <a href="{{ route('sim-requests.index') }}" class="btn btn-outline-secondary w-100" style="border-radius: 8px;" title="Réinitialiser" onclick="event.preventDefault(); resetFilters();">
                         <i class="bi bi-x-circle"></i>
                     </a>
@@ -222,7 +228,10 @@
                                 <input type="checkbox" class="request-checkbox" value="{{ $request->id }}" onchange="updateBulkActions()" style="cursor: pointer;">
                             </td>
                             <td class="sticky-col-left second" style="padding: 16px; font-weight: 600; color: #1a1a1a;">
-                                {{ $request->request_number }}
+                                <a href="{{ route('sim-requests.show', $request) }}" class="text-decoration-none text-dark">{{ $request->request_number }}</a>
+                                @if($request->group_id)
+                                    <span class="badge bg-secondary group-badge" title="Demande groupée">Groupe</span>
+                                @endif
                                 @if($urgencyLevel !== 'low')
                                     <span class="badge" style="background: {{ $urgencyColors[$urgencyLevel] }}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 6px; font-weight: 600;" title="En attente depuis {{ $daysPending }} jour(s)">
                                         {{ $daysPending }}j

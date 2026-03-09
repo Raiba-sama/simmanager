@@ -160,6 +160,15 @@
                 </div>
 
                 <div class="mb-3">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="creation_batch_mode" name="creation_batch_mode" value="1" {{ !empty(old('sim_ids')) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="creation_batch_mode">
+                            <strong>Demande groupée</strong> — attribuer plusieurs cartes SIM au même bénéficiaire (une demande par SIM)
+                        </label>
+                    </div>
+                </div>
+
+                <div id="creation-single-sim" class="mb-3">
                     <label for="sim_id_creation" class="form-label">SIM (optionnel)</label>
                     <select id="sim_id_creation" class="form-select @error('sim_id') is-invalid @enderror"
                             onchange="document.getElementById('sim_id_hidden').value = this.value">
@@ -172,6 +181,23 @@
                     </select>
                     @error('sim_id')
                         <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div id="creation-batch-sims" class="mb-3 form-section-hidden">
+                    <label class="form-label">Cartes SIM à attribuer <span class="text-danger">*</span></label>
+                    <p class="text-muted small mb-2">Sélectionnez une ou plusieurs cartes. Une demande sera créée pour chaque SIM, avec le même bénéficiaire et forfait.</p>
+                    <div class="border rounded p-3" style="max-height: 220px; overflow-y: auto; background: #f8fafc;">
+                        @foreach($sims as $sim)
+                            <div class="form-check">
+                                <input class="form-check-input creation-sim-check" type="checkbox" name="sim_ids[]" value="{{ $sim->id }}" id="sim_batch_{{ $sim->id }}"
+                                    {{ in_array($sim->id, old('sim_ids', [])) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="sim_batch_{{ $sim->id }}">{{ $sim->iccid }} — {{ $sim->operator ?? 'N/A' }}</label>
+                            </div>
+                        @endforeach
+                    </div>
+                    @error('sim_ids')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
                 </div>
 
@@ -540,6 +566,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 collaboratorBlock.classList.add('form-section-hidden');
             }
         }
+
+        if (type === 'creation' && typeof toggleCreationBatchMode === 'function') {
+            toggleCreationBatchMode();
+        }
         
         // S'assurer que les champs cachés sont toujours actifs (pas disabled)
         const allInputs = form.querySelectorAll('input, textarea, select');
@@ -565,8 +595,34 @@ document.addEventListener('DOMContentLoaded', function() {
         updateSummary();
     }
 
+    function toggleCreationBatchMode() {
+        const batchMode = document.getElementById('creation_batch_mode');
+        const singleBlock = document.getElementById('creation-single-sim');
+        const batchBlock = document.getElementById('creation-batch-sims');
+        const simIdHidden = document.getElementById('sim_id_hidden');
+        if (!batchMode || !singleBlock || !batchBlock) return;
+        if (batchMode.checked) {
+            singleBlock.classList.add('form-section-hidden');
+            batchBlock.classList.remove('form-section-hidden');
+            if (simIdHidden) simIdHidden.value = '';
+            document.querySelectorAll('.creation-sim-check').forEach(cb => cb.removeAttribute('disabled'));
+        } else {
+            singleBlock.classList.remove('form-section-hidden');
+            batchBlock.classList.add('form-section-hidden');
+            document.querySelectorAll('.creation-sim-check').forEach(cb => { cb.checked = false; cb.setAttribute('disabled', 'disabled'); });
+        }
+    }
+
     requestType.addEventListener('change', toggleForms);
     toggleForms(); // Initialiser au chargement
+    const creationBatchCheck = document.getElementById('creation_batch_mode');
+    if (creationBatchCheck) {
+        creationBatchCheck.addEventListener('change', function() {
+            toggleCreationBatchMode();
+            updateSummary();
+        });
+    }
+    toggleCreationBatchMode();
     
     // Initialiser les champs cachés au chargement si des valeurs existent
     function initializeHiddenFields() {
@@ -874,6 +930,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const motifHidden = document.getElementById('motif_hidden');
             const simId = document.getElementById('sim_id_creation');
             const simIdHidden = document.getElementById('sim_id_hidden');
+            const batchMode = document.getElementById('creation_batch_mode');
             
             // S'assurer que le formulaire de création est visible avant soumission
             creationForm.classList.remove('form-section-hidden');
@@ -885,8 +942,20 @@ document.addEventListener('DOMContentLoaded', function() {
             if (motif && motifHidden) {
                 motifHidden.value = motif.value;
             }
-            if (simId && simIdHidden) {
-                simIdHidden.value = simId.value;
+            if (batchMode && batchMode.checked) {
+                const checked = form.querySelectorAll('.creation-sim-check:checked');
+                if (simIdHidden) simIdHidden.value = '';
+                if (checked.length === 0) {
+                    e.preventDefault();
+                    alert('En mode demande groupée, sélectionnez au moins une carte SIM.');
+                    document.getElementById('creation-batch-sims').scrollIntoView({ behavior: 'smooth' });
+                    return false;
+                }
+            } else {
+                if (simId && simIdHidden) {
+                    simIdHidden.value = simId.value;
+                }
+                form.querySelectorAll('.creation-sim-check').forEach(cb => cb.removeAttribute('name'));
             }
             
             if (!beneficiaryName || !beneficiaryName.value || !beneficiaryName.value.trim()) {

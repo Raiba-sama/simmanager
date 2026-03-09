@@ -103,6 +103,10 @@ class SimRequestController extends Controller
             });
         }
 
+        if ($request->filled('grouped') && $request->grouped === '1') {
+            $query->whereNotNull('group_id');
+        }
+
         $requests = $query->paginate(15);
         
         // Charger les favoris de l'utilisateur pour chaque demande
@@ -451,7 +455,17 @@ class SimRequestController extends Controller
                 switch ($requestType) {
                     case 'creation':
                         $validated = $this->validateCreation($request);
-                        $simRequest = $this->createCreationRequest($validated, $user);
+                        $simIds = $validated['sim_ids'] ?? null;
+                        if (!empty($simIds) && is_array($simIds)) {
+                            $simRequests = $this->createCreationRequestBatch($validated, $user, $simIds);
+                            $simRequest = $simRequests->first();
+                            if ($simRequest) {
+                                return redirect()->route('sim-requests.show', $simRequest)
+                                    ->with('success', count($simRequests) . ' demande(s) créée(s) en groupe. Vous pouvez valider et envoyer chaque demande ou utiliser les actions en masse depuis la liste.');
+                            }
+                        } else {
+                            $simRequest = $this->createCreationRequest($validated, $user);
+                        }
                         break;
                     case 'suspension':
                     case 'desactivation':
@@ -503,8 +517,8 @@ class SimRequestController extends Controller
             abort(403, 'Vous n\'avez pas accès à cette demande.');
         }
 
-        // Charger les relations nécessaires, y compris les historiques
-        $simRequest->load(['user', 'sim', 'validator', 'creator', 'admin', 'plan', 'histories.user', 'favoritedBy']);
+        // Charger les relations nécessaires, y compris les historiques et les demandes du même groupe
+        $simRequest->load(['user', 'sim', 'validator', 'creator', 'admin', 'plan', 'histories.user', 'favoritedBy', 'groupMembers.sim']);
         $isFavorite = $user->favorites()->where('sim_request_id', $simRequest->id)->exists();
         return view('sim-requests.show', compact('simRequest', 'isFavorite'));
     }
@@ -1113,16 +1127,29 @@ class SimRequestController extends Controller
 
     private function validateCreation(Request $request)
     {
-        return $request->validate([
+        $rules = [
             'plan_id' => 'required|exists:plans,id',
             'beneficiary_name' => 'required|string|max:255',
             'beneficiary_first_name' => 'nullable|string|max:255',
             'beneficiary_fonction' => 'nullable|string|max:255',
             'beneficiary_matricule' => 'nullable|string|max:255',
             'sim_id' => 'nullable|exists:sims,id',
+            'sim_ids' => 'nullable|array',
+            'sim_ids.*' => 'exists:sims,id',
             'requested_iccid' => 'nullable|string|max:255',
             'motif' => 'required|string|max:500',
-        ]);
+        ];
+        $validated = $request->validate($rules);
+        // Demande groupée : sim_ids doit contenir au moins une SIM (et on ignore sim_id)
+        if (!empty($validated['sim_ids'])) {
+            $validated['sim_ids'] = array_values(array_unique(array_filter($validated['sim_ids'])));
+            if (count($validated['sim_ids']) === 0) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'sim_ids' => ['Veuillez sélectionner au moins une carte SIM pour la demande groupée.'],
+                ]);
+            }
+        }
+        return $validated;
     }
 
     private function validateSuspensionDesactivation(Request $request)
@@ -1534,7 +1561,33 @@ class SimRequestController extends Controller
         ];
     }
 
-    private function createCreationRequest(array $validated, User $user)
+    /**
+     * Crée plusieurs demandes de création (groupe) avec le même bénéficiaire/forfait, une SIM par demande.
+     */
+    private function createCreationRequestBatch(array $validated, User $user, array $simIds): \Illuminate\Support\Collection
+    {
+        $groupId = \Illuminate\Support\Str::uuid()->toString();
+        $created = collect();
+        DB::beginTransaction();
+        try {
+            foreach ($simIds as $simId) {
+                $singleValidated = $validated;
+                $singleValidated['sim_id'] = $simId;
+                unset($singleValidated['sim_ids']);
+                $req = $this->createCreationRequest($singleValidated, $user, $groupId);
+                if ($req) {
+                    $created->push($req);
+                }
+            }
+            DB::commit();
+            return $created;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    private function createCreationRequest(array $validated, User $user, ?string $groupId = null)
     {
         DB::beginTransaction();
         try {
@@ -1543,6 +1596,7 @@ class SimRequestController extends Controller
             $plan = Plan::find($validated['plan_id']);
 
             $simRequest = SimRequest::create([
+                'group_id' => $groupId,
                 'request_number' => SimRequest::generateRequestNumber(),
                 'user_id' => $user->id, // Le validator qui crée
                 'sim_id' => $validated['sim_id'] ?? null,

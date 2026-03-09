@@ -4,26 +4,63 @@
 @section('page-title', 'Demande #' . $simRequest->request_number)
 
 @section('content')
+<style>
+.sim-request-page { --sr-card-radius: 12px; --sr-shadow: 0 1px 3px rgba(0,0,0,0.06); --sr-shadow-hover: 0 4px 12px rgba(0,0,0,0.08); }
+.sim-request-page .card { border: none; border-radius: var(--sr-card-radius); box-shadow: var(--sr-shadow); transition: box-shadow 0.2s; }
+.sim-request-page .card:hover { box-shadow: var(--sr-shadow-hover); }
+.sim-request-page .action-panel { position: sticky; top: 90px; }
+.sim-request-page .action-card { border-radius: var(--sr-card-radius); border: none; overflow: hidden; margin-bottom: 0.75rem; }
+.sim-request-page .action-card .card-header { font-weight: 600; font-size: 0.9rem; padding: 0.6rem 0.85rem; }
+.sim-request-page .action-card .card-body { padding: 0.75rem 0.85rem; }
+.sim-request-page .btn-action-main { border-radius: 8px; padding: 0.42rem 0.75rem; font-weight: 500; }
+.sim-request-page .btn-action-mini { border-radius: 8px; padding: 0.35rem 0.5rem; line-height: 1; }
+.sim-request-page .action-card .form-control,
+.sim-request-page .action-card .form-select { font-size: 0.875rem; }
+.sim-request-page .action-card .form-control::placeholder { font-size: 0.875rem; }
+.sim-request-page .action-card .btn { font-size: 0.9rem; }
+.sim-request-page .group-badge { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
+.sim-request-page .info-dt { color: #64748b; font-weight: 500; font-size: 0.875rem; }
+.sim-request-page .info-dd { color: #1e293b; font-size: 0.9375rem; }
+</style>
+
 @if(request()->has('from') && request()->from === 'notification')
-    <div class="alert alert-info alert-dismissible fade show" role="alert" style="border-left: 4px solid #3b82f6; background: #eff6ff; border-radius: 8px; margin-bottom: 20px;">
+    <div class="alert alert-info alert-dismissible fade show sim-request-page" role="alert" style="border-left: 4px solid #3b82f6; background: #eff6ff; border-radius: 10px; margin-bottom: 1.25rem;">
         <div class="d-flex align-items-center">
-            <i class="bi bi-info-circle me-2" style="font-size: 20px; color: #3b82f6;"></i>
+            <i class="bi bi-info-circle me-2" style="font-size: 1.25rem; color: #3b82f6;"></i>
             <div>
                 <strong>Rappel de notification</strong>
-                <p class="mb-0" style="font-size: 14px;">Vous avez été redirigé depuis une notification de rappel. Cette demande nécessite une action de votre part.</p>
+                <p class="mb-0" style="font-size: 0.875rem;">Vous avez été redirigé depuis une notification. Cette demande nécessite une action.</p>
             </div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 @endif
 
-<div class="row">
-    <div class="col-md-8">
-        <div class="card mb-3" style="border: none; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-            <div class="card-header" style="background: white; border-bottom: 1px solid #e2e8f0; border-radius: 10px 10px 0 0;">
-                <div class="d-flex justify-content-between align-items-center">
+@if($simRequest->isGrouped() && $simRequest->groupMembers->count() > 1)
+    <div class="card mb-3 sim-request-page border-primary" style="border-width: 1px !important;">
+        <div class="card-header bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-collection me-2"></i>Demandes du même groupe ({{ $simRequest->groupMembers->count() }})</span>
+            <span class="badge bg-primary">{{ $simRequest->groupMembers->count() }} carte(s) SIM</span>
+        </div>
+        <div class="card-body py-2">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                @foreach($simRequest->groupMembers as $member)
+                    <a href="{{ route('sim-requests.show', $member) }}" class="btn btn-sm {{ $member->id === $simRequest->id ? 'btn-primary' : 'btn-outline-primary' }}" style="border-radius: 8px;">
+                        {{ $member->request_number }} @if($member->sim) — {{ $member->sim->iccid }} @endif
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    </div>
+@endif
+
+<div class="row sim-request-page">
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div class="d-flex align-items-center gap-2">
-                        <h5 class="mb-0" style="font-weight: 600; color: #1e293b;">Informations de la demande</h5>
+                        <h5 class="mb-0" style="font-weight: 600; color: #1e293b; font-size: 1.1rem;"><i class="bi bi-file-text text-primary me-1"></i>Informations de la demande</h5>
                         @if($simRequest->status === 'en_attente')
                             @php
                                 $daysPending = now()->diffInDays($simRequest->created_at);
@@ -54,7 +91,7 @@
                             $canEdit = $canEdit && ($simRequest->status !== 'demande_envoyee');
                         @endphp
                         @if($canEdit)
-                            <a href="{{ route('sim-requests.edit', $simRequest) }}" class="btn btn-sm btn-primary" style="border-radius: 6px;" title="Modifier la demande">
+                            <a href="{{ route('sim-requests.edit', $simRequest) }}" class="btn btn-sm btn-primary btn-action-main" title="Modifier la demande">
                                 <i class="bi bi-pencil"></i> Modifier
                             </a>
                         @endif
@@ -62,7 +99,7 @@
                             $canCopy = $user->isValidator() || ($simRequest->isRecuperation() && $simRequest->user_id === $user->id);
                         @endphp
                         @if($canCopy)
-                            <a href="{{ route('sim-requests.create', ['copy_from' => $simRequest->id]) }}" class="btn btn-sm btn-outline-primary" style="border-radius: 6px;" title="Reprendre cette demande">
+                            <a href="{{ route('sim-requests.create', ['copy_from' => $simRequest->id]) }}" class="btn btn-sm btn-outline-primary btn-action-main" title="Reprendre cette demande">
                                 <i class="bi bi-arrow-repeat"></i> Reprendre
                             </a>
                         @endif
@@ -78,11 +115,11 @@
                 </div>
             </div>
             <div class="card-body">
-                <dl class="row" style="margin-bottom: 0;">
-                    <dt class="col-sm-4" style="color: #64748b; font-weight: 500; margin-bottom: 8px;">N° Demande:</dt>
-                    <dd class="col-sm-8" style="color: #1e293b; margin-bottom: 16px;"><strong>{{ $simRequest->request_number }}</strong></dd>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 info-dt mb-2">N° Demande</dt>
+                    <dd class="col-sm-8 info-dd mb-3"><strong>{{ $simRequest->request_number }}</strong></dd>
 
-                    <dt class="col-sm-4">Type:</dt>
+                    <dt class="col-sm-4 info-dt mb-2">Type</dt>
                     <dd class="col-sm-8">
                         @php
                             $typeLabels = [
@@ -105,7 +142,7 @@
                         </span>
                     </dd>
 
-                    <dt class="col-sm-4">Statut:</dt>
+                    <dt class="col-sm-4 info-dt mb-2">Statut</dt>
                     <dd class="col-sm-8">
                         @php
                             $statusLabels = [
@@ -343,19 +380,19 @@
         </div>
     </div>
 
-    <div class="col-md-4">
+    <div class="col-lg-4">
+        <div class="action-panel">
         {{-- Actions pour le demandeur --}}
-        {{-- Si un validateur a créé une demande, il voit la même vue qu'un simple utilisateur --}}
         @if((auth()->user()->id === $simRequest->user_id || auth()->user()->id === $simRequest->created_by) && ($simRequest->isEnAttente() || $simRequest->isPending()))
-            <div class="card mb-3" style="border: none; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                <div class="card-header bg-info text-white" style="border-radius: 10px 10px 0 0;">
-                    <h5 class="mb-0">Mes actions</h5>
+            <div class="card action-card">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-person-lines-fill me-2"></i>Mes actions
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ route('sim-requests.cancel', $simRequest) }}" data-confirm="Êtes-vous sûr de vouloir annuler cette demande ? Cette action est irréversible." data-confirm-variant="danger" data-confirm-text="Annuler">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="btn btn-warning w-100" data-tooltip="Annuler votre demande">
+                        <button type="submit" class="btn btn-warning w-100 btn-action-main">
                             <i class="bi bi-x-circle"></i> Annuler ma demande
                         </button>
                     </form>
@@ -363,25 +400,25 @@
             </div>
         @endif
 
-        {{-- Marquer comme livré (validateur) --}}
+        {{-- Livraison (validateur) --}}
         @if(auth()->user()->isValidator())
-            <div class="card mb-3" style="border: none; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                <div class="card-header bg-light" style="border-radius: 10px 10px 0 0;">
-                    <h5 class="mb-0">Livraison</h5>
+            <div class="card action-card">
+                <div class="card-header" style="background: #f0fdf4; color: #166534;">
+                    <i class="bi bi-box-seam me-2"></i>Livraison
                 </div>
                 <div class="card-body">
                     @if($simRequest->isDelivered())
-                        <form method="POST" action="{{ route('sim-requests.toggle-delivered', $simRequest) }}" class="d-inline" data-confirm="Retirer la marque « livré » ?" data-confirm-variant="secondary" data-confirm-text="Retirer">
+                        <form method="POST" action="{{ route('sim-requests.toggle-delivered', $simRequest) }}" data-confirm="Retirer la marque « livré » ?" data-confirm-variant="secondary" data-confirm-text="Retirer">
                             @csrf
-                            <button type="submit" class="btn btn-outline-secondary w-100">
+                            <button type="submit" class="btn btn-outline-secondary w-100 btn-action-main">
                                 <i class="bi bi-box-seam"></i> Retirer « livré »
                             </button>
                         </form>
                     @else
-                        <form method="POST" action="{{ route('sim-requests.toggle-delivered', $simRequest) }}" class="d-inline" data-confirm="Marquer cette demande comme livrée ?" data-confirm-variant="success" data-confirm-text="Marquer livré">
+                        <form method="POST" action="{{ route('sim-requests.toggle-delivered', $simRequest) }}" data-confirm="Marquer cette demande comme livrée ?" data-confirm-variant="success" data-confirm-text="Marquer livré">
                             @csrf
-                            <button type="submit" class="btn btn-success w-100">
-                                <i class="bi bi-box-seam"></i> Marquer comme livrée
+                            <button type="submit" class="btn btn-success w-100 btn-action-main">
+                                <i class="bi bi-check-circle"></i> Marquer comme livrée
                             </button>
                         </form>
                     @endif
@@ -389,139 +426,129 @@
             </div>
         @endif
 
-        {{-- Actions pour le validateur --}}
-        {{-- Le validateur ne peut valider que les demandes de récupération des simples utilisateurs (pas celles qu'il a créées) --}}
+        {{-- Validation (validateur, récupération uniquement) --}}
         @if($simRequest->isRecuperation() && $simRequest->isEnAttente() && auth()->user()->canValidateRequests() && $simRequest->created_by !== auth()->id())
-            <div class="card mb-3" style="border: none; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                <div class="card-header bg-warning" style="border-radius: 10px 10px 0 0;">
-                    <h5 class="mb-0">Actions de validation</h5>
+            <div class="card action-card">
+                <div class="card-header" style="background: #fef3c7; color: #92400e;">
+                    <i class="bi bi-patch-check me-2"></i>Validation
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ route('sim-requests.approve', $simRequest) }}" class="mb-2">
                         @csrf
                         <div class="mb-2">
-                            <textarea name="notes" class="form-control" rows="2" placeholder="Notes (optionnel)"></textarea>
+                            <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Notes (optionnel)"></textarea>
                         </div>
-                        <button type="submit" class="btn btn-success w-100">
+                        <button type="submit" class="btn btn-success w-100 btn-action-main">
                             <i class="bi bi-check-circle"></i> Approuver
                         </button>
                     </form>
-
                     <form method="POST" action="{{ route('sim-requests.reject', $simRequest) }}" class="mb-2" data-confirm="Confirmer le rejet de cette demande ?" data-confirm-variant="danger" data-confirm-text="Rejeter">
                         @csrf
                         <div class="mb-2">
-                            <textarea name="rejection_reason" class="form-control" rows="2" placeholder="Raison du rejet *" required></textarea>
+                            <textarea name="rejection_reason" class="form-control form-control-sm" rows="2" placeholder="Raison du rejet *" required></textarea>
                         </div>
-                        <button type="submit" class="btn btn-danger w-100">
+                        <button type="submit" class="btn btn-danger w-100 btn-action-main">
                             <i class="bi bi-x-circle"></i> Rejeter
                         </button>
                     </form>
-
-                    <form method="POST" action="{{ route('sim-requests.destroy', $simRequest) }}" data-confirm="Êtes-vous sûr de vouloir supprimer cette demande ? Cette action est irréversible." data-confirm-variant="danger" data-confirm-text="Supprimer">
+                    <form method="POST" action="{{ route('sim-requests.destroy', $simRequest) }}" data-confirm="Supprimer définitivement cette demande ?" data-confirm-variant="danger" data-confirm-text="Supprimer">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="btn btn-outline-danger w-100 mt-2" data-tooltip="Supprimer définitivement cette demande">
-                            <i class="bi bi-trash"></i> Supprimer la demande
+                        <button type="submit" class="btn btn-outline-danger w-100 btn-action-main">
+                            <i class="bi bi-trash"></i> Supprimer
                         </button>
                     </form>
                 </div>
             </div>
         @endif
 
-        {{-- Bouton pour générer le bordereau de transmission (visible pour les validateurs si la demande est acceptée) --}}
+        {{-- Bordereau (validateur) --}}
         @if(auth()->user()->isValidator())
-            <div class="card mb-3" style="border: none; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                <div class="card-header bg-info text-white" style="border-radius: 10px 10px 0 0;">
-                    <h5 class="mb-0">Bordereau de Transmission</h5>
+            <div class="card action-card">
+                <div class="card-header" style="background: #eff6ff; color: #1e40af;">
+                    <i class="bi bi-file-earmark-text me-2"></i>Bordereau
                 </div>
                 <div class="card-body">
                     @if($simRequest->status === 'accepted')
-                        <a href="{{ route('sim-requests.bordereau', $simRequest) }}" class="btn btn-info w-100" target="_blank">
-                            <i class="bi bi-file-text"></i> Voir le Bordereau de Transmission
+                        <a href="{{ route('sim-requests.bordereau', $simRequest) }}" class="btn btn-outline-primary w-100 btn-action-main" target="_blank">
+                            <i class="bi bi-file-text"></i> Voir le bordereau
                         </a>
                     @else
-                        <button class="btn btn-secondary w-100" disabled title="Le bordereau de transmission n'est disponible que pour les demandes acceptées">
-                            <i class="bi bi-file-text"></i> Voir le Bordereau de Transmission
+                        <button class="btn btn-secondary w-100 btn-action-main" disabled title="Disponible pour les demandes acceptées">
+                            <i class="bi bi-file-text"></i> Voir le bordereau
                         </button>
                     @endif
                 </div>
             </div>
         @endif
 
+        {{-- Admin : webhook + statuts --}}
         @if(auth()->user()->isAdmin())
-            <div class="card mb-3" style="border: none; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                <div class="card-header bg-primary text-white" style="border-radius: 10px 10px 0 0;">
-                    <h5 class="mb-0">Actions Admin</h5>
+            <div class="card action-card">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-gear-wide-connected me-2"></i>Actions Admin
                 </div>
                 <div class="card-body">
-                    {{-- Bouton pour soumettre au webhook --}}
-                    {{-- Afficher pour toutes les demandes non rejetées --}}
                     @if(!$simRequest->isRejetee())
-                        <form method="POST" action="{{ route('sim-requests.submit-webhook', $simRequest) }}" class="mb-3" data-confirm="Soumettre cette demande au webhook ? Un email sera envoyé automatiquement." data-confirm-variant="primary" data-confirm-text="Soumettre">
+                        <form method="POST" action="{{ route('sim-requests.submit-webhook', $simRequest) }}" class="mb-3" data-confirm="Soumettre cette demande au webhook ? Un email sera envoyé." data-confirm-variant="primary" data-confirm-text="Soumettre">
                             @csrf
-                            <button type="submit" class="btn btn-success w-100">
-                                <i class="bi bi-send"></i> Soumettre la demande au webhook
+                            <button type="submit" class="btn btn-success w-100 btn-action-main">
+                                <i class="bi bi-send"></i> Envoyer au webhook
                             </button>
                         </form>
                     @endif
-                    
-                    {{-- Raccourcis rapides pour le statut opérateur --}}
-                    <div class="mb-3">
-                        <label class="form-label">Raccourcis statut opérateur</label>
-                        <div class="d-flex gap-2">
-                            <form method="POST" action="{{ route('sim-requests.quick-update-status', $simRequest) }}" class="flex-fill" data-confirm="Mettre à jour le statut à Pending (En attente) ?" data-confirm-variant="primary" data-confirm-text="Mettre à jour">
-                                @csrf
-                                <input type="hidden" name="status" value="pending">
-                                <button type="submit" class="btn btn-{{ $simRequest->status === 'pending' ? 'primary' : 'outline-primary' }} w-100" title="Pending (En attente)">
-                                    <i class="bi bi-clock"></i> Pending
-                                </button>
-                            </form>
-                            <form method="POST" action="{{ route('sim-requests.quick-update-status', $simRequest) }}" class="flex-fill" data-confirm="Mettre à jour le statut à Accepted (Accepté) ?" data-confirm-variant="success" data-confirm-text="Mettre à jour">
-                                @csrf
-                                <input type="hidden" name="status" value="accepted">
-                                <button type="submit" class="btn btn-{{ $simRequest->status === 'accepted' ? 'success' : 'outline-success' }} w-100" title="Accepted (Accepté)">
-                                    <i class="bi bi-check-circle"></i> Accepted
-                                </button>
-                            </form>
-                            <form method="POST" action="{{ route('sim-requests.quick-update-status', $simRequest) }}" class="flex-fill" data-confirm="Mettre à jour le statut à Refused (Refusé) ?" data-confirm-variant="danger" data-confirm-text="Mettre à jour">
-                                @csrf
-                                <input type="hidden" name="status" value="refused">
-                                <button type="submit" class="btn btn-{{ $simRequest->status === 'refused' ? 'danger' : 'outline-danger' }} w-100" title="Refused (Refusé)">
-                                    <i class="bi bi-x-circle"></i> Refused
-                                </button>
-                            </form>
-                        </div>
+                    <label class="form-label small text-muted mb-2">Statut opérateur</label>
+                    <div class="d-flex gap-2 mb-2">
+                        <form method="POST" action="{{ route('sim-requests.quick-update-status', $simRequest) }}" class="flex-fill" data-confirm="Passer en Pending ?" data-confirm-variant="primary" data-confirm-text="Oui">
+                            @csrf
+                            <input type="hidden" name="status" value="pending">
+                            <button type="submit" class="btn btn-action-mini {{ $simRequest->status === 'pending' ? 'btn-primary' : 'btn-outline-primary' }} w-100" title="Pending">
+                                <i class="bi bi-clock"></i>
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('sim-requests.quick-update-status', $simRequest) }}" class="flex-fill" data-confirm="Passer en Accepted ?" data-confirm-variant="success" data-confirm-text="Oui">
+                            @csrf
+                            <input type="hidden" name="status" value="accepted">
+                            <button type="submit" class="btn btn-action-mini {{ $simRequest->status === 'accepted' ? 'btn-success' : 'btn-outline-success' }} w-100" title="Accepted">
+                                <i class="bi bi-check-circle"></i>
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('sim-requests.quick-update-status', $simRequest) }}" class="flex-fill" data-confirm="Passer en Refused ?" data-confirm-variant="danger" data-confirm-text="Oui">
+                            @csrf
+                            <input type="hidden" name="status" value="refused">
+                            <button type="submit" class="btn btn-action-mini {{ $simRequest->status === 'refused' ? 'btn-danger' : 'btn-outline-danger' }} w-100" title="Refused">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </form>
                     </div>
-                    
                     <form method="POST" action="{{ route('sim-requests.admin-action', $simRequest) }}">
                         @csrf
-                        <div class="mb-3">
-                            <label for="admin_status" class="form-label">Statut opérateur (avec commentaire)</label>
-                            <select name="status" id="admin_status" class="form-select" required>
-                                <option value="pending" {{ $simRequest->status === 'pending' ? 'selected' : '' }}>Pending (En attente)</option>
-                                <option value="accepted" {{ $simRequest->status === 'accepted' ? 'selected' : '' }}>Accepted (Accepté)</option>
-                                <option value="refused" {{ $simRequest->status === 'refused' ? 'selected' : '' }}>Refused (Refusé)</option>
+                        <div class="mb-2">
+                            <select name="status" id="admin_status" class="form-select form-select-sm" required>
+                                <option value="pending" {{ $simRequest->status === 'pending' ? 'selected' : '' }}>Pending</option>
+                                <option value="accepted" {{ $simRequest->status === 'accepted' ? 'selected' : '' }}>Accepted</option>
+                                <option value="refused" {{ $simRequest->status === 'refused' ? 'selected' : '' }}>Refused</option>
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <label for="admin_comment" class="form-label">Commentaire</label>
-                            <textarea name="admin_comment" id="admin_comment" class="form-control" rows="3" placeholder="Commentaire pour l'opérateur...">{{ old('admin_comment', $simRequest->admin_comment) }}</textarea>
+                        <div class="mb-2">
+                            <textarea name="admin_comment" id="admin_comment" class="form-control form-control-sm" rows="2" placeholder="Commentaire...">{{ old('admin_comment', $simRequest->admin_comment) }}</textarea>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">
+                        <button type="submit" class="btn btn-primary w-100 btn-action-main btn-sm">
                             <i class="bi bi-send"></i> Mettre à jour
                         </button>
                     </form>
                 </div>
             </div>
         @endif
+        </div>
 
         @php
             $recentHistories = $simRequest->histories->sortByDesc('created_at')->take(3);
         @endphp
-        <div class="card mb-3" style="border: none; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-            <div class="card-header" style="background: white; border-bottom: 1px solid #e2e8f0; border-radius: 10px 10px 0 0;">
-                <h5 class="mb-0" style="font-weight: 600; color: #1e293b;">
-                    <i class="bi bi-lightning-charge" style="margin-right: 8px;"></i>Activité récente
+        <div class="card action-card">
+            <div class="card-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                <h5 class="mb-0" style="font-weight: 600; color: #1e293b; font-size: 0.95rem;">
+                    <i class="bi bi-lightning-charge me-2"></i>Activité récente
                 </h5>
             </div>
             <div class="card-body">
@@ -541,15 +568,15 @@
             </div>
         </div>
 
-        <div class="card" style="border: none; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-            <div class="card-header" style="background: white; border-bottom: 1px solid #e2e8f0; border-radius: 10px 10px 0 0;">
-                <h5 class="mb-0" style="font-weight: 600; color: #1e293b;">
-                    <i class="bi bi-clock-history" style="margin-right: 8px;"></i>Historique et traçabilité
+        <div class="card action-card">
+            <div class="card-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                <h5 class="mb-0" style="font-weight: 600; color: #1e293b; font-size: 0.95rem;">
+                    <i class="bi bi-clock-history me-2"></i>Historique
                 </h5>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-sm mb-0" style="margin: 0;">
+                    <table class="table table-sm mb-0" style="margin: 0; font-size: 12.5px;">
                         <thead style="background: #f9fafb;">
                             <tr>
                                 <th style="padding: 12px; font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Date</th>
@@ -561,8 +588,8 @@
                         <tbody>
                             @forelse($simRequest->histories->sortByDesc('created_at') as $history)
                                 <tr style="border-bottom: 1px solid #e5e7eb; transition: background 0.2s;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
-                                    <td style="padding: 12px; color: #4b5563;">{{ $history->created_at->format('d/m/Y H:i') }}</td>
-                                    <td style="padding: 12px;">
+                                    <td style="padding: 10px; color: #4b5563;">{{ $history->created_at->format('d/m/Y H:i') }}</td>
+                                    <td style="padding: 10px;">
                                         @php
                                             $actionColors = [
                                                 'created' => '#10b981',
@@ -578,10 +605,10 @@
                                             {{ $history->action_label }}
                                         </span>
                                     </td>
-                                    <td style="padding: 12px; color: #4b5563;">
+                                    <td style="padding: 10px; color: #4b5563;">
                                         {{ $history->user ? $history->user->full_name : ($history->user_matricule ?? '-') }}
                                     </td>
-                                    <td style="padding: 12px; color: #6b7280; font-size: 13px;">
+                                    <td style="padding: 10px; color: #6b7280; font-size: 12.5px;">
                                         @if($history->changes_summary)
                                             {{ $history->changes_summary }}
                                         @elseif($history->notes)
@@ -604,9 +631,9 @@
     </div>
 </div>
 
-<div class="mt-3">
-    <a href="{{ route('sim-requests.index') }}" class="btn btn-secondary">
-        <i class="bi bi-arrow-left"></i> Retour
+<div class="mt-4 sim-request-page">
+    <a href="{{ route('sim-requests.index') }}" class="btn btn-outline-secondary btn-action-main">
+        <i class="bi bi-arrow-left"></i> Retour à la liste
     </a>
 </div>
 

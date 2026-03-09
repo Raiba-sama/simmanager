@@ -10,6 +10,7 @@ class SimRequest extends Model
     use HasFactory;
 
     protected $fillable = [
+        'group_id',
         'request_number',
         'user_id',
         'sim_id',
@@ -123,6 +124,19 @@ class SimRequest extends Model
     {
         return $this->belongsToMany(User::class, 'favorites', 'sim_request_id', 'user_id')
                     ->withTimestamps();
+    }
+
+    /** Demandes du même groupe (même group_id, y compris celle-ci). Vide si pas de group_id. */
+    public function groupMembers()
+    {
+        return $this->hasMany(SimRequest::class, 'group_id', 'group_id')
+            ->whereNotNull('sim_requests.group_id')
+            ->orderBy('id');
+    }
+
+    public function isGrouped(): bool
+    {
+        return !empty($this->group_id);
     }
 
     // Scopes
