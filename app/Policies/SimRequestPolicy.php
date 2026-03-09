@@ -24,6 +24,10 @@ class SimRequestPolicy
 
     public function update(User $user, SimRequest $request): bool
     {
+        // L'admin peut toujours modifier (ex. changer la carte SIM puis renvoyer au webhook)
+        if ($user->isAdmin()) {
+            return true;
+        }
         return $user->id === $request->user_id || $user->canValidateRequests();
     }
 

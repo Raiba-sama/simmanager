@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources;
 
+use App\Exports\EquipmentInventoryExport;
 use App\Filament\Resources\EquipmentResource\Pages;
 use App\Filament\Resources\EquipmentResource\RelationManagers;
 use App\Models\Equipment;
+use Maatwebsite\Excel\Facades\Excel;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -335,6 +337,23 @@ class EquipmentResource extends Resource
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
+                Tables\Actions\BulkAction::make('exportSelected')
+                    ->label('Exporter la sélection')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->action(function (Tables\Contracts\HasTable $livewire, array $records): \Symfony\Component\HttpFoundation\BinaryFileResponse {
+                        $equipment = Equipment::query()
+                            ->whereIn('id', $records)
+                            ->with([
+                                'equipmentType',
+                                'assignments' => fn ($q) => $q->whereNull('returned_at')->with(['assignedToUser', 'assignedToAgency']),
+                            ])
+                            ->orderBy('id')
+                            ->get();
+                        $filename = 'equipements_selection_' . now()->format('Y-m-d_His') . '.xlsx';
+                        return Excel::download(new EquipmentInventoryExport($equipment), $filename);
+                    })
+                    ->successNotificationTitle('Export Excel généré.'),
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),

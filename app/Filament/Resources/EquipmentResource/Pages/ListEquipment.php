@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\EquipmentResource\Pages;
 
+use App\Exports\EquipmentInventoryExport;
 use App\Filament\Resources\EquipmentResource;
 use App\Imports\EquipmentImport;
+use App\Models\Equipment;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Forms;
@@ -174,6 +176,22 @@ class ListEquipment extends ListRecords
                         ]);
                     }
                 }),
+            Actions\Action::make('exportExcel')
+                ->label('Exporter Excel')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('success')
+                ->action(function () {
+                    $query = Equipment::query()
+                        ->with([
+                            'equipmentType',
+                            'assignments' => fn ($q) => $q->whereNull('returned_at')->with(['assignedToUser', 'assignedToAgency']),
+                        ])
+                        ->orderBy('id');
+                    $equipment = $query->get();
+                    $filename = 'equipements_' . now()->format('Y-m-d_His') . '.xlsx';
+                    return Excel::download(new EquipmentInventoryExport($equipment), $filename);
+                })
+                ->successNotificationTitle('Export Excel généré.'),
             Actions\CreateAction::make(),
         ];
     }

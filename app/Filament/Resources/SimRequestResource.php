@@ -32,6 +32,7 @@ class SimRequestResource extends Resource
                     ->searchable()
                     ->preload(),
                 Forms\Components\Select::make('sim_id')
+                    ->label('Carte SIM')
                     ->options(function ($record) {
                         // Statuts de demandes actives/en cours
                         $activeStatuses = ['en_attente', 'validee', 'demande_envoyee', 'pending', 'accepted'];
@@ -60,7 +61,10 @@ class SimRequestResource extends Resource
                         return $simsQuery->pluck('iccid', 'id');
                     })
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->helperText(fn ($record) => $record && $record->status === 'demande_envoyee'
+                        ? 'Vous pouvez changer la carte SIM puis utiliser « Renvoyer au webhook » pour envoyer la nouvelle SIM.'
+                        : null),
                 Forms\Components\TextInput::make('requested_iccid')
                     ->maxLength(255),
                 Forms\Components\Select::make('request_type')
@@ -89,6 +93,7 @@ class SimRequestResource extends Resource
                         'en_attente' => 'En attente',
                         'validee' => 'Validée',
                         'rejetee' => 'Rejetée',
+                        'demande_envoyee' => 'Demande envoyée (webhook)',
                     ])
                     ->required(),
                 Forms\Components\Select::make('validator_id')
@@ -128,6 +133,7 @@ class SimRequestResource extends Resource
                         'en_attente' => 'warning',
                         'validee' => 'success',
                         'rejetee' => 'danger',
+                        'demande_envoyee' => 'info',
                         'pending' => 'warning',
                         'accepted' => 'success',
                         'refused' => 'danger',
@@ -156,6 +162,7 @@ class SimRequestResource extends Resource
                         'en_attente' => 'En attente',
                         'validee' => 'Validée',
                         'rejetee' => 'Rejetée',
+                        'demande_envoyee' => 'Demande envoyée (webhook)',
                     ]),
                 Tables\Filters\SelectFilter::make('request_type')
                     ->options([
