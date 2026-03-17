@@ -6,6 +6,7 @@ use App\Exports\EquipmentInventoryExport;
 use App\Filament\Resources\EquipmentResource;
 use App\Imports\EquipmentImport;
 use App\Models\Equipment;
+use App\Models\EquipmentType;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Forms;
@@ -19,6 +20,77 @@ class ListEquipment extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('bulkCreate')
+                ->label('Ajout en masse')
+                ->icon('heroicon-o-squares-plus')
+                ->color('primary')
+                ->form([
+                    Forms\Components\Select::make('equipment_type_id')
+                        ->label('Type d\'équipement')
+                        ->options(fn () => EquipmentType::query()->orderBy('name')->pluck('name', 'id'))
+                        ->searchable()
+                        ->preload()
+                        ->required(),
+                    Forms\Components\TextInput::make('brand')
+                        ->label('Marque')
+                        ->maxLength(255)
+                        ->required(),
+                    Forms\Components\TextInput::make('model')
+                        ->label('Modèle')
+                        ->maxLength(255),
+                    Forms\Components\TextInput::make('quantity')
+                        ->label('Quantité')
+                        ->numeric()
+                        ->minValue(1)
+                        ->maxValue(1000)
+                        ->default(10)
+                        ->required(),
+                    Forms\Components\Select::make('condition')
+                        ->label('Condition')
+                        ->options([
+                            'new' => 'Neuf',
+                            'excellent' => 'Excellent',
+                            'good' => 'Bon',
+                            'fair' => 'Moyen',
+                            'poor' => 'Mauvais',
+                        ])
+                        ->default('good')
+                        ->required(),
+                    Forms\Components\Textarea::make('notes')
+                        ->label('Notes (optionnel)')
+                        ->rows(3)
+                        ->helperText('Les SN/Tag seront saisis plus tard lors de l’attribution.'),
+                ])
+                ->action(function (array $data) {
+                    $qty = (int) ($data['quantity'] ?? 0);
+                    if ($qty < 1) {
+                        $qty = 1;
+                    }
+
+                    $rows = [];
+                    for ($i = 0; $i < $qty; $i++) {
+                        $rows[] = [
+                            'equipment_type_id' => $data['equipment_type_id'],
+                            'brand' => $data['brand'],
+                            'model' => $data['model'] ?? null,
+                            'status' => 'available',
+                            'condition' => $data['condition'],
+                            'notes' => $data['notes'] ?? null,
+                            'created_by' => auth()->id(),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+
+                    // Insert en masse pour la performance
+                    Equipment::query()->insert($rows);
+
+                    \Filament\Notifications\Notification::make()
+                        ->title('Ajout en masse terminé')
+                        ->body($qty . ' équipement(s) créé(s).')
+                        ->success()
+                        ->send();
+                }),
             Actions\Action::make('importExcel')
                 ->label('Importer Excel')
                 ->icon('heroicon-o-arrow-up-tray')

@@ -467,6 +467,7 @@ class EquipmentResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
+            ->defaultSort('created_at', 'desc')
             ->emptyStateActions([
                 Tables\Actions\CreateAction::make(),
             ]);
