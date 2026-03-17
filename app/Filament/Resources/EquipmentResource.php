@@ -367,9 +367,10 @@ class EquipmentResource extends Resource
                             ->label('Observations')
                             ->rows(3),
                     ])
-                    ->action(function (Tables\Contracts\HasTable $livewire, array $records, array $data) {
+                    ->action(function (Tables\Contracts\HasTable $livewire, \Illuminate\Database\Eloquent\Collection $records, array $data) {
+                        $recordIds = $records->pluck('id')->values()->all();
                         $equipment = Equipment::query()
-                            ->whereIn('id', $records)
+                            ->whereIn('id', $recordIds)
                             ->with([
                                 'equipmentType',
                                 'currentAssignment.assignedToUser',
@@ -448,9 +449,10 @@ class EquipmentResource extends Resource
                     ->label('Exporter la sélection')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
-                    ->action(function (Tables\Contracts\HasTable $livewire, array $records): \Symfony\Component\HttpFoundation\BinaryFileResponse {
+                    ->action(function (Tables\Contracts\HasTable $livewire, \Illuminate\Database\Eloquent\Collection $records): \Symfony\Component\HttpFoundation\BinaryFileResponse {
+                        $recordIds = $records->pluck('id')->values()->all();
                         $equipment = Equipment::query()
-                            ->whereIn('id', $records)
+                            ->whereIn('id', $recordIds)
                             ->with([
                                 'equipmentType',
                                 'assignments' => fn ($q) => $q->whereNull('returned_at')->with(['assignedToUser', 'assignedToAgency']),

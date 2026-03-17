@@ -11,6 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Sécurité: si la table existe déjà (créée manuellement / ancienne exécution), on ne la recrée pas.
+        if (Schema::hasTable('equipment_repair_sendouts')) {
+            return;
+        }
+
         Schema::create('equipment_repair_sendouts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('equipment_id')->constrained('equipment')->onDelete('cascade');
