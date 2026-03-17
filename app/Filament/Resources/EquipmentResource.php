@@ -6,6 +6,8 @@ use App\Exports\EquipmentInventoryExport;
 use App\Filament\Resources\EquipmentResource\Pages;
 use App\Filament\Resources\EquipmentResource\RelationManagers;
 use App\Models\Equipment;
+use App\Models\EquipmentDischarge;
+use App\Models\User;
 use Maatwebsite\Excel\Facades\Excel;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -14,6 +16,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Str;
 
 class EquipmentResource extends Resource
 {
@@ -337,6 +340,110 @@ class EquipmentResource extends Resource
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
+                Tables\Actions\BulkAction::make('dischargePdf')
+                    ->label('Décharge (PDF)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('primary')
+                    ->form([
+                        Forms\Components\Select::make('user_id')
+                            ->label('Collaborateur')
+                            ->options(fn () => User::query()->where('active', true)->orderBy('name')->pluck('name', 'id'))
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                        Forms\Components\Select::make('reason')
+                            ->label('Motif')
+                            ->options([
+                                'depart' => 'Départ / fin de contrat',
+                                'remplacement' => 'Remplacement',
+                                'nouvelle_attribution' => 'Nouvelle attribution',
+                            ])
+                            ->required(),
+                        Forms\Components\DatePicker::make('effective_date')
+                            ->label('Date effective')
+                            ->default(now())
+                            ->displayFormat('d/m/Y'),
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Observations')
+                            ->rows(3),
+                    ])
+                    ->action(function (Tables\Contracts\HasTable $livewire, array $records, array $data) {
+                        $equipment = Equipment::query()
+                            ->whereIn('id', $records)
+                            ->with([
+                                'equipmentType',
+                                'currentAssignment.assignedToUser',
+                                'currentAssignment.assignedToAgency',
+                            ])
+                            ->orderBy('id')
+                            ->get();
+
+                        $user = User::find($data['user_id']);
+                        $generatedBy = auth()->user();
+                        $reasonLabel = [
+                            'depart' => 'Départ / fin de contrat',
+                            'remplacement' => 'Remplacement',
+                            'nouvelle_attribution' => 'Nouvelle attribution',
+                        ][$data['reason']] ?? $data['reason'];
+
+                        $equipmentItems = $equipment->map(function (Equipment $e) {
+                            return [
+                                'id' => $e->id,
+                                'asset_tag' => $e->asset_tag,
+                                'type' => $e->equipmentType?->name,
+                                'brand' => $e->brand,
+                                'model' => $e->model,
+                                'serial_number' => $e->serial_number,
+                                'condition' => $e->condition_label ?? $e->condition,
+                                'status' => $e->status_label ?? $e->status,
+                                'assignee' => $e->currentAssignment?->assignee?->full_name
+                                    ?? $e->currentAssignment?->assignee?->name
+                                    ?? null,
+                            ];
+                        })->values()->all();
+
+                        $dischargeNumber = 'DEC-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
+
+                        // Tenter d'archiver en base (si DB indisponible, on génère quand même le PDF)
+                        try {
+                            EquipmentDischarge::create([
+                                'discharge_number' => $dischargeNumber,
+                                'user_id' => $user?->id,
+                                'generated_by' => $generatedBy?->id,
+                                'reason' => $data['reason'],
+                                'effective_date' => $data['effective_date'] ?? null,
+                                'notes' => $data['notes'] ?? null,
+                                'equipment_snapshot' => [
+                                    'equipment_ids' => $equipment->pluck('id')->values()->all(),
+                                    'items' => $equipmentItems,
+                                ],
+                            ]);
+                        } catch (\Throwable $e) {
+                            \Log::warning('Décharge: archivage DB impossible, PDF généré sans archive', [
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+
+                        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('equipment.discharge-pdf', [
+                            'dischargeNumber' => $dischargeNumber,
+                            'generatedAt' => now(),
+                            'effectiveDate' => $data['effective_date'] ?? null,
+                            'reasonLabel' => $reasonLabel,
+                            'notes' => $data['notes'] ?? null,
+                            'user' => $user,
+                            'generatedBy' => $generatedBy,
+                            'equipmentItems' => $equipmentItems,
+                        ]);
+                        $pdf->setOption('encoding', 'utf-8');
+                        $pdf->setOption('defaultFont', 'DejaVu Sans');
+                        $pdf->setPaper('a4', 'portrait');
+
+                        $filename = 'decharge_' . $dischargeNumber . '.pdf';
+                        return response()->streamDownload(function () use ($pdf) {
+                            echo $pdf->output();
+                        }, $filename, ['Content-Type' => 'application/pdf']);
+                    })
+                    ->successNotificationTitle('Décharge générée.'),
                 Tables\Actions\BulkAction::make('exportSelected')
                     ->label('Exporter la sélection')
                     ->icon('heroicon-o-arrow-down-tray')
