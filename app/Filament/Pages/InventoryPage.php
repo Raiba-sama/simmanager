@@ -377,68 +377,240 @@ class InventoryPage extends Page implements HasTable
         ];
     }
 
-    /** Répartition par zone (équipements attribués à une agence de la zone) */
+    /** Répartition par zone avec détails statut */
     public function getStatsByZone(): \Illuminate\Support\Collection
     {
+        $statusLabels = self::statusLabels();
+
         return Zone::query()
             ->orderBy('name')
             ->get()
-            ->map(function (Zone $zone) {
-                $count = Equipment::query()
-                    ->whereHas('assignments', function ($q) {
-                        $q->whereNull('returned_at');
-                    })
-                    ->whereHas('assignments.assignedToAgency', function ($q) use ($zone) {
-                        $q->where('zone_id', $zone->id);
-                    })
-                    ->count();
+            ->map(function (Zone $zone) use ($statusLabels) {
+                $base = Equipment::query()
+                    ->whereHas('assignments', fn ($q) => $q->whereNull('returned_at'))
+                    ->whereHas('assignments.assignedToAgency', fn ($q) => $q->where('zone_id', $zone->id));
+
+                $total = (clone $base)->count();
+                if ($total === 0) return null;
+
+                $byStatus = [];
+                foreach (array_keys($statusLabels) as $s) {
+                    $c = (clone $base)->where('equipment.status', $s)->count();
+                    if ($c > 0) $byStatus[$s] = $c;
+                }
+
+                $value = (clone $base)->whereNotNull('equipment.purchase_price')->sum('equipment.purchase_price');
+
                 return [
                     'id' => $zone->id,
                     'name' => $zone->name,
                     'code' => $zone->code,
-                    'count' => $count,
+                    'count' => $total,
+                    'by_status' => $byStatus,
+                    'value' => $value,
                 ];
             })
-            ->filter(fn ($row) => $row['count'] > 0);
+            ->filter();
     }
 
-    /** Répartition par agence (équipements attribués à l'agence) */
+    /** Répartition par agence avec détails statut */
     public function getStatsByAgency(): \Illuminate\Support\Collection
     {
+        $statusLabels = self::statusLabels();
+
         return Agency::query()
             ->orderBy('name')
             ->with('zone')
             ->get()
-            ->map(function (Agency $agency) {
-                $count = Equipment::query()
-                    ->whereHas('assignments', function ($q) use ($agency) {
-                        $q->whereNull('returned_at')->where('assigned_to_agency_id', $agency->id);
-                    })
-                    ->count();
+            ->map(function (Agency $agency) use ($statusLabels) {
+                $base = Equipment::query()
+                    ->whereHas('assignments', fn ($q) => $q->whereNull('returned_at')->where('assigned_to_agency_id', $agency->id));
+
+                $total = (clone $base)->count();
+                if ($total === 0) return null;
+
+                $byStatus = [];
+                foreach (array_keys($statusLabels) as $s) {
+                    $c = (clone $base)->where('equipment.status', $s)->count();
+                    if ($c > 0) $byStatus[$s] = $c;
+                }
+
+                $value = (clone $base)->whereNotNull('equipment.purchase_price')->sum('equipment.purchase_price');
+
                 return [
                     'id' => $agency->id,
                     'name' => $agency->name,
                     'code' => $agency->code,
                     'zone_name' => $agency->zone?->name,
-                    'count' => $count,
+                    'count' => $total,
+                    'by_status' => $byStatus,
+                    'value' => $value,
                 ];
             })
-            ->filter(fn ($row) => $row['count'] > 0);
+            ->filter();
     }
 
-    /** Répartition par type d'équipement */
+    /** Répartition par type d'équipement avec détails statut, condition, marques, valeur */
     public function getStatsByType(): \Illuminate\Support\Collection
     {
+        $statusLabels = self::statusLabels();
+        $conditionLabels = self::conditionLabels();
+
         return EquipmentType::query()
             ->withCount('equipment')
             ->orderBy('equipment_count', 'desc')
             ->get()
-            ->map(fn (EquipmentType $type) => [
-                'id' => $type->id,
-                'name' => $type->name,
-                'count' => $type->equipment_count,
-            ])
-            ->filter(fn ($row) => $row['count'] > 0);
+            ->map(function (EquipmentType $type) use ($statusLabels, $conditionLabels) {
+                if ($type->equipment_count === 0) return null;
+
+                $base = Equipment::query()->where('equipment_type_id', $type->id);
+
+                $byStatus = [];
+                foreach (array_keys($statusLabels) as $s) {
+                    $c = (clone $base)->where('status', $s)->count();
+                    if ($c > 0) $byStatus[$s] = $c;
+                }
+
+                $byCondition = [];
+                foreach (array_keys($conditionLabels) as $cond) {
+                    $c = (clone $base)->where('condition', $cond)->count();
+                    if ($c > 0) $byCondition[$cond] = $c;
+                }
+
+                $brands = (clone $base)
+                    ->select('brand', DB::raw('COUNT(*) as cnt'))
+                    ->whereNotNull('brand')
+                    ->where('brand', '!=', '')
+                    ->groupBy('brand')
+                    ->orderByDesc('cnt')
+                    ->limit(5)
+                    ->pluck('cnt', 'brand')
+                    ->toArray();
+
+                $value = (clone $base)->whereNotNull('purchase_price')->sum('purchase_price');
+
+                $noSn = (clone $base)->where(function ($q) {
+                    $q->whereNull('serial_number')->orWhere('serial_number', '');
+                })->count();
+
+                return [
+                    'id' => $type->id,
+                    'name' => $type->name,
+                    'count' => $type->equipment_count,
+                    'by_status' => $byStatus,
+                    'by_condition' => $byCondition,
+                    'brands' => $brands,
+                    'value' => $value,
+                    'no_sn' => $noSn,
+                ];
+            })
+            ->filter();
+    }
+
+    /** Répartition par marque */
+    public function getStatsByBrand(): \Illuminate\Support\Collection
+    {
+        $statusLabels = self::statusLabels();
+
+        return Equipment::query()
+            ->select('brand', DB::raw('COUNT(*) as total'))
+            ->whereNotNull('brand')
+            ->where('brand', '!=', '')
+            ->groupBy('brand')
+            ->orderByDesc('total')
+            ->limit(15)
+            ->get()
+            ->map(function ($row) use ($statusLabels) {
+                $base = Equipment::query()->where('brand', $row->brand);
+
+                $byStatus = [];
+                foreach (array_keys($statusLabels) as $s) {
+                    $c = (clone $base)->where('status', $s)->count();
+                    if ($c > 0) $byStatus[$s] = $c;
+                }
+
+                $types = (clone $base)
+                    ->join('equipment_types', 'equipment.equipment_type_id', '=', 'equipment_types.id')
+                    ->select('equipment_types.name', DB::raw('COUNT(*) as cnt'))
+                    ->groupBy('equipment_types.name')
+                    ->orderByDesc('cnt')
+                    ->limit(3)
+                    ->pluck('cnt', 'name')
+                    ->toArray();
+
+                $value = (clone $base)->whereNotNull('purchase_price')->sum('purchase_price');
+
+                return [
+                    'brand' => $row->brand,
+                    'count' => $row->total,
+                    'by_status' => $byStatus,
+                    'types' => $types,
+                    'value' => $value,
+                ];
+            });
+    }
+
+    /** Répartition par condition */
+    public function getStatsByCondition(): array
+    {
+        $conditionLabels = self::conditionLabels();
+        $result = [];
+        foreach ($conditionLabels as $key => $label) {
+            $count = Equipment::where('condition', $key)->count();
+            if ($count > 0) {
+                $result[$key] = [
+                    'label' => $label,
+                    'count' => $count,
+                ];
+            }
+        }
+        return $result;
+    }
+
+    public static function statusLabels(): array
+    {
+        return [
+            'available' => 'Disponible',
+            'assigned' => 'Attribué',
+            'maintenance' => 'En maintenance',
+            'retired' => 'Retiré',
+            'lost' => 'Perdu',
+            'damaged' => 'Endommagé',
+        ];
+    }
+
+    public static function statusColors(): array
+    {
+        return [
+            'available' => '#198754',
+            'assigned' => '#0d6efd',
+            'maintenance' => '#ffc107',
+            'retired' => '#6c757d',
+            'lost' => '#dc3545',
+            'damaged' => '#fd7e14',
+        ];
+    }
+
+    public static function conditionLabels(): array
+    {
+        return [
+            'new' => 'Neuf',
+            'excellent' => 'Excellent',
+            'good' => 'Bon',
+            'fair' => 'Moyen',
+            'poor' => 'Mauvais',
+        ];
+    }
+
+    public static function conditionColors(): array
+    {
+        return [
+            'new' => '#198754',
+            'excellent' => '#20c997',
+            'good' => '#0d6efd',
+            'fair' => '#ffc107',
+            'poor' => '#dc3545',
+        ];
     }
 }
 
