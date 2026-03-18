@@ -114,6 +114,51 @@ class UserResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->toggleable(),
+                Tables\Columns\TextColumn::make('sim1_number')
+                    ->label('SIM 1')
+                    ->getStateUsing(function (User $record) {
+                        $sim = $record->assignedSims()->orderBy('assigned_at')->first();
+                        return $sim?->phone_number ?? '-';
+                    })
+                    ->description(function (User $record) {
+                        $sim = $record->assignedSims()->orderBy('assigned_at')->first();
+                        if (!$sim) return null;
+                        $parts = array_filter([$sim->operator, $sim->plan_type]);
+                        return implode(' · ', $parts) ?: null;
+                    })
+                    ->searchable(query: function (\Illuminate\Database\Eloquent\Builder $query, string $search) {
+                        return $query->whereHas('assignedSims', fn ($q) => $q->where('phone_number', 'like', "%{$search}%"));
+                    })
+                    ->color(function (User $record) {
+                        $sim = $record->assignedSims()->orderBy('assigned_at')->first();
+                        if (!$sim) return null;
+                        return match ($sim->status) {
+                            'attribue' => 'info',
+                            'suspendu' => 'danger',
+                            default => 'gray',
+                        };
+                    }),
+                Tables\Columns\TextColumn::make('sim2_number')
+                    ->label('SIM 2')
+                    ->getStateUsing(function (User $record) {
+                        $sim = $record->assignedSims()->orderBy('assigned_at')->skip(1)->first();
+                        return $sim?->phone_number ?? '-';
+                    })
+                    ->description(function (User $record) {
+                        $sim = $record->assignedSims()->orderBy('assigned_at')->skip(1)->first();
+                        if (!$sim) return null;
+                        $parts = array_filter([$sim->operator, $sim->plan_type]);
+                        return implode(' · ', $parts) ?: null;
+                    })
+                    ->color(function (User $record) {
+                        $sim = $record->assignedSims()->orderBy('assigned_at')->skip(1)->first();
+                        if (!$sim) return null;
+                        return match ($sim->status) {
+                            'attribue' => 'info',
+                            'suspendu' => 'danger',
+                            default => 'gray',
+                        };
+                    }),
                 Tables\Columns\TextColumn::make('email')
                     ->searchable()
                     ->sortable(),
@@ -144,8 +189,33 @@ class UserResource extends Resource
                     ->placeholder('Tous')
                     ->trueLabel('Actifs uniquement')
                     ->falseLabel('Inactifs uniquement'),
+                Tables\Filters\TernaryFilter::make('has_sim')
+                    ->label('Carte SIM')
+                    ->placeholder('Tous')
+                    ->trueLabel('Avec SIM')
+                    ->falseLabel('Sans SIM')
+                    ->queries(
+                        true: fn (\Illuminate\Database\Eloquent\Builder $q) => $q->whereHas('assignedSims'),
+                        false: fn (\Illuminate\Database\Eloquent\Builder $q) => $q->whereDoesntHave('assignedSims'),
+                    ),
             ])
             ->actions([
+                Tables\Actions\Action::make('viewSims')
+                    ->label('Détails SIM')
+                    ->icon('heroicon-o-device-phone-mobile')
+                    ->color('info')
+                    ->modalHeading(fn (User $record) => 'Cartes SIM — ' . $record->full_name)
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fermer')
+                    ->modalWidth('xl')
+                    ->modalContent(function (User $record) {
+                        $sims = $record->assignedSims()->orderBy('assigned_at')->get();
+                        return view('filament.modals.user-sims-detail', [
+                            'user' => $record,
+                            'sims' => $sims,
+                        ]);
+                    })
+                    ->visible(fn (User $record) => $record->assignedSims()->exists()),
                 Tables\Actions\Action::make('resetPassword')
                     ->label('Réinitialiser mot de passe')
                     ->icon('heroicon-o-key')
