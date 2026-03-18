@@ -47,7 +47,10 @@ class UserResource extends Resource
                     ->label('Direction')
                     ->maxLength(255),
                 Forms\Components\TextInput::make('numero_flotte')
-                    ->label('Numéro flotte')
+                    ->label('Numéro flotte 1')
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('numero_flotte_2')
+                    ->label('Numéro flotte 2')
                     ->maxLength(255),
                 Forms\Components\TextInput::make('email')
                     ->email()
@@ -110,55 +113,15 @@ class UserResource extends Resource
                     ->sortable()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('numero_flotte')
-                    ->label('Numéro flotte')
+                    ->label('N° Flotte 1')
                     ->searchable()
                     ->sortable()
                     ->toggleable(),
-                Tables\Columns\TextColumn::make('sim1_number')
-                    ->label('SIM 1')
-                    ->getStateUsing(function (User $record) {
-                        $sim = $record->assignedSims()->orderBy('assigned_at')->first();
-                        return $sim?->phone_number ?? '-';
-                    })
-                    ->description(function (User $record) {
-                        $sim = $record->assignedSims()->orderBy('assigned_at')->first();
-                        if (!$sim) return null;
-                        $parts = array_filter([$sim->operator, $sim->plan_type]);
-                        return implode(' · ', $parts) ?: null;
-                    })
-                    ->searchable(query: function (\Illuminate\Database\Eloquent\Builder $query, string $search) {
-                        return $query->whereHas('assignedSims', fn ($q) => $q->where('phone_number', 'like', "%{$search}%"));
-                    })
-                    ->color(function (User $record) {
-                        $sim = $record->assignedSims()->orderBy('assigned_at')->first();
-                        if (!$sim) return null;
-                        return match ($sim->status) {
-                            'attribue' => 'info',
-                            'suspendu' => 'danger',
-                            default => 'gray',
-                        };
-                    }),
-                Tables\Columns\TextColumn::make('sim2_number')
-                    ->label('SIM 2')
-                    ->getStateUsing(function (User $record) {
-                        $sim = $record->assignedSims()->orderBy('assigned_at')->skip(1)->first();
-                        return $sim?->phone_number ?? '-';
-                    })
-                    ->description(function (User $record) {
-                        $sim = $record->assignedSims()->orderBy('assigned_at')->skip(1)->first();
-                        if (!$sim) return null;
-                        $parts = array_filter([$sim->operator, $sim->plan_type]);
-                        return implode(' · ', $parts) ?: null;
-                    })
-                    ->color(function (User $record) {
-                        $sim = $record->assignedSims()->orderBy('assigned_at')->skip(1)->first();
-                        if (!$sim) return null;
-                        return match ($sim->status) {
-                            'attribue' => 'info',
-                            'suspendu' => 'danger',
-                            default => 'gray',
-                        };
-                    }),
+                Tables\Columns\TextColumn::make('numero_flotte_2')
+                    ->label('N° Flotte 2')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('email')
                     ->searchable()
                     ->sortable(),

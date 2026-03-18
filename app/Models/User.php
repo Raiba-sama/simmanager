@@ -22,6 +22,7 @@ class User extends Authenticatable implements FilamentUser
         'zone_affectation',
         'direction',
         'numero_flotte',
+        'numero_flotte_2',
         'email',
         'password',
         'role',
