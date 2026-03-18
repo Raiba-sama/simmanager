@@ -303,7 +303,7 @@ class EquipmentResource extends Resource
                             return;
                         }
                         
-                        $transmissionSheet = $assignment->transmissionSheet->load(['toUser', 'fromUser', 'toAgency', 'fromAgency', 'creator', 'items.equipment.equipmentType']);
+                        $transmissionSheet = $assignment->transmissionSheet->load(['toUser', 'fromUser', 'toAgency.zone', 'fromAgency.zone', 'creator', 'items.equipment.equipmentType']);
                         
                         try {
                             // Utiliser loadView directement avec options DomPDF

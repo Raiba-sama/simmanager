@@ -39,8 +39,8 @@ class TransmissionSheetsEmail extends Mailable
                 $transmissionSheet->load([
                     'toUser', 
                     'fromUser', 
-                    'toAgency', 
-                    'fromAgency', 
+                    'toAgency.zone', 
+                    'fromAgency.zone', 
                     'creator', 
                     'items.equipment.equipmentType'
                 ]);

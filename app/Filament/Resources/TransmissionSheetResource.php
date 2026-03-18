@@ -90,24 +90,45 @@ class TransmissionSheetResource extends Resource
                 Forms\Components\Section::make('Vers')
                     ->schema([
                         Forms\Components\Select::make('to_user_id')
-                            ->label('Utilisateur')
+                            ->label('Bénéficiaire (personne)')
                             ->relationship('toUser', 'name')
                             ->searchable()
                             ->preload()
-                            ->visible(fn (Forms\Get $get) => $get('type') !== 'return'),
+                            ->visible(fn (Forms\Get $get) => $get('type') !== 'return')
+                            ->helperText('Sélectionner un utilisateur si l\'attribution est à une personne.')
+                            ->reactive(),
                         Forms\Components\Select::make('to_agency_id')
-                            ->label('Agence')
+                            ->label('Agence destinataire')
                             ->relationship('toAgency', 'name')
                             ->searchable()
                             ->preload()
-                            ->visible(fn (Forms\Get $get) => $get('type') !== 'return'),
+                            ->visible(fn (Forms\Get $get) => $get('type') !== 'return')
+                            ->helperText('Pour les équipements réseau ou matériel attribué à une agence.')
+                            ->reactive(),
                     ])
                     ->columns(2),
+                Forms\Components\Section::make('Responsable / Signataire')
+                    ->description('Personne qui réceptionnera et signera le bordereau. Obligatoire pour les attributions à une agence.')
+                    ->schema([
+                        Forms\Components\TextInput::make('recipient_name')
+                            ->label('Nom du signataire')
+                            ->maxLength(255)
+                            ->helperText('Nom de la personne qui signe à réception (responsable agence, chef de zone, etc.).')
+                            ->visible(fn (Forms\Get $get) => filled($get('to_agency_id')) && !filled($get('to_user_id'))),
+                        Forms\Components\TextInput::make('recipient_fonction')
+                            ->label('Fonction du signataire')
+                            ->maxLength(255)
+                            ->helperText('Ex: Chef d\'agence, Responsable IT, etc.')
+                            ->visible(fn (Forms\Get $get) => filled($get('to_agency_id')) && !filled($get('to_user_id'))),
+                    ])
+                    ->columns(2)
+                    ->visible(fn (Forms\Get $get) => $get('type') !== 'return'),
                 Forms\Components\Section::make('Signature')
                     ->schema([
                         Forms\Components\Toggle::make('signed_by_recipient')
                             ->label('Signé par le destinataire')
-                            ->default(false),
+                            ->default(false)
+                            ->reactive(),
                         Forms\Components\DateTimePicker::make('signed_at')
                             ->label('Date de signature')
                             ->displayFormat('d/m/Y H:i')
@@ -156,18 +177,42 @@ class TransmissionSheetResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->toggleable(),
-                Tables\Columns\TextColumn::make('toUser.name')
-                    ->label('Vers (Utilisateur)')
-                    ->default('-')
-                    ->searchable()
-                    ->sortable()
-                    ->toggleable(),
-                Tables\Columns\TextColumn::make('toAgency.name')
-                    ->label('Vers (Agence)')
-                    ->default('-')
-                    ->searchable()
-                    ->sortable()
-                    ->toggleable(),
+                Tables\Columns\TextColumn::make('recipient_display')
+                    ->label('Destinataire')
+                    ->getStateUsing(function (TransmissionSheet $record) {
+                        if ($record->toUser) {
+                            return $record->toUser->full_name;
+                        }
+                        if ($record->toAgency) {
+                            $label = $record->toAgency->name;
+                            if ($record->recipient_name) {
+                                $label .= ' — ' . $record->recipient_name;
+                            }
+                            return $label;
+                        }
+                        return '-';
+                    })
+                    ->description(function (TransmissionSheet $record) {
+                        if ($record->toUser?->fonction) {
+                            return $record->toUser->fonction;
+                        }
+                        if ($record->recipient_fonction) {
+                            return $record->recipient_fonction;
+                        }
+                        return null;
+                    })
+                    ->searchable(query: function (Builder $query, string $search) {
+                        return $query->where(function ($q) use ($search) {
+                            $q->whereHas('toUser', fn ($u) => $u->where('name', 'like', "%{$search}%")->orWhere('first_name', 'like', "%{$search}%"))
+                              ->orWhereHas('toAgency', fn ($a) => $a->where('name', 'like', "%{$search}%"))
+                              ->orWhere('recipient_name', 'like', "%{$search}%");
+                        });
+                    })
+                    ->icon(function (TransmissionSheet $record) {
+                        return $record->toAgency && !$record->toUser
+                            ? 'heroicon-m-building-office-2'
+                            : 'heroicon-m-user';
+                    }),
                 Tables\Columns\TextColumn::make('transmission_date')
                     ->label('Date')
                     ->date('d/m/Y')

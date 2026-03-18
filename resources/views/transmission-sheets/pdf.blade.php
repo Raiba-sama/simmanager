@@ -215,13 +215,42 @@
         @if($transmissionSheet->fromAgency)
         <div class="info-row">
             <div class="info-label">De (Agence) :</div>
-            <div class="info-value">{{ $clean($transmissionSheet->fromAgency->name ?? '') }}</div>
+            <div class="info-value">
+                {{ $clean($transmissionSheet->fromAgency->name ?? '') }}
+                @if($transmissionSheet->fromAgency->zone)
+                    — Zone {{ $clean($transmissionSheet->fromAgency->zone->name) }}
+                @endif
+            </div>
         </div>
         @endif
         @if($transmissionSheet->toAgency)
         <div class="info-row">
-            <div class="info-label">Vers (Agence) :</div>
-            <div class="info-value">{{ $clean($transmissionSheet->toAgency->name ?? '') }}</div>
+            <div class="info-label">Agence destinataire :</div>
+            <div class="info-value">
+                <strong>{{ $clean($transmissionSheet->toAgency->name ?? '') }}</strong>
+                @if($transmissionSheet->toAgency->code)
+                    ({{ $clean($transmissionSheet->toAgency->code) }})
+                @endif
+                @if($transmissionSheet->toAgency->zone)
+                    <br>Zone: {{ $clean($transmissionSheet->toAgency->zone->name) }}
+                @endif
+                @if($transmissionSheet->toAgency->address)
+                    <br>Adresse: {{ $clean($transmissionSheet->toAgency->address) }}
+                @endif
+            </div>
+        </div>
+        @endif
+        @if($transmissionSheet->toAgency && !$transmissionSheet->toUser && ($transmissionSheet->recipient_name || $transmissionSheet->recipient_fonction))
+        <div class="info-row">
+            <div class="info-label">Responsable / Signataire :</div>
+            <div class="info-value">
+                @if($transmissionSheet->recipient_name)
+                    <strong>{{ $clean($transmissionSheet->recipient_name) }}</strong>
+                @endif
+                @if($transmissionSheet->recipient_fonction)
+                    <br>Fonction: {{ $clean($transmissionSheet->recipient_fonction) }}
+                @endif
+            </div>
         </div>
         @endif
     </div>
@@ -269,15 +298,36 @@
             <div class="signature-line">
                 <strong>Émetteur</strong><br>
                 @if($transmissionSheet->creator)
-                    {{ $clean($transmissionSheet->creator->name ?? '') }}
+                    {{ $clean($transmissionSheet->creator->full_name ?? $transmissionSheet->creator->name ?? '') }}
+                    @if($transmissionSheet->creator->fonction)
+                        <br><span style="font-size:9px; color:#666;">{{ $clean($transmissionSheet->creator->fonction) }}</span>
+                    @endif
                 @endif
             </div>
         </div>
         <div class="signature-box">
             <div class="signature-line">
-                <strong>Bénéficiaire</strong><br>
                 @if($transmissionSheet->toUser)
-                    {{ $clean($transmissionSheet->toUser->name ?? '') }}
+                    <strong>Bénéficiaire</strong><br>
+                    {{ $clean($transmissionSheet->toUser->full_name ?? $transmissionSheet->toUser->name ?? '') }}
+                    @if($transmissionSheet->toUser->fonction)
+                        <br><span style="font-size:9px; color:#666;">{{ $clean($transmissionSheet->toUser->fonction) }}</span>
+                    @endif
+                @elseif($transmissionSheet->recipient_name)
+                    <strong>Réceptionnaire</strong><br>
+                    {{ $clean($transmissionSheet->recipient_name) }}
+                    @if($transmissionSheet->recipient_fonction)
+                        <br><span style="font-size:9px; color:#666;">{{ $clean($transmissionSheet->recipient_fonction) }}</span>
+                    @endif
+                    @if($transmissionSheet->toAgency)
+                        <br><span style="font-size:9px; color:#666;">{{ $clean($transmissionSheet->toAgency->name) }}</span>
+                    @endif
+                @elseif($transmissionSheet->toAgency)
+                    <strong>Réceptionnaire (Agence)</strong><br>
+                    {{ $clean($transmissionSheet->toAgency->name ?? '') }}
+                    <br><span style="font-size:9px; color:#666;">Nom et signature : ___________________________</span>
+                @else
+                    <strong>Bénéficiaire</strong><br>
                 @endif
             </div>
         </div>

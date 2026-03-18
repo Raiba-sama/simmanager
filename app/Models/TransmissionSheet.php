@@ -25,6 +25,8 @@ class TransmissionSheet extends Model
         'signed_by_recipient',
         'signed_at',
         'recipient_signature',
+        'recipient_name',
+        'recipient_fonction',
     ];
 
     protected $casts = [
@@ -120,5 +122,32 @@ class TransmissionSheet extends Model
     public function isCompleted(): bool
     {
         return $this->status === 'completed';
+    }
+
+    public function isAgencyAssignment(): bool
+    {
+        return $this->to_agency_id && !$this->to_user_id;
+    }
+
+    public function getRecipientDisplayNameAttribute(): string
+    {
+        if ($this->toUser) {
+            return $this->toUser->full_name;
+        }
+        if ($this->recipient_name) {
+            return $this->recipient_name;
+        }
+        if ($this->toAgency) {
+            return $this->toAgency->name;
+        }
+        return '-';
+    }
+
+    public function getRecipientDisplayFonctionAttribute(): ?string
+    {
+        if ($this->toUser) {
+            return $this->toUser->fonction;
+        }
+        return $this->recipient_fonction;
     }
 }
