@@ -172,13 +172,29 @@ class UserResource extends Resource
                     ->modalCancelActionLabel('Fermer')
                     ->modalWidth('xl')
                     ->modalContent(function (User $record) {
-                        $sims = $record->assignedSims()->orderBy('assigned_at')->get();
+                        $directIds = $record->assignedSims()->pluck('id');
+
+                        $requestSimIds = \App\Models\SimRequest::where(function ($q) use ($record) {
+                                $q->where('user_id', $record->id);
+                                if ($record->matricule) {
+                                    $q->orWhere('collaborator_matricule', $record->matricule)
+                                      ->orWhere('beneficiary_matricule', $record->matricule);
+                                }
+                            })
+                            ->whereNotNull('sim_id')
+                            ->pluck('sim_id');
+
+                        $allIds = $directIds->merge($requestSimIds)->unique();
+
+                        $sims = \App\Models\Sim::whereIn('id', $allIds)
+                            ->orderByDesc('assigned_at')
+                            ->get();
+
                         return view('filament.modals.user-sims-detail', [
                             'user' => $record,
                             'sims' => $sims,
                         ]);
-                    })
-                    ->visible(fn (User $record) => $record->assignedSims()->exists()),
+                    }),
                 Tables\Actions\Action::make('resetPassword')
                     ->label('Réinitialiser mot de passe')
                     ->icon('heroicon-o-key')
