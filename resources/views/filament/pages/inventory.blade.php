@@ -113,6 +113,21 @@
                     </div>
                 </x-filament::section>
             </x-filament::grid.column>
+
+            @if(($stats['no_sn'] ?? 0) > 0)
+            <x-filament::grid.column>
+                <x-filament::section class="!p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Sans SN / Tag</p>
+                            <p class="text-xl font-bold text-warning-600 dark:text-warning-400">{{ $stats['no_sn'] }}</p>
+                            <p class="text-xs text-gray-400">À compléter (ajout en masse)</p>
+                        </div>
+                        <x-filament::icon icon="heroicon-o-exclamation-triangle" class="w-8 h-8 text-warning-500 dark:text-warning-400 shrink-0" />
+                    </div>
+                </x-filament::section>
+            </x-filament::grid.column>
+            @endif
         </x-filament::grid>
 
         {{-- Répartition par Zone : grille 4 colonnes --}}

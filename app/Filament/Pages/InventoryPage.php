@@ -129,6 +129,18 @@ class InventoryPage extends Page implements HasTable
                             $q->where('name', 'like', "%{$search}%");
                         });
                     }),
+                Tables\Columns\TextColumn::make('assigned_matricule')
+                    ->label('Matricule')
+                    ->getStateUsing(function (Equipment $record) {
+                        $assignment = $record->assignments()->whereNull('returned_at')->first();
+                        return $assignment?->assignedToUser?->matricule ?? '-';
+                    })
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('assignments.assignedToUser', function ($q) use ($search) {
+                            $q->where('matricule', 'like', "%{$search}%");
+                        });
+                    })
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('agency_zone')
                     ->label('Agence / Zone')
                     ->getStateUsing(function (Equipment $record) {
@@ -216,12 +228,24 @@ class InventoryPage extends Page implements HasTable
                         'fair' => 'Moyen',
                         'poor' => 'Mauvais',
                     ]),
-                Tables\Filters\Filter::make('assigned')
-                    ->label('Attribués uniquement')
-                    ->query(fn (Builder $query): Builder => $query->where('status', 'assigned')),
-                Tables\Filters\Filter::make('available')
-                    ->label('Disponibles uniquement')
-                    ->query(fn (Builder $query): Builder => $query->where('status', 'available')),
+                Tables\Filters\SelectFilter::make('disponibilite')
+                    ->label('Disponibilité')
+                    ->options([
+                        'libre' => 'Libre (disponible)',
+                        'attribue' => 'Attribué',
+                        'sans_sn' => 'Sans SN / Tag (à compléter)',
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        if (empty($data['value'])) return $query;
+                        return match ($data['value']) {
+                            'libre' => $query->where('status', 'available'),
+                            'attribue' => $query->where('status', 'assigned'),
+                            'sans_sn' => $query->where(function ($q) {
+                                $q->whereNull('serial_number')->orWhere('serial_number', '');
+                            }),
+                            default => $query,
+                        };
+                    }),
                 Tables\Filters\Filter::make('warranty_expiring')
                     ->label('Garantie expirant bientôt')
                     ->query(fn (Builder $query): Builder => $query->whereNotNull('warranty_expires_at')
@@ -336,6 +360,10 @@ class InventoryPage extends Page implements HasTable
 
         $typesCount = (clone $query)->distinct()->count('equipment.equipment_type_id');
 
+        $noSn = (clone $baseQuery)->where(function ($q) {
+            $q->whereNull('equipment.serial_number')->orWhere('equipment.serial_number', '');
+        })->count();
+
         return [
             'total' => $total,
             'available' => $available,
@@ -345,6 +373,7 @@ class InventoryPage extends Page implements HasTable
             'total_value' => $totalValue,
             'warranty_expiring' => $warrantyExpiring,
             'types_count' => $typesCount,
+            'no_sn' => $noSn,
         ];
     }
 
