@@ -123,6 +123,72 @@ class TransmissionSheetResource extends Resource
                     ])
                     ->columns(2)
                     ->visible(fn (Forms\Get $get) => $get('type') !== 'return'),
+                Forms\Components\Section::make('Équipements')
+                    ->description('Sélectionnez les équipements à inclure dans ce bordereau.')
+                    ->schema([
+                        Forms\Components\Repeater::make('equipment_items')
+                            ->label('')
+                            ->schema([
+                                Forms\Components\Select::make('equipment_id')
+                                    ->label('Équipement')
+                                    ->options(function () {
+                                        return \App\Models\Equipment::query()
+                                            ->where('status', '!=', 'retired')
+                                            ->with('equipmentType')
+                                            ->get()
+                                            ->mapWithKeys(fn ($eq) => [
+                                                $eq->id => ($eq->asset_tag ?: 'Sans tag') .
+                                                    ' — ' . ($eq->equipmentType?->name ?? '') .
+                                                    ' ' . ($eq->brand ?? '') .
+                                                    ' ' . ($eq->model ?? '') .
+                                                    ($eq->serial_number ? " (SN: {$eq->serial_number})" : ''),
+                                            ]);
+                                    })
+                                    ->searchable()
+                                    ->required()
+                                    ->reactive()
+                                    ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                        if ($state) {
+                                            $eq = \App\Models\Equipment::find($state);
+                                            if ($eq) {
+                                                $set('condition_at_transmission', $eq->condition ?? 'good');
+                                            }
+                                        }
+                                    })
+                                    ->columnSpan(2),
+                                Forms\Components\Select::make('condition_at_transmission')
+                                    ->label('Condition')
+                                    ->options([
+                                        'new' => 'Neuf',
+                                        'excellent' => 'Excellent',
+                                        'good' => 'Bon',
+                                        'fair' => 'Moyen',
+                                        'poor' => 'Mauvais',
+                                    ])
+                                    ->required()
+                                    ->default('good'),
+                                Forms\Components\TextInput::make('notes')
+                                    ->label('Notes')
+                                    ->maxLength(255),
+                            ])
+                            ->columns(4)
+                            ->defaultItems(0)
+                            ->addActionLabel('Ajouter un équipement')
+                            ->reorderable(false)
+                            ->afterStateHydrated(function (Forms\Components\Repeater $component, $record) {
+                                if ($record && $record->exists) {
+                                    $items = $record->items()->with('equipment')->get();
+                                    $component->state(
+                                        $items->map(fn ($item) => [
+                                            'equipment_id' => $item->equipment_id,
+                                            'condition_at_transmission' => $item->condition_at_transmission,
+                                            'notes' => $item->notes,
+                                        ])->toArray()
+                                    );
+                                }
+                            }),
+                    ])
+                    ->collapsible(),
                 Forms\Components\Section::make('Signature')
                     ->schema([
                         Forms\Components\Toggle::make('signed_by_recipient')
