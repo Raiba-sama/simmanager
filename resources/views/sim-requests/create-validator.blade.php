@@ -3,50 +3,207 @@
 @section('title', 'Nouvelle demande')
 @section('page-title', 'Nouvelle demande')
 
+@push('styles')
+<style>
+/* ── Form card ─────────────────────────────────────── */
+.form-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 16px; padding: 28px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* ── Labels ────────────────────────────────────────── */
+.form-label {
+    font-size: 13px; font-weight: 600; color: #374151;
+    margin-bottom: 6px; display: block;
+}
+
+/* ── Filter inputs ─────────────────────────────────── */
+.filter-input {
+    height: 38px; font-size: 13px; border: 1.5px solid #e2e8f0;
+    border-radius: 9px; padding: 0 12px;
+    font-family: 'Poppins', sans-serif; color: #1e293b;
+    transition: border-color 0.18s, box-shadow 0.18s;
+    width: 100%; background: #f8fafc; appearance: none;
+    display: block;
+}
+.filter-input:focus {
+    outline: none; border-color: #00574A;
+    box-shadow: 0 0 0 3px rgba(0,87,74,0.10); background: white;
+}
+.filter-input.is-invalid { border-color: #ef4444; }
+.filter-input.is-invalid:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.12); }
+select.filter-input {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; padding-right: 32px;
+}
+textarea.filter-input { height: auto; padding: 10px 12px; resize: vertical; }
+input[type="date"].filter-input { padding: 0 12px; }
+.invalid-feedback { color: #ef4444; font-size: 12px; margin-top: 4px; display: none; }
+.filter-input.is-invalid ~ .invalid-feedback,
+.filter-input.is-invalid + .invalid-feedback { display: block; }
+.d-block.invalid-feedback { display: block; }
+.form-text { font-size: 12px; color: #94a3b8; margin-top: 4px; display: block; }
+
+/* ── Wizard steps ──────────────────────────────────── */
+.wizard-steps { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.wizard-steps .step-item {
+    border: 1.5px solid #e2e8f0; background: #f8fafc;
+    padding: 7px 16px; border-radius: 999px; font-size: 12.5px;
+    font-weight: 600; color: #64748b; cursor: pointer;
+    transition: all 0.16s; font-family: 'Poppins', sans-serif;
+}
+.wizard-steps .step-item.active {
+    background: #00574A; border-color: #00574A; color: white;
+}
+.wizard-steps .step-item:hover:not(.active) { background: #f1f5f9; color: #1e293b; }
+
+/* ── Info box ──────────────────────────────────────── */
+.form-info-box {
+    background: #f0fdf4; border: 1px solid #bbf7d0;
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 22px;
+    font-size: 13px; color: #15803d; line-height: 1.8;
+}
+.form-info-box strong { color: #166534; }
+.form-info-note { font-size: 12px; color: #4ade80; margin-top: 6px; }
+
+/* ── Section title ─────────────────────────────────── */
+.form-section-title {
+    font-size: 14px; font-weight: 700; color: #1e293b;
+    margin: 22px 0 14px; padding-bottom: 10px;
+    border-bottom: 2px solid #f1f5f9;
+    display: flex; align-items: center; gap: 8px;
+}
+
+/* ── Collaborator history ──────────────────────────── */
+.collab-history {
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 12px 14px; font-size: 13px;
+    color: #374151; margin-top: 8px;
+}
+.collab-history strong { font-size: 12.5px; color: #00574A; }
+
+/* ── Inner boxes ───────────────────────────────────── */
+.form-inner-box {
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;
+}
+.form-inner-box-title {
+    font-size: 13px; font-weight: 700; color: #1e293b;
+    margin-bottom: 4px; display: block;
+}
+.form-inner-box-desc { font-size: 12px; color: #94a3b8; margin-bottom: 10px; display: block; }
+
+/* ── Buttons ───────────────────────────────────────── */
+.btn-filter {
+    height: 38px; padding: 0 16px; border-radius: 9px; font-size: 13px;
+    font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
+    cursor: pointer; border: 1.5px solid transparent; transition: all 0.18s;
+    font-family: 'Poppins', sans-serif; white-space: nowrap; text-decoration: none;
+}
+.btn-filter-primary { background: #00574A; color: white; border-color: #00574A; }
+.btn-filter-primary:hover { background: #003d34; border-color: #003d34; color: white; }
+.btn-filter-reset { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+.btn-filter-reset:hover { background: #e2e8f0; color: #1e293b; }
+.btn-filter-sm { height: 34px; padding: 0 12px; font-size: 12.5px; border-radius: 8px; }
+
+/* ── Template row ──────────────────────────────────── */
+.template-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.template-row .filter-input { height: 38px; flex: 0 0 200px; max-width: 200px; }
+
+/* ── Summary card ──────────────────────────────────── */
+.summary-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 16px; padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    position: sticky; top: calc(var(--navbar-h) + 20px);
+}
+.summary-card-title { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+.summary-card-subtitle { font-size: 12px; color: #94a3b8; margin-bottom: 16px; }
+.summary-list { list-style: none; padding: 0; margin: 0; }
+.summary-list li {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 9px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; gap: 12px;
+}
+.summary-list li:last-child { border-bottom: none; padding-bottom: 0; }
+.summary-key { color: #64748b; font-size: 12px; flex-shrink: 0; }
+.summary-val { font-weight: 600; color: #1e293b; font-size: 12.5px; text-align: right; word-break: break-word; }
+
+/* ── Form section hidden ───────────────────────────── */
+.form-section-hidden { display: none !important; }
+.step-anchor { scroll-margin-top: 110px; }
+
+/* ── Checkbox overrides ────────────────────────────── */
+.form-check-label { font-size: 13px; color: #374151; }
+.form-check-input:checked { background-color: #00574A; border-color: #00574A; }
+
+/* ── SIM checklist ─────────────────────────────────── */
+.sim-checklist {
+    border: 1.5px solid #e2e8f0; border-radius: 10px;
+    padding: 12px 14px; max-height: 220px; overflow-y: auto;
+    background: #f8fafc;
+}
+
+/* ── Mobile ────────────────────────────────────────── */
+@media (max-width: 767px) {
+    .form-card { padding: 18px 16px; }
+    .summary-card { position: static; margin-top: 12px; }
+    .template-row .filter-input { flex: 1; max-width: 100%; }
+    .wizard-steps .step-item { padding: 6px 12px; font-size: 12px; }
+}
+</style>
+@endpush
+
 @section('content')
 <div class="row g-4">
     <div class="col-lg-8">
-        <div class="card">
-            <div class="card-body">
-                <form method="POST" action="{{ route('sim-requests.store') }}" id="requestForm">
+        <div class="form-card">
+            <form method="POST" action="{{ route('sim-requests.store') }}" id="requestForm">
             @csrf
 
-            <div class="wizard-steps mb-3" id="wizard-steps">
-                <button type="button" class="step-item active" data-target="#step-1">1. Type & Collaborateur</button>
+            {{-- Wizard steps --}}
+            <div class="wizard-steps" id="wizard-steps">
+                <button type="button" class="step-item active" data-target="#step-1">1. Type &amp; Collaborateur</button>
                 <button type="button" class="step-item" data-target="#step-2">2. Détails</button>
                 <button type="button" class="step-item" data-target="#step-3">3. Vérification</button>
             </div>
-            <div class="alert alert-info" style="font-size: 13px;">
+
+            {{-- Info box --}}
+            <div class="form-info-box">
                 <div><strong>1.</strong> Choisissez le type et le collaborateur concerné.</div>
                 <div><strong>2.</strong> Renseignez la ligne/SIM/ICCID/forfait selon le type.</div>
                 <div><strong>3.</strong> Vérifiez le récapitulatif à droite avant d'envoyer.</div>
-                <div class="text-muted mt-2">Le récapitulatif se met à jour automatiquement. Les modèles sont enregistrés sur cet appareil.</div>
+                <div class="form-info-note">Le récapitulatif se met à jour automatiquement. Les modèles sont enregistrés sur cet appareil.</div>
             </div>
 
             <div id="step-1" class="step-anchor"></div>
 
+            {{-- Type de demande --}}
             <div class="mb-3">
-                <label for="request_type" class="form-label">Type de demande <span class="text-danger">*</span></label>
-                <select name="request_type" id="request_type" class="form-select @error('request_type') is-invalid @enderror" required>
+                <label for="request_type" class="form-label">Type de demande <span style="color:#ef4444;">*</span></label>
+                <select name="request_type" id="request_type" class="filter-input @error('request_type') is-invalid @enderror" required>
                     <option value="">Sélectionner...</option>
                     <option value="recuperation" {{ old('request_type', $prefill['request_type'] ?? '') === 'recuperation' ? 'selected' : '' }}>Récupération</option>
-                    <option value="creation" {{ old('request_type', $prefill['request_type'] ?? '') === 'creation' ? 'selected' : '' }}>Création</option>
-                    <option value="suspension" {{ old('request_type', $prefill['request_type'] ?? '') === 'suspension' ? 'selected' : '' }}>Suspension</option>
-                    <option value="desactivation" {{ old('request_type', $prefill['request_type'] ?? '') === 'desactivation' ? 'selected' : '' }}>Désactivation</option>
-                    <option value="ajustement" {{ old('request_type', $prefill['request_type'] ?? '') === 'ajustement' ? 'selected' : '' }}>Ajustement</option>
+                    <option value="creation"     {{ old('request_type', $prefill['request_type'] ?? '') === 'creation'     ? 'selected' : '' }}>Création</option>
+                    <option value="suspension"   {{ old('request_type', $prefill['request_type'] ?? '') === 'suspension'   ? 'selected' : '' }}>Suspension</option>
+                    <option value="desactivation"{{ old('request_type', $prefill['request_type'] ?? '') === 'desactivation'? 'selected' : '' }}>Désactivation</option>
+                    <option value="ajustement"   {{ old('request_type', $prefill['request_type'] ?? '') === 'ajustement'   ? 'selected' : '' }}>Ajustement</option>
                 </select>
                 @error('request_type')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
             </div>
 
+            {{-- Collaborator block --}}
             <div id="collaborator-block" class="form-section-hidden">
-                <h5 class="mb-3">Informations du collaborateur</h5>
+                <div class="form-section-title">
+                    <i class="bi bi-person" style="color:#00574A;"></i> Informations du collaborateur
+                </div>
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label for="collaborator_matricule" class="form-label">Matricule <span class="text-danger">*</span></label>
+                        <label for="collaborator_matricule" class="form-label">Matricule <span style="color:#ef4444;">*</span></label>
                         <input type="text" name="collaborator_matricule" id="collaborator_matricule"
-                               class="form-control @error('collaborator_matricule') is-invalid @enderror"
+                               class="filter-input @error('collaborator_matricule') is-invalid @enderror"
                                value="{{ old('collaborator_matricule', $prefill['collaborator_matricule'] ?? '') }}"
                                data-required-for="recuperation,suspension,desactivation,ajustement">
                         @error('collaborator_matricule')
@@ -56,7 +213,7 @@
                     <div class="col-md-4 mb-3">
                         <label for="collaborator_name" class="form-label">Nom</label>
                         <input type="text" name="collaborator_name" id="collaborator_name"
-                               class="form-control @error('collaborator_name') is-invalid @enderror"
+                               class="filter-input @error('collaborator_name') is-invalid @enderror"
                                value="{{ old('collaborator_name', $prefill['collaborator_name'] ?? '') }}">
                         @error('collaborator_name')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -65,7 +222,7 @@
                     <div class="col-md-4 mb-3">
                         <label for="collaborator_first_name" class="form-label">Prénoms</label>
                         <input type="text" name="collaborator_first_name" id="collaborator_first_name"
-                               class="form-control @error('collaborator_first_name') is-invalid @enderror"
+                               class="filter-input @error('collaborator_first_name') is-invalid @enderror"
                                value="{{ old('collaborator_first_name', $prefill['collaborator_first_name'] ?? '') }}">
                         @error('collaborator_first_name')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -75,30 +232,32 @@
                 <div class="mb-3">
                     <label for="collaborator_agence" class="form-label">Agence</label>
                     <input type="text" name="collaborator_agence" id="collaborator_agence"
-                           class="form-control @error('collaborator_agence') is-invalid @enderror"
+                           class="filter-input @error('collaborator_agence') is-invalid @enderror"
                            value="{{ old('collaborator_agence', $prefill['collaborator_agence'] ?? '') }}">
                     @error('collaborator_agence')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-                <div id="collaborator-history" class="alert alert-light border d-none" style="font-size: 13px;">
+                <div id="collaborator-history" class="collab-history d-none">
                     <strong>Historique collaborateur</strong>
-                    <div id="collaborator-history-lines" class="mt-1 text-muted">Lignes récentes: -</div>
-                    <div id="collaborator-history-plans" class="mt-1 text-muted">Forfaits récents: -</div>
-                    <div id="collaborator-history-sim" class="mt-1 text-muted"></div>
+                    <div id="collaborator-history-lines" class="mt-1" style="color:#64748b; font-size:12px;">Lignes récentes : —</div>
+                    <div id="collaborator-history-plans" class="mt-1" style="color:#64748b; font-size:12px;">Forfaits récents : —</div>
+                    <div id="collaborator-history-sim" class="mt-1" style="color:#64748b; font-size:12px;"></div>
                 </div>
             </div>
 
             <div id="step-2" class="step-anchor"></div>
 
-            <!-- Formulaire pour Création -->
+            {{-- Création form --}}
             <div id="creation-form" class="form-section-hidden">
-                <h5 class="mb-3">Informations du bénéficiaire</h5>
+                <div class="form-section-title">
+                    <i class="bi bi-person-plus" style="color:#00574A;"></i> Informations du bénéficiaire
+                </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="beneficiary_name" class="form-label">Nom <span class="text-danger">*</span></label>
-                        <input type="text" name="beneficiary_name" id="beneficiary_name" 
-                               class="form-control @error('beneficiary_name') is-invalid @enderror" 
+                        <label for="beneficiary_name" class="form-label">Nom <span style="color:#ef4444;">*</span></label>
+                        <input type="text" name="beneficiary_name" id="beneficiary_name"
+                               class="filter-input @error('beneficiary_name') is-invalid @enderror"
                                value="{{ old('beneficiary_name', $prefill['beneficiary_name'] ?? '') }}"
                                data-required-for="creation">
                         @error('beneficiary_name')
@@ -107,8 +266,8 @@
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="beneficiary_first_name" class="form-label">Prénom</label>
-                        <input type="text" name="beneficiary_first_name" id="beneficiary_first_name" 
-                               class="form-control @error('beneficiary_first_name') is-invalid @enderror" 
+                        <input type="text" name="beneficiary_first_name" id="beneficiary_first_name"
+                               class="filter-input @error('beneficiary_first_name') is-invalid @enderror"
                                value="{{ old('beneficiary_first_name', $prefill['beneficiary_first_name'] ?? '') }}">
                         @error('beneficiary_first_name')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -118,13 +277,11 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="beneficiary_fonction" class="form-label">Fonction</label>
-                        <select name="beneficiary_fonction" id="beneficiary_fonction" 
-                                class="form-select @error('beneficiary_fonction') is-invalid @enderror">
+                        <select name="beneficiary_fonction" id="beneficiary_fonction"
+                                class="filter-input @error('beneficiary_fonction') is-invalid @enderror">
                             <option value="">Sélectionner une fonction...</option>
                             @foreach($fonctions as $key => $fonction)
-                                <option value="{{ $key }}" {{ old('beneficiary_fonction', $prefill['beneficiary_fonction'] ?? '') == $key ? 'selected' : '' }}>
-                                    {{ $fonction }}
-                                </option>
+                                <option value="{{ $key }}" {{ old('beneficiary_fonction', $prefill['beneficiary_fonction'] ?? '') == $key ? 'selected' : '' }}>{{ $fonction }}</option>
                             @endforeach
                         </select>
                         @error('beneficiary_fonction')
@@ -133,24 +290,23 @@
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="beneficiary_matricule" class="form-label">Matricule</label>
-                        <input type="text" name="beneficiary_matricule" id="beneficiary_matricule" 
-                               class="form-control @error('beneficiary_matricule') is-invalid @enderror" 
+                        <input type="text" name="beneficiary_matricule" id="beneficiary_matricule"
+                               class="filter-input @error('beneficiary_matricule') is-invalid @enderror"
                                value="{{ old('beneficiary_matricule', $prefill['beneficiary_matricule'] ?? '') }}">
                         @error('beneficiary_matricule')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                 </div>
-
                 <div class="mb-3">
-                    <label for="plan_id_creation" class="form-label">Forfait <span class="text-danger">*</span></label>
-                    <select id="plan_id_creation" class="form-select @error('plan_id') is-invalid @enderror"
+                    <label for="plan_id_creation" class="form-label">Forfait <span style="color:#ef4444;">*</span></label>
+                    <select id="plan_id_creation" class="filter-input @error('plan_id') is-invalid @enderror"
                             data-required-for="creation"
                             onchange="document.getElementById('plan_id_hidden').value = this.value">
                         <option value="">Sélectionner un forfait...</option>
                         @foreach($plans as $plan)
                             <option value="{{ $plan->id }}" data-credit="{{ $plan->limite_credit }}" data-data="{{ $plan->limite_data }}" {{ old('plan_id', $prefill['plan_id'] ?? '') == $plan->id ? 'selected' : '' }}>
-                                {{ $plan->name }} - {{ number_format($plan->limite_credit, 0, ',', ' ') }} ariary / {{ $plan->limite_data }} GB
+                                {{ $plan->name }} — {{ number_format($plan->limite_credit, 0, ',', ' ') }} ariary / {{ $plan->limite_data }} GB
                             </option>
                         @endforeach
                     </select>
@@ -158,24 +314,22 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-
                 <div class="mb-3">
-                    <div class="form-check mb-2">
+                    <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="creation_batch_mode" name="creation_batch_mode" value="1" {{ !empty(old('sim_ids')) ? 'checked' : '' }}>
                         <label class="form-check-label" for="creation_batch_mode">
                             <strong>Demande groupée</strong> — attribuer plusieurs cartes SIM au même bénéficiaire (une demande par SIM)
                         </label>
                     </div>
                 </div>
-
                 <div id="creation-single-sim" class="mb-3">
                     <label for="sim_id_creation" class="form-label">SIM (optionnel)</label>
-                    <select id="sim_id_creation" class="form-select @error('sim_id') is-invalid @enderror"
+                    <select id="sim_id_creation" class="filter-input @error('sim_id') is-invalid @enderror"
                             onchange="document.getElementById('sim_id_hidden').value = this.value">
                         <option value="">Sélectionner une SIM...</option>
                         @foreach($sims as $sim)
                             <option value="{{ $sim->id }}" {{ old('sim_id', $prefill['sim_id'] ?? '') == $sim->id ? 'selected' : '' }}>
-                                {{ $sim->iccid }} - {{ $sim->operator ?? 'N/A' }}
+                                {{ $sim->iccid }} — {{ $sim->operator ?? 'N/A' }}
                             </option>
                         @endforeach
                     </select>
@@ -183,11 +337,10 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-
                 <div id="creation-batch-sims" class="mb-3 form-section-hidden">
-                    <label class="form-label">Cartes SIM à attribuer <span class="text-danger">*</span></label>
-                    <p class="text-muted small mb-2">Sélectionnez une ou plusieurs cartes. Une demande sera créée pour chaque SIM, avec le même bénéficiaire et forfait.</p>
-                    <div class="border rounded p-3" style="max-height: 220px; overflow-y: auto; background: #f8fafc;">
+                    <label class="form-label">Cartes SIM à attribuer <span style="color:#ef4444;">*</span></label>
+                    <p class="form-text mb-2">Sélectionnez une ou plusieurs cartes. Une demande sera créée pour chaque SIM, avec le même bénéficiaire et forfait.</p>
+                    <div class="sim-checklist">
                         @foreach($sims as $sim)
                             <div class="form-check">
                                 <input class="form-check-input creation-sim-check" type="checkbox" name="sim_ids[]" value="{{ $sim->id }}" id="sim_batch_{{ $sim->id }}"
@@ -200,21 +353,19 @@
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
                 </div>
-
                 <div class="mb-3">
                     <label for="requested_iccid_creation" class="form-label">ICCID (si SIM non listée)</label>
-                    <input type="text" name="requested_iccid" id="requested_iccid_creation" 
-                           class="form-control @error('requested_iccid') is-invalid @enderror" 
+                    <input type="text" name="requested_iccid" id="requested_iccid_creation"
+                           class="filter-input @error('requested_iccid') is-invalid @enderror"
                            value="{{ old('requested_iccid', $prefill['requested_iccid'] ?? '') }}">
                     @error('requested_iccid')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-
                 <div class="mb-3">
-                    <label for="motif_creation" class="form-label">Motif <span class="text-danger">*</span></label>
-                    <textarea id="motif_creation" rows="3" 
-                              class="form-control @error('motif') is-invalid @enderror"
+                    <label for="motif_creation" class="form-label">Motif <span style="color:#ef4444;">*</span></label>
+                    <textarea id="motif_creation" rows="3"
+                              class="filter-input @error('motif') is-invalid @enderror"
                               data-required-for="creation"
                               oninput="document.getElementById('motif_hidden').value = this.value">{{ old('motif', $prefill['motif'] ?? '') }}</textarea>
                     @error('motif')
@@ -223,58 +374,55 @@
                 </div>
             </div>
 
-            <!-- Champs cachés pour garantir l'envoi des valeurs (toujours présents dans le DOM) -->
+            {{-- Hidden fields --}}
             <input type="hidden" name="phone_number" id="phone_number_hidden" value="{{ old('phone_number', $prefill['phone_number'] ?? '') }}">
             <input type="hidden" name="plan_id" id="plan_id_hidden" value="{{ old('plan_id', $prefill['plan_id'] ?? '') }}">
             <input type="hidden" name="motif" id="motif_hidden" value="{{ old('motif', $prefill['motif'] ?? '') }}">
             <input type="hidden" name="sim_id" id="sim_id_hidden" value="{{ old('sim_id', $prefill['sim_id'] ?? '') }}">
-            
-            <!-- Formulaire pour Récupération -->
+
+            {{-- Récupération form --}}
             <div id="recuperation-form" class="form-section-hidden">
                 <div class="mb-3">
                     <label for="phone_number_recuperation" class="form-label">Numéro de ligne concerné</label>
-                    <input type="text" id="phone_number_recuperation" 
-                           class="form-control @error('phone_number') is-invalid @enderror" 
-                           value="{{ old('phone_number', $prefill['phone_number'] ?? ($currentSim->phone_number ?? '')) }}" 
-                           placeholder="Ex: 0341012345 ou +261 34 12 345 67 (laisser vide pour utiliser le numéro de l'utilisateur)"
+                    <input type="text" id="phone_number_recuperation"
+                           class="filter-input @error('phone_number') is-invalid @enderror"
+                           value="{{ old('phone_number', $prefill['phone_number'] ?? ($currentSim->phone_number ?? '')) }}"
+                           placeholder="Ex: 0341012345 (laisser vide pour utiliser le numéro de l'utilisateur)"
                            oninput="const hidden = document.getElementById('phone_number_hidden'); if (hidden) hidden.value = this.value.trim();">
-                    <small class="form-text text-muted">Numéro de téléphone de la ligne à récupérer. Si vide, le numéro de l'utilisateur sera utilisé.</small>
+                    <span class="form-text">Numéro de téléphone de la ligne à récupérer. Si vide, le numéro de l'utilisateur sera utilisé.</span>
                     @error('phone_number')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-
                 <div class="mb-3">
                     <label for="sim_id_recuperation" class="form-label">SIM disponible</label>
-                    <select id="sim_id_recuperation" class="form-select @error('sim_id') is-invalid @enderror"
+                    <select id="sim_id_recuperation" class="filter-input @error('sim_id') is-invalid @enderror"
                             onchange="document.getElementById('sim_id_hidden').value = this.value">
                         <option value="">Sélectionner une SIM libre...</option>
                         @foreach($sims as $sim)
                             <option value="{{ $sim->id }}" {{ old('sim_id', $prefill['sim_id'] ?? '') == $sim->id ? 'selected' : '' }}>
-                                {{ $sim->iccid }} - {{ $sim->operator ?? 'N/A' }}
+                                {{ $sim->iccid }} — {{ $sim->operator ?? 'N/A' }}
                             </option>
                         @endforeach
                     </select>
-                    <small class="form-text text-muted">Si vous avez une SIM blanche, sélectionnez-la ici. Sinon, laissez vide et saisissez l'ICCID ci-dessous.</small>
+                    <span class="form-text">Si vous avez une SIM blanche, sélectionnez-la ici. Sinon, laissez vide et saisissez l'ICCID ci-dessous.</span>
                     @error('sim_id')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-
                 <div class="mb-3">
                     <label for="requested_iccid_recuperation" class="form-label">ICCID demandé (si SIM non listée)</label>
-                    <input type="text" name="requested_iccid" id="requested_iccid_recuperation" 
-                           class="form-control @error('requested_iccid') is-invalid @enderror" 
+                    <input type="text" name="requested_iccid" id="requested_iccid_recuperation"
+                           class="filter-input @error('requested_iccid') is-invalid @enderror"
                            value="{{ old('requested_iccid', $prefill['requested_iccid'] ?? '') }}" placeholder="Ex: 89261012345678901234">
                     @error('requested_iccid')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-
                 <div class="mb-3">
-                    <label for="motif_recuperation" class="form-label">Motif <span class="text-danger">*</span></label>
-                    <textarea id="motif_recuperation" rows="3" 
-                              class="form-control @error('motif') is-invalid @enderror"
+                    <label for="motif_recuperation" class="form-label">Motif <span style="color:#ef4444;">*</span></label>
+                    <textarea id="motif_recuperation" rows="3"
+                              class="filter-input @error('motif') is-invalid @enderror"
                               data-required-for="recuperation"
                               oninput="document.getElementById('motif_hidden').value = this.value">{{ old('motif', $prefill['motif'] ?? '') }}</textarea>
                     @error('motif')
@@ -282,26 +430,25 @@
                     @enderror
                 </div>
             </div>
-            
-            <!-- Formulaire pour Suspension / Désactivation -->
+
+            {{-- Suspension / Désactivation form --}}
             <div id="suspension-desactivation-form" class="form-section-hidden">
                 <div class="mb-3">
-                    <label for="phone_number" class="form-label">Numéro de ligne concerné <span class="text-danger">*</span></label>
-                    <input type="text" id="phone_number" 
-                           class="form-control @error('phone_number') is-invalid @enderror" 
-                           value="{{ old('phone_number', $prefill['phone_number'] ?? '') }}" placeholder="Ex: 0341012345 ou +261 34 12 345 67"
+                    <label for="phone_number" class="form-label">Numéro de ligne concerné <span style="color:#ef4444;">*</span></label>
+                    <input type="text" id="phone_number"
+                           class="filter-input @error('phone_number') is-invalid @enderror"
+                           value="{{ old('phone_number', $prefill['phone_number'] ?? '') }}" placeholder="Ex: 0341012345"
                            data-required-for="suspension,desactivation"
                            oninput="document.getElementById('phone_number_hidden').value = this.value">
-                    <small class="form-text text-muted">Numéro de la ligne à suspendre/désactiver.</small>
+                    <span class="form-text">Numéro de la ligne à suspendre/désactiver.</span>
                     @error('phone_number')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-
                 <div class="mb-3">
-                    <label for="motif_suspension" class="form-label">Motif <span class="text-danger">*</span></label>
-                    <textarea id="motif_suspension" rows="4" 
-                              class="form-control @error('motif') is-invalid @enderror"
+                    <label for="motif_suspension" class="form-label">Motif <span style="color:#ef4444;">*</span></label>
+                    <textarea id="motif_suspension" rows="4"
+                              class="filter-input @error('motif') is-invalid @enderror"
                               data-required-for="suspension,desactivation"
                               oninput="document.getElementById('motif_hidden').value = this.value">{{ old('motif', $prefill['motif'] ?? '') }}</textarea>
                     @error('motif')
@@ -310,38 +457,37 @@
                 </div>
             </div>
 
-            <!-- Formulaire pour Ajustement -->
+            {{-- Ajustement form --}}
             <div id="ajustement-form" class="form-section-hidden">
                 <div class="mb-3">
-                    <label for="phone_number_ajustement" class="form-label">Numéro de ligne concerné <span class="text-danger">*</span></label>
-                    <input type="text" id="phone_number_ajustement" 
-                           class="form-control @error('phone_number') is-invalid @enderror" 
-                           value="{{ old('phone_number', $prefill['phone_number'] ?? '') }}" placeholder="Ex: 0341012345 ou +261 34 12 345 67"
+                    <label for="phone_number_ajustement" class="form-label">Numéro de ligne concerné <span style="color:#ef4444;">*</span></label>
+                    <input type="text" id="phone_number_ajustement"
+                           class="filter-input @error('phone_number') is-invalid @enderror"
+                           value="{{ old('phone_number', $prefill['phone_number'] ?? '') }}" placeholder="Ex: 0341012345"
                            data-required-for="ajustement"
                            oninput="document.getElementById('phone_number_hidden').value = this.value">
-                    <small class="form-text text-muted">Numéro de la ligne à ajuster.</small>
+                    <span class="form-text">Numéro de la ligne à ajuster.</span>
                     @error('phone_number')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-
-                <div class="mb-3 p-3 bg-light rounded">
-                    <strong class="d-block mb-2">Modification partielle (optionnel)</strong>
-                    <p class="text-muted small mb-2">Modifier uniquement la limite crédit (LC) et/ou la data sans changer l'autre. Si vous renseignez une valeur ci-dessous, l'autre limite reste celle du forfait actuel.</p>
+                <div class="form-inner-box">
+                    <span class="form-inner-box-title">Modification partielle (optionnel)</span>
+                    <span class="form-inner-box-desc">Modifier uniquement la limite crédit (LC) et/ou la data sans changer l'autre. Si vous renseignez une valeur ci-dessous, l'autre limite reste celle du forfait actuel.</span>
                     <div class="row g-2">
                         <div class="col-md-6">
-                            <label for="limite_credit_override" class="form-label small">Limite crédit uniquement (ariary)</label>
+                            <label for="limite_credit_override" class="form-label">Limite crédit uniquement (ariary)</label>
                             <input type="number" name="limite_credit_override" id="limite_credit_override" min="0" step="1"
-                                   class="form-control form-control-sm @error('limite_credit_override') is-invalid @enderror"
+                                   class="filter-input @error('limite_credit_override') is-invalid @enderror"
                                    value="{{ old('limite_credit_override', $prefill['limite_credit_override'] ?? '') }}" placeholder="Ex: 25000">
                             @error('limite_credit_override')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
                         <div class="col-md-6">
-                            <label for="limite_data_override" class="form-label small">Limite data uniquement (Go)</label>
+                            <label for="limite_data_override" class="form-label">Limite data uniquement (Go)</label>
                             <input type="number" name="limite_data_override" id="limite_data_override" min="0" step="0.1"
-                                   class="form-control form-control-sm @error('limite_data_override') is-invalid @enderror"
+                                   class="filter-input @error('limite_data_override') is-invalid @enderror"
                                    value="{{ old('limite_data_override', $prefill['limite_data_override'] ?? '') }}" placeholder="Ex: 4.5">
                             @error('limite_data_override')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -349,53 +495,51 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="mb-3">
                     <label for="plan_id_ajustement" class="form-label">Nouveau forfait complet</label>
-                    <select id="plan_id_ajustement" class="form-select @error('plan_id') is-invalid @enderror"
+                    <select id="plan_id_ajustement" class="filter-input @error('plan_id') is-invalid @enderror"
                             onchange="document.getElementById('plan_id_hidden').value = this.value">
                         <option value="">Sélectionner un forfait (ou utiliser la modification partielle ci-dessus)...</option>
                         @foreach($plans as $plan)
                             <option value="{{ $plan->id }}" data-credit="{{ $plan->limite_credit }}" data-data="{{ $plan->limite_data }}" {{ old('plan_id', $prefill['plan_id'] ?? '') == $plan->id ? 'selected' : '' }}>
-                                {{ $plan->name }} - {{ number_format($plan->limite_credit, 0, ',', ' ') }} ariary / {{ $plan->limite_data }} GB
+                                {{ $plan->name }} — {{ number_format($plan->limite_credit, 0, ',', ' ') }} ariary / {{ $plan->limite_data }} GB
                             </option>
                         @endforeach
                     </select>
-                    <small class="form-text text-muted">Forfait complet OU au moins une limite (crédit ou data) ci-dessus.</small>
+                    <span class="form-text">Forfait complet OU au moins une limite (crédit ou data) ci-dessus.</span>
                     @error('plan_id')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-
-                <div class="mb-3 p-3 border rounded">
+                <div class="form-inner-box">
                     <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" name="is_temporary" id="is_temporary_ajustement" 
+                        <input class="form-check-input" type="checkbox" name="is_temporary" id="is_temporary_ajustement"
                                value="1" {{ old('is_temporary', $prefill['is_temporary'] ?? false) ? 'checked' : '' }}>
                         <label class="form-check-label" for="is_temporary_ajustement">
                             <strong>Ajustement temporaire</strong>
                         </label>
-                        <small class="form-text text-muted d-block">Cochez cette case si l'ajustement doit être temporaire et revenir automatiquement aux valeurs précédentes après la date de fin.</small>
+                        <div class="form-text">Cochez cette case si l'ajustement doit être temporaire et revenir automatiquement aux valeurs précédentes après la date de fin.</div>
                     </div>
-                    <div id="temporary_date_group" class="mt-3" style="display: none;">
+                    <div id="temporary_date_group" style="display: none;">
                         <div class="row g-2">
                             <div class="col-md-6">
                                 <label for="temporary_start_date_ajustement" class="form-label">Date de début d'ajustement</label>
-                                <input type="date" name="temporary_start_date" id="temporary_start_date_ajustement" 
-                                       class="form-control @error('temporary_start_date') is-invalid @enderror"
+                                <input type="date" name="temporary_start_date" id="temporary_start_date_ajustement"
+                                       class="filter-input @error('temporary_start_date') is-invalid @enderror"
                                        value="{{ old('temporary_start_date', $prefill['temporary_start_date'] ?? date('Y-m-d')) }}"
                                        min="{{ date('Y-m-d') }}">
-                                <small class="form-text text-muted">À partir de quand l'ajustement s'applique (optionnel, défaut: aujourd'hui).</small>
+                                <span class="form-text">À partir de quand l'ajustement s'applique (optionnel, défaut : aujourd'hui).</span>
                                 @error('temporary_start_date')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
-                                <label for="temporary_end_date_ajustement" class="form-label">Date de fin <span class="text-danger">*</span></label>
-                                <input type="date" name="temporary_end_date" id="temporary_end_date_ajustement" 
-                                       class="form-control @error('temporary_end_date') is-invalid @enderror"
+                                <label for="temporary_end_date_ajustement" class="form-label">Date de fin <span style="color:#ef4444;">*</span></label>
+                                <input type="date" name="temporary_end_date" id="temporary_end_date_ajustement"
+                                       class="filter-input @error('temporary_end_date') is-invalid @enderror"
                                        value="{{ old('temporary_end_date', $prefill['temporary_end_date'] ?? '') }}"
                                        min="{{ date('Y-m-d', strtotime('+1 day')) }}">
-                                <small class="form-text text-muted">L'ajustement sera restauré aux valeurs précédentes après cette date.</small>
+                                <span class="form-text">L'ajustement sera restauré aux valeurs précédentes après cette date.</span>
                                 @error('temporary_end_date')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -407,115 +551,50 @@
 
             <div id="step-3" class="step-anchor"></div>
 
-            <div class="mb-3">
-                <label for="template_select" class="form-label">Modèle de demande (optionnel)</label>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <select id="template_select" class="form-select form-select-sm w-auto" style="max-width: 260px;">
+            {{-- Template --}}
+            <div class="mb-4">
+                <label class="form-label">Modèle de demande (optionnel)</label>
+                <div class="template-row">
+                    <select id="template_select" class="filter-input">
                         <option value="">Aucun modèle</option>
                     </select>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="template_apply">
-                        Appliquer
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="template_save">
-                        Enregistrer
-                    </button>
+                    <button type="button" class="btn-filter btn-filter-reset btn-filter-sm" id="template_apply">Appliquer</button>
+                    <button type="button" class="btn-filter btn-filter-primary btn-filter-sm" id="template_save">Enregistrer</button>
                 </div>
-                <small class="form-text text-muted">Appliquer = pré-remplir. Enregistrer = sauver le formulaire actuel (sur cet appareil).</small>
+                <span class="form-text">Appliquer = pré-remplir. Enregistrer = sauver le formulaire actuel (sur cet appareil).</span>
             </div>
 
-            <div class="d-flex justify-content-between mt-4">
-                <a href="{{ route('sim-requests.index') }}" class="btn btn-secondary">
+            {{-- Footer --}}
+            <div class="d-flex justify-content-between mt-4 pt-3" style="border-top: 1px solid #f1f5f9;">
+                <a href="{{ route('sim-requests.index') }}" class="btn-filter btn-filter-reset">
                     <i class="bi bi-arrow-left"></i> Annuler
                 </a>
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn-filter btn-filter-primary">
                     <i class="bi bi-check-circle"></i> Soumettre la demande
                 </button>
             </div>
-                </form>
-            </div>
+            </form>
         </div>
     </div>
+
+    {{-- Summary sidebar --}}
     <div class="col-lg-4">
-        <div class="card sticky-summary">
-            <div class="card-header bg-light">
-                <strong>Récapitulatif</strong>
-            </div>
-            <div class="card-body">
-                <div class="text-muted mb-2" style="font-size: 12px;">Mise à jour automatique</div>
-                <ul class="list-unstyled mb-0 summary-list">
-                    <li class="d-flex justify-content-between">
-                        <span>Type</span>
-                        <strong id="summary-type">-</strong>
-                    </li>
-                    <li class="d-flex justify-content-between">
-                        <span>Collaborateur</span>
-                        <strong id="summary-collaborator">-</strong>
-                    </li>
-                    <li class="d-flex justify-content-between">
-                        <span>Ligne concernée</span>
-                        <strong id="summary-line">-</strong>
-                    </li>
-                    <li class="d-flex justify-content-between">
-                        <span>SIM</span>
-                        <strong id="summary-sim">-</strong>
-                    </li>
-                    <li class="d-flex justify-content-between">
-                        <span>ICCID</span>
-                        <strong id="summary-iccid">-</strong>
-                    </li>
-                    <li class="d-flex justify-content-between">
-                        <span>Forfait</span>
-                        <strong id="summary-plan">-</strong>
-                    </li>
-                    <li class="d-flex justify-content-between">
-                        <span>Motif</span>
-                        <strong id="summary-motif">-</strong>
-                    </li>
-                </ul>
-            </div>
+        <div class="summary-card">
+            <div class="summary-card-title">Récapitulatif</div>
+            <div class="summary-card-subtitle">Mise à jour automatique</div>
+            <ul class="summary-list">
+                <li><span class="summary-key">Type</span><strong class="summary-val" id="summary-type">-</strong></li>
+                <li><span class="summary-key">Collaborateur</span><strong class="summary-val" id="summary-collaborator">-</strong></li>
+                <li><span class="summary-key">Ligne concernée</span><strong class="summary-val" id="summary-line">-</strong></li>
+                <li><span class="summary-key">SIM</span><strong class="summary-val" id="summary-sim">-</strong></li>
+                <li><span class="summary-key">ICCID</span><strong class="summary-val" id="summary-iccid">-</strong></li>
+                <li><span class="summary-key">Forfait</span><strong class="summary-val" id="summary-plan">-</strong></li>
+                <li><span class="summary-key">Motif</span><strong class="summary-val" id="summary-motif">-</strong></li>
+            </ul>
         </div>
     </div>
 </div>
-
-@push('styles')
-<style>
-.form-section-hidden {
-    display: none !important;
-}
-.sticky-summary {
-    position: sticky;
-    top: 90px;
-}
-.summary-list li {
-    padding: 6px 0;
-    border-bottom: 1px dashed #e5e7eb;
-    font-size: 14px;
-}
-.summary-list li:last-child {
-    border-bottom: none;
-}
-.wizard-steps {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-.wizard-steps .step-item {
-    border: 1px solid #e2e8f0;
-    background: #f8fafc;
-    padding: 6px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-}
-.wizard-steps .step-item.active {
-    background: #3b82f6;
-    border-color: #3b82f6;
-    color: white;
-}
-.step-anchor {
-    scroll-margin-top: 110px;
-}
-</style>
-@endpush
+@endsection
 
 @push('scripts')
 <script>
@@ -530,8 +609,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function toggleForms() {
         const type = requestType.value;
-        
-        // Utiliser classList au lieu de style.display pour éviter les problèmes
+
         if (type === 'recuperation') {
             recuperationForm.classList.remove('form-section-hidden');
             creationForm.classList.add('form-section-hidden');
@@ -570,16 +648,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (type === 'creation' && typeof toggleCreationBatchMode === 'function') {
             toggleCreationBatchMode();
         }
-        
-        // S'assurer que les champs cachés sont toujours actifs (pas disabled)
+
         const allInputs = form.querySelectorAll('input, textarea, select');
         allInputs.forEach(input => {
-            // Ne pas désactiver les champs, même s'ils sont cachés
             if (input.hasAttribute('disabled') && input.getAttribute('data-required-for')) {
                 input.removeAttribute('disabled');
             }
-            
-            // Gérer les attributs required selon le type de demande
+
             const requiredFor = input.getAttribute('data-required-for');
             if (requiredFor) {
                 const types = requiredFor.split(',').map(t => t.trim());
@@ -614,7 +689,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     requestType.addEventListener('change', toggleForms);
-    toggleForms(); // Initialiser au chargement
+    toggleForms();
     const creationBatchCheck = document.getElementById('creation_batch_mode');
     if (creationBatchCheck) {
         creationBatchCheck.addEventListener('change', function() {
@@ -623,20 +698,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     toggleCreationBatchMode();
-    
-    // Initialiser les champs cachés au chargement si des valeurs existent
+
     function initializeHiddenFields() {
         const type = requestType.value;
         const simIdHidden = document.getElementById('sim_id_hidden');
-        
+
         if (type === 'recuperation') {
             const phoneNumber = document.getElementById('phone_number_recuperation');
             const phoneNumberHidden = document.getElementById('phone_number_hidden');
             const motif = document.getElementById('motif_recuperation');
             const motifHidden = document.getElementById('motif_hidden');
             const simId = document.getElementById('sim_id_recuperation');
-            
-            // Copier la valeur du champ visible vers le champ caché (même si vide)
+
             if (phoneNumber && phoneNumberHidden) {
                 phoneNumberHidden.value = phoneNumber.value.trim();
             }
@@ -652,7 +725,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const motif = document.getElementById('motif_creation');
             const motifHidden = document.getElementById('motif_hidden');
             const simId = document.getElementById('sim_id_creation');
-            
+
             if (planId && planIdHidden) {
                 planIdHidden.value = planId.value;
             }
@@ -667,14 +740,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const phoneNumberHidden = document.getElementById('phone_number_hidden');
             const motif = document.getElementById('motif_suspension');
             const motifHidden = document.getElementById('motif_hidden');
-            
+
             if (phoneNumber && phoneNumberHidden) {
                 phoneNumberHidden.value = phoneNumber.value;
             }
             if (motif && motifHidden) {
                 motifHidden.value = motif.value;
             }
-            // Réinitialiser sim_id pour suspension/desactivation
             if (simIdHidden) {
                 simIdHidden.value = '';
             }
@@ -683,19 +755,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const phoneNumberHidden = document.getElementById('phone_number_hidden');
             const planId = document.getElementById('plan_id_ajustement');
             const planIdHidden = document.getElementById('plan_id_hidden');
-            
+
             if (phoneNumber && phoneNumberHidden) {
                 phoneNumberHidden.value = phoneNumber.value;
             }
             if (planId && planIdHidden) {
                 planIdHidden.value = planId.value;
             }
-            // Réinitialiser sim_id pour ajustement
             if (simIdHidden) {
                 simIdHidden.value = '';
             }
         } else {
-            // Réinitialiser sim_id si aucun type n'est sélectionné
             if (simIdHidden) {
                 simIdHidden.value = '';
             }
@@ -863,30 +933,25 @@ document.addEventListener('DOMContentLoaded', function() {
         initializeHiddenFields();
         updateSummary();
     }
-    
-    // Initialiser les champs cachés au chargement
+
     initializeHiddenFields();
     updateSummary();
     renderTemplateOptions();
-    
-    // Réinitialiser les champs cachés quand le type change
+
     requestType.addEventListener('change', function() {
         setTimeout(initializeHiddenFields, 100);
         setTimeout(updateSummary, 120);
         setTimeout(renderTemplateOptions, 150);
     });
-    
-    // Validation avant soumission
+
     form.addEventListener('submit', function(e) {
         const type = requestType.value;
-        
-        // S'assurer que tous les champs sont actifs avant soumission
+
         const allInputs = form.querySelectorAll('input, textarea, select');
         allInputs.forEach(input => {
             input.removeAttribute('disabled');
         });
-        
-        // Vérifier les champs requis selon le type
+
         if (type === 'recuperation') {
             const phoneNumber = document.getElementById('phone_number_recuperation');
             const phoneNumberHidden = document.getElementById('phone_number_hidden');
@@ -894,12 +959,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const motifHidden = document.getElementById('motif_hidden');
             const simId = document.getElementById('sim_id_recuperation');
             const simIdHidden = document.getElementById('sim_id_hidden');
-            
-            // S'assurer que le formulaire de récupération est visible avant soumission
+
             recuperationForm.classList.remove('form-section-hidden');
-            
-            // Copier les valeurs vers les champs cachés (phone_number peut être vide)
-            // Utiliser trim() pour s'assurer qu'une chaîne vide est vraiment vide
+
             if (phoneNumber && phoneNumberHidden) {
                 phoneNumberHidden.value = phoneNumber.value.trim();
             }
@@ -909,9 +971,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (simId && simIdHidden) {
                 simIdHidden.value = simId.value;
             }
-            
-            // Le phone_number n'est plus requis (peut être vide, on utilisera le numéro de l'utilisateur)
-            // Vérifier seulement le motif
+
             const motifValue = motif ? motif.value.trim() : (motifHidden ? motifHidden.value.trim() : '');
             if (!motifValue) {
                 e.preventDefault();
@@ -931,11 +991,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const simId = document.getElementById('sim_id_creation');
             const simIdHidden = document.getElementById('sim_id_hidden');
             const batchMode = document.getElementById('creation_batch_mode');
-            
-            // S'assurer que le formulaire de création est visible avant soumission
+
             creationForm.classList.remove('form-section-hidden');
-            
-            // Copier les valeurs vers les champs cachés
+
             if (planId && planIdHidden) {
                 planIdHidden.value = planId.value;
             }
@@ -957,7 +1015,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 form.querySelectorAll('.creation-sim-check').forEach(cb => cb.removeAttribute('name'));
             }
-            
+
             if (!beneficiaryName || !beneficiaryName.value || !beneficiaryName.value.trim()) {
                 e.preventDefault();
                 if (beneficiaryName) {
@@ -967,7 +1025,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Le nom du bénéficiaire est requis.');
                 return false;
             }
-            
+
             const planValue = planId ? planId.value : (planIdHidden ? planIdHidden.value : '');
             if (!planValue) {
                 e.preventDefault();
@@ -978,7 +1036,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Le forfait est requis.');
                 return false;
             }
-            
+
             const motifValue = motif ? motif.value.trim() : (motifHidden ? motifHidden.value.trim() : '');
             if (!motifValue) {
                 e.preventDefault();
@@ -989,29 +1047,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Le motif est requis.');
                 return false;
             }
-            
-            // Debug
-            console.log('Soumission création - plan_id:', planValue, 'motif:', motifValue);
         } else if (type === 'suspension' || type === 'desactivation') {
             const phoneNumber = document.getElementById('phone_number');
             const phoneNumberHidden = document.getElementById('phone_number_hidden');
             const motif = document.getElementById('motif_suspension');
             const motifHidden = document.getElementById('motif_hidden');
-            
-            // S'assurer que le formulaire de suspension est visible avant soumission
+
             suspensionForm.classList.remove('form-section-hidden');
-            
-            // Copier les valeurs vers les champs cachés
+
             if (phoneNumber && phoneNumberHidden) {
                 phoneNumberHidden.value = phoneNumber.value;
             }
             if (motif && motifHidden) {
                 motifHidden.value = motif.value;
             }
-            
-            // Vérifier que les champs existent et ont une valeur
+
             const phoneValue = phoneNumber ? phoneNumber.value.trim() : (phoneNumberHidden ? phoneNumberHidden.value.trim() : '');
-            
+
             if (!phoneValue) {
                 e.preventDefault();
                 if (phoneNumber) {
@@ -1021,7 +1073,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Le numéro de ligne est requis.');
                 return false;
             }
-            
+
             const motifValue = motif ? motif.value.trim() : (motifHidden ? motifHidden.value.trim() : '');
             if (!motifValue) {
                 e.preventDefault();
@@ -1032,9 +1084,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Le motif est requis.');
                 return false;
             }
-            
-            // Debug: afficher la valeur avant soumission
-            console.log('Soumission suspension/desactivation - phone_number:', phoneValue, 'motif:', motifValue);
         } else if (type === 'ajustement') {
             const phoneNumber = document.getElementById('phone_number_ajustement');
             const phoneNumberHidden = document.getElementById('phone_number_hidden');
@@ -1042,20 +1091,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const planIdHidden = document.getElementById('plan_id_hidden');
             const creditOverride = document.getElementById('limite_credit_override');
             const dataOverride = document.getElementById('limite_data_override');
-            
-            // S'assurer que le formulaire d'ajustement est visible avant soumission
+
             ajustementForm.classList.remove('form-section-hidden');
-            
-            // Copier les valeurs vers les champs cachés
+
             if (phoneNumber && phoneNumberHidden) {
                 phoneNumberHidden.value = phoneNumber.value;
             }
             if (planId && planIdHidden) {
                 planIdHidden.value = planId.value;
             }
-            
+
             const phoneValue = phoneNumber ? phoneNumber.value.trim() : (phoneNumberHidden ? phoneNumberHidden.value.trim() : '');
-            
+
             if (!phoneValue) {
                 e.preventDefault();
                 if (phoneNumber) {
@@ -1065,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Le numéro de ligne est requis.');
                 return false;
             }
-            
+
             const planValue = planId ? planId.value : (planIdHidden ? planIdHidden.value : '');
             const hasCreditOverride = creditOverride && creditOverride.value !== '' && creditOverride.value !== null;
             const hasDataOverride = dataOverride && dataOverride.value !== '' && dataOverride.value !== null;
@@ -1078,8 +1125,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Veuillez sélectionner un forfait complet ou renseigner une limite crédit et/ou data à modifier.');
                 return false;
             }
-            
-            // Validation pour ajustement temporaire
+
             const isTemporary = document.getElementById('is_temporary_ajustement');
             const temporaryStartDate = document.getElementById('temporary_start_date_ajustement');
             const temporaryEndDate = document.getElementById('temporary_end_date_ajustement');
@@ -1103,7 +1149,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Afficher/masquer les champs date de début et date de fin pour ajustement temporaire
     function toggleTemporaryDate(checkbox) {
         const dateGroup = document.getElementById('temporary_date_group');
         const endDateInput = document.getElementById('temporary_end_date_ajustement');
@@ -1126,20 +1171,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Rendre la fonction disponible globalement pour le HTML et l'appeler au clic sur la checkbox
     window.toggleTemporaryDate = toggleTemporaryDate;
 
-    // Écouter le clic sur la checkbox (au cas où le formulaire ajustement est affiché)
     const isTemporaryCheckbox = document.getElementById('is_temporary_ajustement');
     if (isTemporaryCheckbox) {
         isTemporaryCheckbox.addEventListener('change', function() {
             toggleTemporaryDate(this);
         });
-        // Initialiser l'affichage au chargement (si déjà coché)
         toggleTemporaryDate(isTemporaryCheckbox);
     }
 
-    // Réafficher les dates quand on bascule sur le formulaire ajustement
     const origToggleForms = toggleForms;
     toggleForms = function() {
         origToggleForms();
@@ -1172,7 +1213,7 @@ document.addEventListener('DOMContentLoaded', function() {
         templateSaveBtn.addEventListener('click', function () {
             const type = requestType.value;
             if (!type) {
-                alert('Veuillez choisir un type de demande avant d’enregistrer un modèle.');
+                alert('Veuillez choisir un type de demande avant d\'enregistrer un modèle.');
                 return;
             }
             const name = prompt('Nom du modèle ?');
@@ -1255,26 +1296,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (historyLines) {
                     const lines = (data.recent_lines || []).length ? data.recent_lines.join(', ') : '-';
-                    historyLines.textContent = `Lignes récentes: ${lines}`;
+                    historyLines.textContent = `Lignes récentes : ${lines}`;
                 }
                 if (historyPlans) {
                     const plans = data.recent_plans ? Object.values(data.recent_plans) : [];
                     const label = plans.length ? plans.join(', ') : '-';
-                    historyPlans.textContent = `Forfaits récents: ${label}`;
+                    historyPlans.textContent = `Forfaits récents : ${label}`;
                     applySuggestedPlan(Object.keys(data.recent_plans || {}));
                 }
                 if (historySim) {
                     historySim.textContent = data.suggested_sim_label
-                        ? `Suggestion SIM: ${data.suggested_sim_label}`
+                        ? `Suggestion SIM : ${data.suggested_sim_label}`
                         : '';
                 }
 
                 applySuggestedSim(data.suggested_sim_id);
                 updateSummary();
             })
-            .catch(() => {
-                // ignore
-            });
+            .catch(() => {});
     }
 
     if (collaboratorMatriculeInput) {
@@ -1343,5 +1382,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
-@endsection
-

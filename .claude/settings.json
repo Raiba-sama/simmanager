@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\xampp2\\\\htdocs\\\\flotte\\\\simmanager\")",
+      "Bash(Select-Object -Property Name, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(Get-ChildItem -Path \"c:\\\\xampp2\\\\htdocs\\\\flotte\\\\simmanager\\\\resources\\\\views\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(Get-ChildItem -Path \"c:\\\\xampp2\\\\htdocs\\\\flotte\\\\simmanager\\\\resources\\\\views\" -Recurse -Filter \"*.blade.php\")",
+      "Bash(Select-Object FullName)",
+      "Bash(Sort-Object FullName)",
+      "Bash(Get-ChildItem -Path \"c:\\\\xampp2\\\\htdocs\\\\flotte\\\\simmanager\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(php artisan *)"
+    ]
+  }
+}
