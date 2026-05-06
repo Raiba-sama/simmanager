@@ -1,435 +1,801 @@
 @extends('layouts.bootstrap')
 
-@section('title', 'Détails de la demande')
-@section('page-title', 'Demande #' . $simRequest->request_number)
+@section('title', 'Demande #' . $simRequest->request_number)
+@section('page-title', 'Détail de la demande')
+
+@push('styles')
+<style>
+    /* ── Layout ──────────────────────────────────────────────────── */
+    .sr-grid {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 20px;
+        align-items: start;
+    }
+    @media (max-width: 991px) {
+        .sr-grid { grid-template-columns: 1fr; }
+        .sr-sticky { position: static !important; }
+    }
+    .sr-sticky { position: sticky; top: calc(var(--navbar-h) + 20px); }
+
+    /* ── Cards ───────────────────────────────────────────────────── */
+    .sr-card {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        overflow: hidden;
+        margin-bottom: 16px;
+    }
+    .sr-card-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 10px;
+        background: #fafafa;
+    }
+    .sr-card-title {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 13.5px; font-weight: 700; color: var(--text);
+        margin: 0;
+    }
+    .sr-card-title i { color: var(--primary); font-size: 16px; }
+    .sr-card-body { padding: 20px; }
+
+    /* ── Section separator inside card ──────────────────────────── */
+    .sr-section {
+        padding-top: 16px;
+        margin-top: 16px;
+        border-top: 1px solid #f1f5f9;
+    }
+    .sr-section:first-child { padding-top: 0; margin-top: 0; border-top: none; }
+    .sr-section-label {
+        font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.07em;
+        color: var(--muted); margin-bottom: 12px;
+    }
+
+    /* ── DL grid ─────────────────────────────────────────────────── */
+    .sr-dl { display: grid; grid-template-columns: 150px 1fr; gap: 8px 16px; }
+    .sr-dt { font-size: 12px; font-weight: 600; color: var(--muted); padding-top: 2px; }
+    .sr-dd { font-size: 13.5px; color: var(--text); font-weight: 500; }
+
+    /* ── Badges ──────────────────────────────────────────────────── */
+    .sr-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 3px 11px; border-radius: 20px;
+        font-size: 12px; font-weight: 600;
+    }
+    .sr-badge-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: currentColor; flex-shrink: 0;
+    }
+
+    /* ── Avatar user chip ────────────────────────────────────────── */
+    .sr-user-chip {
+        display: inline-flex; align-items: center; gap: 8px;
+    }
+    .sr-avatar {
+        width: 28px; height: 28px; border-radius: 50%;
+        object-fit: cover; flex-shrink: 0;
+        border: 1.5px solid var(--border);
+    }
+    .sr-user-name { font-size: 13.5px; font-weight: 600; color: var(--text); }
+    .sr-user-sub  { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Timeline ────────────────────────────────────────────────── */
+    .sr-timeline { padding: 0; list-style: none; margin: 0; }
+    .sr-timeline-item {
+        display: flex; gap: 12px;
+        padding-bottom: 14px;
+        position: relative;
+    }
+    .sr-timeline-item::before {
+        content: '';
+        position: absolute; left: 15px; top: 28px;
+        width: 2px; bottom: 0;
+        background: var(--border);
+    }
+    .sr-timeline-item:last-child::before { display: none; }
+    .sr-timeline-item:last-child { padding-bottom: 0; }
+
+    .sr-timeline-dot {
+        width: 30px; height: 30px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 13px; flex-shrink: 0;
+        border: 2px solid var(--border);
+        background: white;
+    }
+    .sr-timeline-body { flex: 1; min-width: 0; padding-top: 3px; }
+    .sr-timeline-action { font-size: 13.5px; font-weight: 600; color: var(--text); }
+    .sr-timeline-meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Historique table ────────────────────────────────────────── */
+    .sr-table { width: 100%; border-collapse: collapse; }
+    .sr-table th {
+        padding: 10px 14px; font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--muted); background: #f8fafc;
+        border-bottom: 1px solid var(--border); text-align: left;
+    }
+    .sr-table td {
+        padding: 10px 14px; font-size: 12.5px;
+        color: var(--text); border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    .sr-table tbody tr:last-child td { border-bottom: none; }
+    .sr-table tbody tr:hover td { background: #f8fafc; }
+
+    /* ── Action cards (right panel) ──────────────────────────────── */
+    .sr-action {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .sr-action-header {
+        padding: 11px 16px;
+        display: flex; align-items: center; gap: 8px;
+        font-size: 12.5px; font-weight: 700;
+        border-bottom: 1px solid var(--border);
+        border-left: 3px solid transparent;
+    }
+    .sr-action-body { padding: 14px 16px; }
+
+    .sr-action-header.green  { border-left-color: var(--primary); color: var(--primary); background: #f0fdf4; }
+    .sr-action-header.amber  { border-left-color: #d97706; color: #92400e; background: #fffbeb; }
+    .sr-action-header.blue   { border-left-color: #3b82f6; color: #1d4ed8; background: #eff6ff; }
+    .sr-action-header.red    { border-left-color: #ef4444; color: #991b1b; background: #fef2f2; }
+    .sr-action-header.indigo { border-left-color: #6366f1; color: #3730a3; background: #eef2ff; }
+
+    /* ── Action form fields ──────────────────────────────────────── */
+    .sr-input {
+        width: 100%; border: 1.5px solid var(--border); border-radius: 9px;
+        padding: 8px 12px; font-size: 13px;
+        font-family: 'Poppins', sans-serif; color: var(--text);
+        outline: none; resize: vertical; box-sizing: border-box;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .sr-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+    select.sr-input { height: 36px; padding: 0 12px; cursor: pointer; resize: none; }
+
+    /* ── Action buttons ──────────────────────────────────────────── */
+    .sr-btn {
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+        width: 100%; height: 36px; padding: 0 14px;
+        border: none; border-radius: 9px;
+        font-size: 13px; font-weight: 600; font-family: 'Poppins', sans-serif;
+        cursor: pointer; transition: background 0.18s, opacity 0.18s;
+        text-decoration: none; margin-bottom: 8px;
+    }
+    .sr-btn:last-child { margin-bottom: 0; }
+    .sr-btn-primary  { background: var(--primary); color: white; }
+    .sr-btn-primary:hover  { background: var(--primary-dark); color: white; }
+    .sr-btn-success  { background: #16a34a; color: white; }
+    .sr-btn-success:hover  { background: #15803d; color: white; }
+    .sr-btn-danger   { background: #ef4444; color: white; }
+    .sr-btn-danger:hover   { background: #dc2626; color: white; }
+    .sr-btn-outline  { background: white; color: var(--text); border: 1.5px solid var(--border); }
+    .sr-btn-outline:hover  { border-color: var(--primary); color: var(--primary); }
+    .sr-btn-outline-danger { background: white; color: #ef4444; border: 1.5px solid #fecaca; }
+    .sr-btn-outline-danger:hover { background: #fef2f2; border-color: #ef4444; color: #ef4444; }
+    .sr-btn-disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+
+    /* ── Top bar ─────────────────────────────────────────────────── */
+    .sr-topbar {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 12px; margin-bottom: 18px;
+    }
+    .sr-topbar-left .sr-number { font-size: 18px; font-weight: 700; color: var(--text); }
+    .sr-topbar-left .sr-meta  { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+    .sr-topbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .sr-top-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        height: 34px; padding: 0 14px;
+        border-radius: 9px; font-size: 13px; font-weight: 600;
+        font-family: 'Poppins', sans-serif; cursor: pointer;
+        text-decoration: none; transition: all 0.18s;
+    }
+    .sr-top-btn-outline {
+        background: white; color: var(--text);
+        border: 1.5px solid var(--border);
+    }
+    .sr-top-btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .sr-top-btn-primary {
+        background: var(--primary); color: white; border: none;
+    }
+    .sr-top-btn-primary:hover { background: var(--primary-dark); color: white; }
+    .sr-top-btn-star {
+        background: #fffbeb; color: #d97706;
+        border: 1.5px solid #fde68a;
+    }
+    .sr-top-btn-star:hover { background: #fef3c7; }
+    .sr-top-btn-star.active { background: #f59e0b; color: white; border-color: #f59e0b; }
+
+    /* ── Group bar ───────────────────────────────────────────────── */
+    .sr-group-bar {
+        background: white; border: 1px solid var(--border);
+        border-left: 3px solid var(--primary);
+        border-radius: 12px; padding: 12px 16px;
+        margin-bottom: 16px;
+        display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+    }
+    .sr-group-bar-label {
+        font-size: 12.5px; font-weight: 700; color: var(--primary);
+        display: flex; align-items: center; gap: 6px;
+        flex-shrink: 0;
+    }
+    .sr-group-chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 4px 10px; border-radius: 8px;
+        font-size: 12px; font-weight: 600;
+        text-decoration: none; transition: all 0.15s;
+    }
+    .sr-group-chip-current {
+        background: var(--primary); color: white;
+    }
+    .sr-group-chip-other {
+        background: #f0fdf4; color: var(--primary);
+        border: 1.5px solid #bbf7d0;
+    }
+    .sr-group-chip-other:hover { background: #dcfce7; color: var(--primary); }
+
+    /* ── Notification banner ─────────────────────────────────────── */
+    .sr-notif-banner {
+        display: flex; align-items: flex-start; gap: 12px;
+        background: #eff6ff; border: 1px solid #bfdbfe;
+        border-left: 3px solid #3b82f6;
+        border-radius: 12px; padding: 14px 16px;
+        margin-bottom: 16px;
+        position: relative;
+    }
+    .sr-notif-banner i { color: #3b82f6; font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .sr-notif-banner-title { font-size: 13.5px; font-weight: 700; color: #1e40af; }
+    .sr-notif-banner-text  { font-size: 12.5px; color: #3b82f6; margin-top: 2px; }
+    .sr-notif-close {
+        position: absolute; top: 10px; right: 12px;
+        background: none; border: none; cursor: pointer;
+        color: #93c5fd; font-size: 16px; line-height: 1;
+        transition: color 0.15s;
+    }
+    .sr-notif-close:hover { color: #3b82f6; }
+
+    /* ── Comment/alert boxes ─────────────────────────────────────── */
+    .sr-info-box {
+        background: #f0fdf4; border: 1px solid #bbf7d0;
+        border-radius: 9px; padding: 10px 14px;
+        font-size: 13px; color: #166534;
+    }
+    .sr-warning-box {
+        background: #fffbeb; border: 1px solid #fde68a;
+        border-radius: 9px; padding: 10px 14px;
+        font-size: 13px; color: #92400e;
+    }
+    .sr-danger-box {
+        background: #fef2f2; border: 1px solid #fecaca;
+        border-radius: 9px; padding: 10px 14px;
+        font-size: 13px; color: #991b1b;
+    }
+
+    /* ── Back button ─────────────────────────────────────────────── */
+    .sr-back {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 16px; background: white;
+        border: 1.5px solid var(--border); border-radius: 9px;
+        font-size: 13px; font-weight: 500; color: var(--text);
+        text-decoration: none; transition: border-color 0.18s, color 0.18s;
+    }
+    .sr-back:hover { border-color: var(--primary); color: var(--primary); }
+</style>
+@endpush
 
 @section('content')
-<style>
-.sim-request-page { --sr-card-radius: 12px; --sr-shadow: 0 1px 3px rgba(0,0,0,0.06); --sr-shadow-hover: 0 4px 12px rgba(0,0,0,0.08); }
-.sim-request-page .card { border: none; border-radius: var(--sr-card-radius); box-shadow: var(--sr-shadow); transition: box-shadow 0.2s; }
-.sim-request-page .card:hover { box-shadow: var(--sr-shadow-hover); }
-.sim-request-page .action-panel { position: sticky; top: 90px; }
-.sim-request-page .action-card { border-radius: var(--sr-card-radius); border: none; overflow: hidden; margin-bottom: 0.75rem; }
-.sim-request-page .action-card .card-header { font-weight: 600; font-size: 0.9rem; padding: 0.6rem 0.85rem; }
-.sim-request-page .action-card .card-body { padding: 0.75rem 0.85rem; }
-.sim-request-page .btn-action-main { border-radius: 8px; padding: 0.38rem 0.65rem; font-weight: 500; }
-.sim-request-page .btn-action-mini { border-radius: 8px; padding: 0.35rem 0.5rem; line-height: 1; }
-.sim-request-page .action-card .form-control,
-.sim-request-page .action-card .form-select { font-size: 0.875rem; }
-.sim-request-page .action-card .form-control::placeholder { font-size: 0.875rem; }
-.sim-request-page .action-card .btn { font-size: 0.9rem; }
-.sim-request-page .accordion-button { padding: 0.65rem 0.85rem; font-size: 0.95rem; }
-.sim-request-page .accordion-body { padding: 0.75rem 0.85rem; }
-.sim-request-page .accordion-button:not(.collapsed) { background: #f8fafc; color: #0f172a; }
-.sim-request-page .group-badge { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
-.sim-request-page .info-dt { color: #64748b; font-weight: 500; font-size: 0.875rem; }
-.sim-request-page .info-dd { color: #1e293b; font-size: 0.9375rem; }
+@php
+    $typeLabels = [
+        'recuperation' => 'Récupération', 'creation' => 'Création',
+        'suspension' => 'Suspension', 'desactivation' => 'Désactivation',
+        'ajustement' => 'Ajustement',
+    ];
+    $typeStyles = [
+        'recuperation' => 'background:#fef3c7;color:#92400e;',
+        'creation'     => 'background:#d1fae5;color:#065f46;',
+        'suspension'   => 'background:#dbeafe;color:#1e40af;',
+        'desactivation'=> 'background:#fee2e2;color:#991b1b;',
+        'ajustement'   => 'background:#ede9fe;color:#5b21b6;',
+    ];
+    $statusLabels = [
+        'en_attente'      => 'En attente',
+        'validee'         => 'Validée',
+        'rejetee'         => 'Rejetée',
+        'demande_envoyee' => 'Demande envoyée',
+        'pending'         => 'En attente (opérateur)',
+        'refused'         => 'Refusée (opérateur)',
+        'accepted'        => 'Acceptée (opérateur)',
+    ];
+    $statusStyles = [
+        'en_attente'      => 'background:#fef3c7;color:#92400e;',
+        'validee'         => 'background:#d1fae5;color:#065f46;',
+        'rejetee'         => 'background:#fee2e2;color:#991b1b;',
+        'demande_envoyee' => 'background:#dbeafe;color:#1e40af;',
+        'pending'         => 'background:#dbeafe;color:#1e40af;',
+        'refused'         => 'background:#fee2e2;color:#991b1b;',
+        'accepted'        => 'background:#d1fae5;color:#065f46;',
+    ];
+    $actionColors = [
+        'created'              => ['bg'=>'#d1fae5','text'=>'#065f46','icon'=>'bi-plus-circle'],
+        'validated'            => ['bg'=>'#dbeafe','text'=>'#1e40af','icon'=>'bi-check-circle'],
+        'rejected'             => ['bg'=>'#fee2e2','text'=>'#991b1b','icon'=>'bi-x-circle'],
+        'status_updated'       => ['bg'=>'#fef3c7','text'=>'#92400e','icon'=>'bi-arrow-repeat'],
+        'submitted_to_webhook' => ['bg'=>'#ede9fe','text'=>'#5b21b6','icon'=>'bi-send'],
+        'cancelled'            => ['bg'=>'#f3f4f6','text'=>'#6b7280','icon'=>'bi-dash-circle'],
+    ];
 
-.sim-request-page .sr-shell { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
-.sim-request-page .sr-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.sim-request-page .sr-topbar .sr-title { font-size: 18px; font-weight: 650; color: #0f172a; }
-.sim-request-page .sr-topbar .sr-subtitle { font-size: 12px; color: #64748b; }
-.sim-request-page .sr-panel { background: rgba(255,255,255,0.75); backdrop-filter: blur(6px); border: 1px solid rgba(226,232,240,0.9); border-radius: var(--sr-card-radius); box-shadow: var(--sr-shadow); overflow: hidden; }
-.sim-request-page .sr-panel-header { padding: 12px 14px; background: linear-gradient(180deg, rgba(248,250,252,1) 0%, rgba(255,255,255,1) 100%); border-bottom: 1px solid #e2e8f0; }
-.sim-request-page .sr-panel-body { padding: 12px 14px; }
-.sim-request-page .sr-panel + .sr-panel { margin-top: 12px; }
+    $user = auth()->user();
+    $canEdit = false;
+    if ($user->isValidator()) {
+        $canEdit = ($simRequest->created_by === $user->id) || ($simRequest->status === 'en_attente');
+    } else {
+        $canEdit = ($simRequest->user_id === $user->id) && ($simRequest->status === 'en_attente');
+    }
+    $canEdit = $canEdit && ($simRequest->status !== 'demande_envoyee');
+    $canCopy = $user->isValidator() || ($simRequest->isRecuperation() && $simRequest->user_id === $user->id);
 
-@media (max-width: 992px) {
-  .sim-request-page .sr-shell { grid-template-columns: 1fr; }
-  .sim-request-page .action-panel { position: static; top: auto; }
-}
-</style>
+    $collaboratorUser = $simRequest->collaborator_matricule
+        ? \App\Models\User::where('matricule', $simRequest->collaborator_matricule)->first()
+        : null;
+    $beneficiaryUser = $simRequest->beneficiary_matricule
+        ? \App\Models\User::where('matricule', $simRequest->beneficiary_matricule)->first()
+        : null;
 
+    $daysPending = now()->diffInDays($simRequest->created_at);
+@endphp
+
+{{-- Notification banner --}}
 @if(request()->has('from') && request()->from === 'notification')
-    <div class="alert alert-info alert-dismissible fade show sim-request-page" role="alert" style="border-left: 4px solid #3b82f6; background: #eff6ff; border-radius: 10px; margin-bottom: 1.25rem;">
-        <div class="d-flex align-items-center">
-            <i class="bi bi-info-circle me-2" style="font-size: 1.25rem; color: #3b82f6;"></i>
-            <div>
-                <strong>Rappel de notification</strong>
-                <p class="mb-0" style="font-size: 0.875rem;">Vous avez été redirigé depuis une notification. Cette demande nécessite une action.</p>
-            </div>
+    <div class="sr-notif-banner">
+        <i class="bi bi-bell-fill"></i>
+        <div>
+            <div class="sr-notif-banner-title">Rappel de notification</div>
+            <div class="sr-notif-banner-text">Vous avez été redirigé depuis une notification. Cette demande nécessite une action.</div>
         </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button class="sr-notif-close" onclick="this.closest('.sr-notif-banner').remove()">
+            <i class="bi bi-x"></i>
+        </button>
     </div>
 @endif
 
+{{-- Group bar --}}
 @if($simRequest->isGrouped() && $simRequest->groupMembers->count() > 1)
-    <div class="card mb-3 sim-request-page border-primary" style="border-width: 1px !important;">
-        <div class="card-header bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-between">
-            <span><i class="bi bi-collection me-2"></i>Demandes du même groupe ({{ $simRequest->groupMembers->count() }})</span>
-            <span class="badge bg-primary">{{ $simRequest->groupMembers->count() }} carte(s) SIM</span>
-        </div>
-        <div class="card-body py-2">
-            <div class="d-flex flex-wrap gap-2 align-items-center">
-                @foreach($simRequest->groupMembers as $member)
-                    <a href="{{ route('sim-requests.show', $member) }}" class="btn btn-sm {{ $member->id === $simRequest->id ? 'btn-primary' : 'btn-outline-primary' }}" style="border-radius: 8px;">
-                        {{ $member->request_number }} @if($member->sim) — {{ $member->sim->iccid }} @endif
-                    </a>
-                @endforeach
-            </div>
+    <div class="sr-group-bar">
+        <span class="sr-group-bar-label">
+            <i class="bi bi-collection"></i>
+            Groupe ({{ $simRequest->groupMembers->count() }} SIMs)
+        </span>
+        <div class="d-flex flex-wrap gap-2">
+            @foreach($simRequest->groupMembers as $member)
+                <a href="{{ route('sim-requests.show', $member) }}"
+                   class="sr-group-chip {{ $member->id === $simRequest->id ? 'sr-group-chip-current' : 'sr-group-chip-other' }}">
+                    {{ $member->request_number }}
+                    @if($member->sim) <span style="opacity:.7;">— {{ $member->sim->iccid }}</span> @endif
+                </a>
+            @endforeach
         </div>
     </div>
 @endif
 
-<div class="sim-request-page">
-    @php
-        $statusLabelsTop = [
-            'en_attente' => 'En attente',
-            'validee' => 'Validée',
-            'rejetee' => 'Rejetée',
-            'demande_envoyee' => 'Demande envoyée',
-            'pending' => 'En attente (opérateur)',
-            'refused' => 'Refusée (opérateur)',
-            'accepted' => 'Acceptée (opérateur)',
-        ];
-
-        $user = auth()->user();
-        $canEdit = false;
-        if ($user->isValidator()) {
-            $canEdit = ($simRequest->created_by === $user->id) || ($simRequest->status === 'en_attente');
-        } else {
-            $canEdit = ($simRequest->user_id === $user->id) && ($simRequest->status === 'en_attente');
-        }
-        $canEdit = $canEdit && ($simRequest->status !== 'demande_envoyee');
-
-        $canCopy = $user->isValidator() || ($simRequest->isRecuperation() && $simRequest->user_id === $user->id);
-    @endphp
-
-    <div class="sr-topbar">
-        <div>
-            <div class="sr-title">Demande #{{ $simRequest->request_number }}</div>
-            <div class="sr-subtitle">{{ $statusLabelsTop[$simRequest->status] ?? $simRequest->status }} • Créée le {{ $simRequest->created_at->format('d/m/Y H:i') }}</div>
-        </div>
-        <div class="d-flex gap-2 flex-wrap">
-            @if($canCopy)
-                <a href="{{ route('sim-requests.create', ['copy_from' => $simRequest->id]) }}" class="btn btn-sm btn-outline-primary btn-action-main" title="Reprendre cette demande">
-                    <i class="bi bi-arrow-repeat"></i> Reprendre
-                </a>
+{{-- Top bar --}}
+<div class="sr-topbar">
+    <div class="sr-topbar-left">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div class="sr-number">{{ $simRequest->request_number }}</div>
+            <span class="sr-badge" style="{{ $statusStyles[$simRequest->status] ?? 'background:#f3f4f6;color:#6b7280;' }}">
+                <span class="sr-badge-dot"></span>
+                {{ $statusLabels[$simRequest->status] ?? $simRequest->status }}
+            </span>
+            @if($simRequest->status === 'en_attente' && $daysPending >= 3)
+                <span class="sr-badge" style="background:{{ $daysPending>=7?'#fee2e2':($daysPending>=5?'#fef3c7':'#dbeafe') }};color:{{ $daysPending>=7?'#991b1b':($daysPending>=5?'#92400e':'#1e40af') }};">
+                    <i class="bi bi-clock-history" style="font-size:10px;"></i>
+                    {{ $daysPending }}j en attente
+                </span>
             @endif
-            @if($canEdit)
-                <a href="{{ route('sim-requests.edit', $simRequest) }}" class="btn btn-sm btn-primary btn-action-main" title="Modifier la demande">
-                    <i class="bi bi-pencil"></i> Modifier
-                </a>
-            @endif
-            <button type="button"
-                    class="btn btn-sm {{ $isFavorite ? 'btn-warning' : 'btn-outline-warning' }} btn-action-main"
-                    title="{{ $isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris' }}"
-                    onclick="toggleFavorite({{ $simRequest->id }}, this)">
-                <i class="bi {{ $isFavorite ? 'bi-star-fill' : 'bi-star' }}"></i> Favori
-            </button>
         </div>
+        <div class="sr-meta">Créée le {{ $simRequest->created_at->format('d/m/Y à H:i') }}</div>
     </div>
+    <div class="sr-topbar-actions">
+        @if($canCopy)
+            <a href="{{ route('sim-requests.create', ['copy_from' => $simRequest->id]) }}"
+               class="sr-top-btn sr-top-btn-outline">
+                <i class="bi bi-arrow-repeat"></i> Reprendre
+            </a>
+        @endif
+        @if($canEdit)
+            <a href="{{ route('sim-requests.edit', $simRequest) }}"
+               class="sr-top-btn sr-top-btn-primary">
+                <i class="bi bi-pencil"></i> Modifier
+            </a>
+        @endif
+        <button type="button"
+                id="fav-btn"
+                class="sr-top-btn {{ $isFavorite ? 'sr-top-btn-star active' : 'sr-top-btn-star' }}"
+                onclick="toggleFavorite({{ $simRequest->id }}, this)">
+            <i class="bi {{ $isFavorite ? 'bi-star-fill' : 'bi-star' }}"></i>
+            {{ $isFavorite ? 'Favori' : 'Ajouter' }}
+        </button>
+    </div>
+</div>
 
-    <div class="sr-shell">
-        <div>
-            <div class="sr-panel">
-                <div class="sr-panel-header">
-                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-file-text text-primary"></i>
-                            <span style="font-weight: 650;">Informations de la demande</span>
-                        </div>
-                        @if($simRequest->status === 'en_attente')
-                            @php
-                                $daysPending = now()->diffInDays($simRequest->created_at);
-                                $urgencyLevel = $daysPending >= 7 ? 'urgent' : ($daysPending >= 5 ? 'high' : ($daysPending >= 3 ? 'normal' : 'low'));
-                                $urgencyColors = [
-                                    'urgent' => '#ef4444',
-                                    'high' => '#f59e0b',
-                                    'normal' => '#3b82f6',
-                                    'low' => 'transparent',
-                                ];
-                            @endphp
-                            @if($urgencyLevel !== 'low')
-                                <span class="badge" style="background: {{ $urgencyColors[$urgencyLevel] }}; color: white; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;" title="En attente depuis {{ $daysPending }} jour(s)">
-                                    <i class="bi bi-clock-history"></i> {{ $daysPending }} jour(s)
+{{-- Main grid --}}
+<div class="sr-grid">
+
+    {{-- ── Left column ─────────────────────────────────────────── --}}
+    <div>
+
+        {{-- Info card --}}
+        <div class="sr-card">
+            <div class="sr-card-header">
+                <h2 class="sr-card-title"><i class="bi bi-file-text"></i> Informations de la demande</h2>
+                <span class="sr-badge" style="{{ $typeStyles[$simRequest->request_type] ?? 'background:#f3f4f6;color:#6b7280;' }}">
+                    {{ $typeLabels[$simRequest->request_type] ?? ucfirst($simRequest->request_type) }}
+                </span>
+            </div>
+            <div class="sr-card-body">
+
+                {{-- Général --}}
+                <div class="sr-section">
+                    <div class="sr-section-label">Général</div>
+                    <dl class="sr-dl">
+                        <dt class="sr-dt">N° Demande</dt>
+                        <dd class="sr-dd"><strong>{{ $simRequest->request_number }}</strong></dd>
+
+                        <dt class="sr-dt">Statut</dt>
+                        <dd class="sr-dd">
+                            <span class="sr-badge" style="{{ $statusStyles[$simRequest->status] ?? 'background:#f3f4f6;color:#6b7280;' }}">
+                                <span class="sr-badge-dot"></span>
+                                {{ $statusLabels[$simRequest->status] ?? $simRequest->status }}
+                            </span>
+                        </dd>
+
+                        @if($simRequest->creator)
+                            <dt class="sr-dt">Créé par</dt>
+                            <dd class="sr-dd">
+                                <div class="sr-user-chip">
+                                    <img src="{{ $simRequest->creator->avatar }}" class="sr-avatar" alt="">
+                                    <div>
+                                        <div class="sr-user-name">{{ $simRequest->creator->full_name }}</div>
+                                        @if($simRequest->creator->matricule)
+                                            <div class="sr-user-sub">{{ $simRequest->creator->matricule }}</div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </dd>
+                        @endif
+
+                        @if($simRequest->isRecuperation() && $simRequest->user)
+                            <dt class="sr-dt">Demandeur</dt>
+                            <dd class="sr-dd">
+                                <div class="sr-user-chip">
+                                    <img src="{{ $simRequest->user->avatar }}" class="sr-avatar" alt="">
+                                    <div>
+                                        <div class="sr-user-name">{{ $simRequest->user->full_name }}</div>
+                                        <div class="sr-user-sub">{{ $simRequest->user->matricule }}</div>
+                                    </div>
+                                </div>
+                            </dd>
+                        @endif
+
+                        <dt class="sr-dt">Créée le</dt>
+                        <dd class="sr-dd">{{ $simRequest->created_at->format('d/m/Y H:i') }}</dd>
+
+                        @if($simRequest->validated_at)
+                            <dt class="sr-dt">Validée le</dt>
+                            <dd class="sr-dd">{{ $simRequest->validated_at->format('d/m/Y H:i') }}</dd>
+                        @endif
+
+                        @if($simRequest->admin_processed_at)
+                            <dt class="sr-dt">Traitement admin</dt>
+                            <dd class="sr-dd">{{ $simRequest->admin_processed_at->format('d/m/Y H:i') }}</dd>
+                        @endif
+
+                        <dt class="sr-dt">Livraison</dt>
+                        <dd class="sr-dd">
+                            @if($simRequest->isDelivered())
+                                <span class="sr-badge" style="background:#d1fae5;color:#065f46;">
+                                    <span class="sr-badge-dot"></span> Livré — {{ $simRequest->delivered_at->format('d/m/Y H:i') }}
                                 </span>
+                            @else
+                                <span style="color:var(--muted);">Non livré</span>
                             @endif
+                        </dd>
+                    </dl>
+                </div>
+
+                {{-- Collaborateur / Bénéficiaire --}}
+                @if(!$simRequest->isCreation() && ($simRequest->collaborator_matricule || $simRequest->collaborator_name || $simRequest->collaborator_first_name || $simRequest->collaborator_agence))
+                    <div class="sr-section">
+                        <div class="sr-section-label">Collaborateur concerné</div>
+                        <div class="sr-user-chip" style="align-items:flex-start;">
+                            @if($collaboratorUser)
+                                <img src="{{ $collaboratorUser->avatar }}" class="sr-avatar" alt="" style="margin-top:2px;">
+                            @else
+                                <div class="sr-avatar" style="background:var(--primary-glow);display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:12px;font-weight:700;">
+                                    {{ strtoupper(substr($simRequest->collaborator_name ?? '?', 0, 1)) }}
+                                </div>
+                            @endif
+                            <div>
+                                @if($simRequest->collaborator_name || $simRequest->collaborator_first_name)
+                                    <div class="sr-user-name">{{ trim(($simRequest->collaborator_name ?? '') . ' ' . ($simRequest->collaborator_first_name ?? '')) }}</div>
+                                @endif
+                                @if($simRequest->collaborator_matricule)
+                                    <div class="sr-user-sub">Mat : {{ $simRequest->collaborator_matricule }}</div>
+                                @endif
+                                @if($simRequest->collaborator_agence)
+                                    <div class="sr-user-sub">Agence : {{ $simRequest->collaborator_agence }}</div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                @if($simRequest->isCreation())
+                    <div class="sr-section">
+                        <div class="sr-section-label">Bénéficiaire</div>
+                        <div class="sr-user-chip" style="align-items:flex-start;">
+                            @if($beneficiaryUser)
+                                <img src="{{ $beneficiaryUser->avatar }}" class="sr-avatar" alt="" style="margin-top:2px;">
+                            @else
+                                <div class="sr-avatar" style="background:var(--primary-glow);display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:12px;font-weight:700;">
+                                    {{ strtoupper(substr($simRequest->beneficiary_name ?? '?', 0, 1)) }}
+                                </div>
+                            @endif
+                            <div>
+                                <div class="sr-user-name">{{ $simRequest->beneficiary_name }} {{ $simRequest->beneficiary_first_name }}</div>
+                                @if($simRequest->beneficiary_matricule)
+                                    <div class="sr-user-sub">Mat : {{ $simRequest->beneficiary_matricule }}</div>
+                                @endif
+                                @if($simRequest->beneficiary_fonction)
+                                    <div class="sr-user-sub">Fonction : {{ $simRequest->beneficiary_fonction }}</div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Détails SIM --}}
+                @if($simRequest->phone_number || $simRequest->sim || $simRequest->requested_iccid || $simRequest->plan || $simRequest->motif || $simRequest->justification)
+                    <div class="sr-section">
+                        <div class="sr-section-label">Détails SIM & Forfait</div>
+                        <dl class="sr-dl">
+                            @if($simRequest->phone_number || ($simRequest->sim && $simRequest->sim->phone_number))
+                                <dt class="sr-dt">Ligne concernée</dt>
+                                <dd class="sr-dd">{{ $simRequest->phone_number ?? $simRequest->sim->phone_number }}</dd>
+                            @endif
+
+                            @if($simRequest->sim)
+                                <dt class="sr-dt">SIM (ICCID)</dt>
+                                <dd class="sr-dd">
+                                    <a href="{{ route('sims.show', $simRequest->sim) }}"
+                                       style="color:var(--primary);text-decoration:none;font-family:monospace;font-size:13px;">
+                                        {{ $simRequest->sim->iccid }}
+                                    </a>
+                                </dd>
+                            @endif
+
+                            @if($simRequest->requested_iccid)
+                                <dt class="sr-dt">ICCID demandé</dt>
+                                <dd class="sr-dd" style="font-family:monospace;font-size:13px;">{{ $simRequest->requested_iccid }}</dd>
+                            @endif
+
+                            @if($simRequest->plan)
+                                <dt class="sr-dt">Forfait</dt>
+                                <dd class="sr-dd">{{ $simRequest->plan->name }}</dd>
+                            @endif
+
+                            @if($simRequest->limite_credit !== null)
+                                <dt class="sr-dt">Limite crédit</dt>
+                                <dd class="sr-dd">{{ number_format($simRequest->limite_credit, 0, ',', ' ') }} XOF</dd>
+                            @endif
+
+                            @if($simRequest->limite_data !== null)
+                                <dt class="sr-dt">Limite data</dt>
+                                <dd class="sr-dd">{{ $simRequest->limite_data }} GB</dd>
+                            @endif
+
+                            @if($simRequest->motif)
+                                <dt class="sr-dt">Motif</dt>
+                                <dd class="sr-dd">{{ $simRequest->motif }}</dd>
+                            @endif
+
+                            @if($simRequest->justification)
+                                <dt class="sr-dt">Justification</dt>
+                                <dd class="sr-dd">{{ $simRequest->justification }}</dd>
+                            @endif
+                        </dl>
+
+                        @if($simRequest->is_temporary)
+                            <div class="sr-warning-box mt-3">
+                                <strong><i class="bi bi-clock me-1"></i> Ajustement temporaire</strong><br>
+                                @if($simRequest->temporary_start_date)
+                                    Début : {{ $simRequest->temporary_start_date->format('d/m/Y') }} —
+                                @endif
+                                Fin : {{ $simRequest->temporary_end_date ? $simRequest->temporary_end_date->format('d/m/Y') : 'Non définie' }}
+                                @if($simRequest->temporary_end_date && $simRequest->temporary_end_date->isPast())
+                                    <span class="sr-badge" style="background:#fee2e2;color:#991b1b;margin-left:6px;">Expiré</span>
+                                @elseif($simRequest->temporary_end_date && $simRequest->temporary_end_date->diffInDays(now()) <= 7)
+                                    <span class="sr-badge" style="background:#fef3c7;color:#92400e;margin-left:6px;">Expire bientôt</span>
+                                @endif
+                            </div>
                         @endif
                     </div>
-                </div>
-                <div class="sr-panel-body">
-                @php
-                    $typeLabels = [
-                        'recuperation' => 'Récupération',
-                        'creation' => 'Création',
-                        'suspension' => 'Suspension',
-                        'desactivation' => 'Désactivation',
-                        'ajustement' => 'Ajustement',
-                    ];
-                    $typeColors = [
-                        'recuperation' => 'warning',
-                        'creation' => 'success',
-                        'suspension' => 'info',
-                        'desactivation' => 'danger',
-                        'ajustement' => 'primary',
-                    ];
-                    $statusLabels = [
-                        'en_attente' => 'En attente',
-                        'validee' => 'Validée',
-                        'rejetee' => 'Rejetée',
-                        'demande_envoyee' => 'Demande envoyée',
-                        'pending' => 'En attente (opérateur)',
-                        'refused' => 'Refusée (opérateur)',
-                        'accepted' => 'Acceptée (opérateur)',
-                    ];
-                    $statusColors = [
-                        'en_attente' => 'warning',
-                        'validee' => 'success',
-                        'rejetee' => 'danger',
-                        'demande_envoyee' => 'info',
-                        'pending' => 'info',
-                        'refused' => 'danger',
-                        'accepted' => 'success',
-                    ];
-                    $collaboratorUser = $simRequest->collaborator_matricule ? \App\Models\User::where('matricule', $simRequest->collaborator_matricule)->first() : null;
-                    $beneficiaryUser = $simRequest->beneficiary_matricule ? \App\Models\User::where('matricule', $simRequest->beneficiary_matricule)->first() : null;
-                @endphp
+                @endif
 
-                <div class="accordion" id="requestInfoAccordion">
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="requestInfoGeneralHeading">
-                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#requestInfoGeneral" aria-expanded="true" aria-controls="requestInfoGeneral">
-                                <i class="bi bi-info-circle me-2 text-primary"></i>Général
-                            </button>
-                        </h2>
-                        <div id="requestInfoGeneral" class="accordion-collapse collapse show" aria-labelledby="requestInfoGeneralHeading" data-bs-parent="#requestInfoAccordion">
-                            <div class="accordion-body">
-                                <dl class="row mb-0">
-                                    <dt class="col-sm-4 info-dt mb-2">N° Demande</dt>
-                                    <dd class="col-sm-8 info-dd mb-3"><strong>{{ $simRequest->request_number }}</strong></dd>
-
-                                    <dt class="col-sm-4 info-dt mb-2">Type</dt>
-                                    <dd class="col-sm-8 mb-3">
-                                        <span class="badge bg-{{ $typeColors[$simRequest->request_type] ?? 'secondary' }}">
-                                            {{ $typeLabels[$simRequest->request_type] ?? ucfirst($simRequest->request_type) }}
-                                        </span>
-                                    </dd>
-
-                                    <dt class="col-sm-4 info-dt mb-2">Statut</dt>
-                                    <dd class="col-sm-8 mb-3">
-                                        <span class="badge bg-{{ $statusColors[$simRequest->status] ?? 'secondary' }}">
-                                            {{ $statusLabels[$simRequest->status] ?? ucfirst($simRequest->status) }}
-                                        </span>
-                                    </dd>
-
-                                    @if($simRequest->creator)
-                                        <dt class="col-sm-4 info-dt mb-2">Demandeur / Créé par</dt>
-                                        <dd class="col-sm-8 mb-3">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <img src="{{ $simRequest->creator->avatar }}" alt="" class="rounded-circle" style="width: 28px; height: 28px; object-fit: cover;">
-                                                <span class="info-dd">{{ $simRequest->creator->full_name }}</span>
-                                                @if($simRequest->creator->matricule)
-                                                    <small class="text-muted">({{ $simRequest->creator->matricule }})</small>
-                                                @endif
-                                            </div>
-                                        </dd>
-                                    @endif
-
-                                    @if($simRequest->isRecuperation())
-                                        <dt class="col-sm-4 info-dt mb-2">Utilisateur</dt>
-                                        <dd class="col-sm-8 mb-3">
-                                            @if($simRequest->user)
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <img src="{{ $simRequest->user->avatar }}" alt="" class="rounded-circle" style="width: 28px; height: 28px; object-fit: cover;">
-                                                    <span class="info-dd">{{ $simRequest->user->full_name }} ({{ $simRequest->user->matricule }})</span>
-                                                </div>
-                                            @else
-                                                —
-                                            @endif
-                                        </dd>
-                                    @endif
-
-                                    @if(!$simRequest->isCreation() && ($simRequest->collaborator_matricule || $simRequest->collaborator_name || $simRequest->collaborator_first_name || $simRequest->collaborator_agence))
-                                        <dt class="col-sm-4 info-dt mb-2">Collaborateur</dt>
-                                        <dd class="col-sm-8 mb-3">
-                                            <div class="d-flex align-items-center gap-2">
-                                                @if($collaboratorUser)
-                                                    <img src="{{ $collaboratorUser->avatar }}" alt="" class="rounded-circle" style="width: 28px; height: 28px; object-fit: cover;">
-                                                @endif
-                                                <div class="info-dd">
-                                                    @if($simRequest->collaborator_name || $simRequest->collaborator_first_name)
-                                                        <strong>{{ trim(($simRequest->collaborator_name ?? '') . ' ' . ($simRequest->collaborator_first_name ?? '')) }}</strong>
-                                                    @endif
-                                                    @if($simRequest->collaborator_matricule)
-                                                        <div class="text-muted small">Matricule: {{ $simRequest->collaborator_matricule }}</div>
-                                                    @endif
-                                                    @if($simRequest->collaborator_agence)
-                                                        <div class="text-muted small">Agence: {{ $simRequest->collaborator_agence }}</div>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </dd>
-                                    @endif
-
-                                    @if($simRequest->isCreation())
-                                        <dt class="col-sm-4 info-dt mb-2">Bénéficiaire</dt>
-                                        <dd class="col-sm-8 mb-3">
-                                            <div class="d-flex align-items-center gap-2">
-                                                @if($beneficiaryUser)
-                                                    <img src="{{ $beneficiaryUser->avatar }}" alt="" class="rounded-circle" style="width: 28px; height: 28px; object-fit: cover;">
-                                                @endif
-                                                <div class="info-dd">
-                                                    <strong>{{ $simRequest->beneficiary_name }}</strong>
-                                                    @if($simRequest->beneficiary_first_name)
-                                                        {{ $simRequest->beneficiary_first_name }}
-                                                    @endif
-                                                    @if($simRequest->beneficiary_matricule)
-                                                        <div class="text-muted small">Matricule: {{ $simRequest->beneficiary_matricule }}</div>
-                                                    @endif
-                                                    @if($simRequest->beneficiary_fonction)
-                                                        <div class="text-muted small">Fonction: {{ $simRequest->beneficiary_fonction }}</div>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </dd>
-                                    @endif
-
-                                    <dt class="col-sm-4 info-dt mb-2">Date de création</dt>
-                                    <dd class="col-sm-8 mb-3">{{ $simRequest->created_at->format('d/m/Y H:i') }}</dd>
-
-                                    @if($simRequest->validated_at)
-                                        <dt class="col-sm-4 info-dt mb-2">Date de validation</dt>
-                                        <dd class="col-sm-8 mb-3">{{ $simRequest->validated_at->format('d/m/Y H:i') }}</dd>
-                                    @endif
-
-                                    @if($simRequest->admin_processed_at)
-                                        <dt class="col-sm-4 info-dt mb-2">Traitement admin</dt>
-                                        <dd class="col-sm-8 mb-3">{{ $simRequest->admin_processed_at->format('d/m/Y H:i') }}</dd>
-                                    @endif
-
-                                    <dt class="col-sm-4 info-dt mb-2">Livré</dt>
-                                    <dd class="col-sm-8 mb-0">
-                                        @if($simRequest->isDelivered())
-                                            <span class="badge bg-success">Livré</span> <span class="text-muted small">({{ $simRequest->delivered_at->format('d/m/Y H:i') }})</span>
-                                        @else
-                                            <span class="text-muted">Non livré</span>
-                                        @endif
-                                    </dd>
-                                </dl>
+                {{-- Traitement --}}
+                @if($simRequest->validator || $simRequest->admin || $simRequest->admin_comment || $simRequest->rejection_reason)
+                    <div class="sr-section">
+                        <div class="sr-section-label">Traitement</div>
+                        <dl class="sr-dl">
+                            @if($simRequest->validator)
+                                <dt class="sr-dt">Validateur</dt>
+                                <dd class="sr-dd">{{ $simRequest->validator->full_name }}</dd>
+                            @endif
+                            @if($simRequest->admin)
+                                <dt class="sr-dt">Géré par</dt>
+                                <dd class="sr-dd">{{ $simRequest->admin->full_name }}</dd>
+                            @endif
+                        </dl>
+                        @if($simRequest->admin_comment)
+                            <div class="sr-info-box mt-3">
+                                <i class="bi bi-chat-left-text me-1"></i>
+                                <strong>Commentaire admin :</strong> {{ $simRequest->admin_comment }}
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="requestInfoDetailsHeading">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#requestInfoDetails" aria-expanded="false" aria-controls="requestInfoDetails">
-                                <i class="bi bi-list-check me-2 text-primary"></i>Détails
-                            </button>
-                        </h2>
-                        <div id="requestInfoDetails" class="accordion-collapse collapse" aria-labelledby="requestInfoDetailsHeading" data-bs-parent="#requestInfoAccordion">
-                            <div class="accordion-body">
-                                <dl class="row mb-0">
-                                    @if($simRequest->phone_number || ($simRequest->sim && $simRequest->sim->phone_number))
-                                        <dt class="col-sm-4 info-dt mb-2">Ligne concernée</dt>
-                                        <dd class="col-sm-8 mb-3">{{ $simRequest->phone_number ?? $simRequest->sim->phone_number }}</dd>
-                                    @endif
-
-                                    @if($simRequest->sim)
-                                        <dt class="col-sm-4 info-dt mb-2">SIM</dt>
-                                        <dd class="col-sm-8 mb-3">
-                                            <a href="{{ route('sims.show', $simRequest->sim) }}">{{ $simRequest->sim->iccid }}</a>
-                                        </dd>
-                                    @endif
-
-                                    @if($simRequest->requested_iccid)
-                                        <dt class="col-sm-4 info-dt mb-2">ICCID demandé</dt>
-                                        <dd class="col-sm-8 mb-3">{{ $simRequest->requested_iccid }}</dd>
-                                    @endif
-
-                                    @if($simRequest->plan || $simRequest->limite_credit !== null || $simRequest->limite_data !== null)
-                                        <dt class="col-sm-4 info-dt mb-2">Forfait</dt>
-                                        <dd class="col-sm-8 mb-3">
-                                            @if($simRequest->plan)
-                                                <strong>{{ $simRequest->plan->name }}</strong><br>
-                                            @endif
-                                            @if($simRequest->is_temporary)
-                                                <span class="badge bg-warning text-dark mb-2">
-                                                    <i class="bi bi-clock"></i> Ajustement temporaire
-                                                </span>
-                                                <div class="text-muted small">
-                                                    @if($simRequest->temporary_start_date)
-                                                        <strong>Début:</strong> {{ $simRequest->temporary_start_date->format('d/m/Y') }}<br>
-                                                    @endif
-                                                    <strong>Fin:</strong> {{ $simRequest->temporary_end_date ? $simRequest->temporary_end_date->format('d/m/Y') : 'Non définie' }}
-                                                    @if($simRequest->temporary_end_date && $simRequest->temporary_end_date->isPast())
-                                                        <span class="badge bg-danger ms-2">Expiré</span>
-                                                    @elseif($simRequest->temporary_end_date && $simRequest->temporary_end_date->diffInDays(now()) <= 7)
-                                                        <span class="badge bg-warning text-dark ms-2">Expire bientôt</span>
-                                                    @endif
-                                                </div>
-                                            @endif
-                                            <div class="text-muted small mt-1">
-                                                Limite crédit:
-                                                @if($simRequest->limite_credit !== null)
-                                                    {{ number_format($simRequest->limite_credit, 0, ',', ' ') }} XOF
-                                                @else
-                                                    <span class="text-muted">Inchangé</span>
-                                                @endif
-                                                <br>
-                                                Limite data:
-                                                @if($simRequest->limite_data !== null)
-                                                    {{ $simRequest->limite_data }} GB
-                                                @else
-                                                    <span class="text-muted">Inchangé</span>
-                                                @endif
-                                            </div>
-                                        </dd>
-                                    @endif
-
-                                    @if($simRequest->motif)
-                                        <dt class="col-sm-4 info-dt mb-2">Motif</dt>
-                                        <dd class="col-sm-8 mb-3">{{ $simRequest->motif }}</dd>
-                                    @endif
-
-                                    @if($simRequest->justification)
-                                        <dt class="col-sm-4 info-dt mb-2">Justification</dt>
-                                        <dd class="col-sm-8 mb-3">{{ $simRequest->justification }}</dd>
-                                    @endif
-
-                                    @if($simRequest->validator)
-                                        <dt class="col-sm-4 info-dt mb-2">Validateur</dt>
-                                        <dd class="col-sm-8 mb-3">{{ $simRequest->validator->full_name }}</dd>
-                                    @endif
-
-                                    @if($simRequest->admin)
-                                        <dt class="col-sm-4 info-dt mb-2">Géré par</dt>
-                                        <dd class="col-sm-8 mb-3">{{ $simRequest->admin->full_name }}</dd>
-                                    @endif
-
-                                    @if($simRequest->admin_comment)
-                                        <dt class="col-sm-4 info-dt mb-2">Commentaire admin</dt>
-                                        <dd class="col-sm-8 mb-3">
-                                            <div class="alert alert-info mb-0 py-2 px-3">{{ $simRequest->admin_comment }}</div>
-                                        </dd>
-                                    @endif
-
-                                    @if($simRequest->rejection_reason)
-                                        <dt class="col-sm-4 info-dt mb-2">Raison du rejet</dt>
-                                        <dd class="col-sm-8 mb-0 text-danger">{{ $simRequest->rejection_reason }}</dd>
-                                    @endif
-                                </dl>
+                        @endif
+                        @if($simRequest->rejection_reason)
+                            <div class="sr-danger-box mt-3">
+                                <i class="bi bi-x-circle me-1"></i>
+                                <strong>Raison du rejet :</strong> {{ $simRequest->rejection_reason }}
                             </div>
-                        </div>
+                        @endif
                     </div>
-                </div>
-            </div>
+                @endif
+
             </div>
         </div>
 
-        <div class="action-panel">
-        {{-- Actions pour le demandeur --}}
+        {{-- Activité récente --}}
+        @if($simRequest->histories->count())
+        <div class="sr-card">
+            <div class="sr-card-header">
+                <h2 class="sr-card-title"><i class="bi bi-lightning-charge"></i> Activité récente</h2>
+            </div>
+            <div class="sr-card-body">
+                <ul class="sr-timeline">
+                    @foreach($simRequest->histories->sortByDesc('created_at')->take(4) as $history)
+                        @php
+                            $ac = $actionColors[$history->action] ?? ['bg'=>'#f3f4f6','text'=>'#6b7280','icon'=>'bi-circle'];
+                        @endphp
+                        <li class="sr-timeline-item">
+                            <div class="sr-timeline-dot" style="background:{{ $ac['bg'] }};color:{{ $ac['text'] }};border-color:{{ $ac['bg'] }};">
+                                <i class="bi {{ $ac['icon'] }}" style="font-size:12px;"></i>
+                            </div>
+                            <div class="sr-timeline-body">
+                                <div class="sr-timeline-action">{{ $history->action_label }}</div>
+                                <div class="sr-timeline-meta">
+                                    {{ $history->created_at->format('d/m/Y H:i') }}
+                                    @if($history->user || $history->user_matricule)
+                                        · {{ $history->user ? $history->user->full_name : $history->user_matricule }}
+                                    @endif
+                                </div>
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+        @endif
+
+        {{-- Historique complet --}}
+        <div class="sr-card">
+            <div class="sr-card-header">
+                <h2 class="sr-card-title"><i class="bi bi-clock-history"></i> Historique complet</h2>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="sr-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Action</th>
+                            <th>Utilisateur</th>
+                            <th>Détails</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($simRequest->histories->sortByDesc('created_at') as $history)
+                            @php $ac = $actionColors[$history->action] ?? ['bg'=>'#f3f4f6','text'=>'#6b7280','icon'=>'bi-circle']; @endphp
+                            <tr>
+                                <td style="color:var(--muted);white-space:nowrap;">{{ $history->created_at->format('d/m/Y H:i') }}</td>
+                                <td>
+                                    <span class="sr-badge" style="background:{{ $ac['bg'] }};color:{{ $ac['text'] }};">
+                                        {{ $history->action_label }}
+                                    </span>
+                                </td>
+                                <td>{{ $history->user ? $history->user->full_name : ($history->user_matricule ?? '—') }}</td>
+                                <td style="color:var(--muted);">
+                                    @if($history->changes_summary)
+                                        {{ $history->changes_summary }}
+                                    @elseif($history->notes)
+                                        {{ \Illuminate\Support\Str::limit($history->notes, 60) }}
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">Aucun historique</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>{{-- /left --}}
+
+    {{-- ── Right column (actions) ──────────────────────────────── --}}
+    <div class="sr-sticky">
+
+        {{-- Mes actions (demandeur) --}}
         @if((auth()->user()->id === $simRequest->user_id || auth()->user()->id === $simRequest->created_by) && ($simRequest->isEnAttente() || $simRequest->isPending()))
-            <div class="card action-card">
-                <div class="card-header bg-info text-white">
-                    <i class="bi bi-person-lines-fill me-2"></i>Mes actions
+            <div class="sr-action">
+                <div class="sr-action-header blue">
+                    <i class="bi bi-person-lines-fill"></i> Mes actions
                 </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ route('sim-requests.cancel', $simRequest) }}" data-confirm="Êtes-vous sûr de vouloir annuler cette demande ? Cette action est irréversible." data-confirm-variant="danger" data-confirm-text="Annuler">
+                <div class="sr-action-body">
+                    <form method="POST" action="{{ route('sim-requests.cancel', $simRequest) }}"
+                          data-confirm="Êtes-vous sûr de vouloir annuler cette demande ? Cette action est irréversible."
+                          data-confirm-variant="danger" data-confirm-text="Annuler">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="btn btn-warning w-100 btn-action-main">
+                        <button type="submit" class="sr-btn sr-btn-outline-danger">
                             <i class="bi bi-x-circle"></i> Annuler ma demande
+                        </button>
+                    </form>
+                </div>
+            </div>
+        @endif
+
+        {{-- Validation (validateur, récupération en attente) --}}
+        @if($simRequest->isRecuperation() && $simRequest->isEnAttente() && auth()->user()->canValidateRequests() && $simRequest->created_by !== auth()->id())
+            <div class="sr-action">
+                <div class="sr-action-header amber">
+                    <i class="bi bi-patch-check"></i> Validation
+                </div>
+                <div class="sr-action-body">
+                    <form method="POST" action="{{ route('sim-requests.approve', $simRequest) }}">
+                        @csrf
+                        <textarea name="notes" class="sr-input mb-2" rows="2" placeholder="Notes (optionnel)"></textarea>
+                        <button type="submit" class="sr-btn sr-btn-success">
+                            <i class="bi bi-check-circle"></i> Approuver
+                        </button>
+                    </form>
+                    <div style="height:8px;"></div>
+                    <form method="POST" action="{{ route('sim-requests.reject', $simRequest) }}"
+                          data-confirm="Confirmer le rejet de cette demande ?"
+                          data-confirm-variant="danger" data-confirm-text="Rejeter">
+                        @csrf
+                        <textarea name="rejection_reason" class="sr-input mb-2" rows="2" placeholder="Raison du rejet *" required></textarea>
+                        <button type="submit" class="sr-btn sr-btn-danger">
+                            <i class="bi bi-x-circle"></i> Rejeter
+                        </button>
+                    </form>
+                    <div style="height:8px;"></div>
+                    <form method="POST" action="{{ route('sim-requests.destroy', $simRequest) }}"
+                          data-confirm="Supprimer définitivement cette demande ?"
+                          data-confirm-variant="danger" data-confirm-text="Supprimer">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="sr-btn sr-btn-outline-danger">
+                            <i class="bi bi-trash"></i> Supprimer
                         </button>
                     </form>
                 </div>
@@ -438,22 +804,26 @@
 
         {{-- Livraison (validateur) --}}
         @if(auth()->user()->isValidator())
-            <div class="card action-card">
-                <div class="card-header" style="background: #f0fdf4; color: #166534;">
-                    <i class="bi bi-box-seam me-2"></i>Livraison
+            <div class="sr-action">
+                <div class="sr-action-header green">
+                    <i class="bi bi-box-seam"></i> Livraison
                 </div>
-                <div class="card-body">
+                <div class="sr-action-body">
                     @if($simRequest->isDelivered())
-                        <form method="POST" action="{{ route('sim-requests.toggle-delivered', $simRequest) }}" data-confirm="Retirer la marque « livré » ?" data-confirm-variant="secondary" data-confirm-text="Retirer">
+                        <form method="POST" action="{{ route('sim-requests.toggle-delivered', $simRequest) }}"
+                              data-confirm="Retirer la marque « livré » ?"
+                              data-confirm-variant="secondary" data-confirm-text="Retirer">
                             @csrf
-                            <button type="submit" class="btn btn-outline-secondary w-100 btn-action-main">
+                            <button type="submit" class="sr-btn sr-btn-outline">
                                 <i class="bi bi-box-seam"></i> Retirer « livré »
                             </button>
                         </form>
                     @else
-                        <form method="POST" action="{{ route('sim-requests.toggle-delivered', $simRequest) }}" data-confirm="Marquer cette demande comme livrée ?" data-confirm-variant="success" data-confirm-text="Marquer livré">
+                        <form method="POST" action="{{ route('sim-requests.toggle-delivered', $simRequest) }}"
+                              data-confirm="Marquer cette demande comme livrée ?"
+                              data-confirm-variant="success" data-confirm-text="Marquer livré">
                             @csrf
-                            <button type="submit" class="btn btn-success w-100 btn-action-main">
+                            <button type="submit" class="sr-btn sr-btn-success">
                                 <i class="bi bi-check-circle"></i> Marquer comme livrée
                             </button>
                         </form>
@@ -462,55 +832,20 @@
             </div>
         @endif
 
-        {{-- Validation (validateur, récupération uniquement) --}}
-        @if($simRequest->isRecuperation() && $simRequest->isEnAttente() && auth()->user()->canValidateRequests() && $simRequest->created_by !== auth()->id())
-            <div class="card action-card">
-                <div class="card-header" style="background: #fef3c7; color: #92400e;">
-                    <i class="bi bi-patch-check me-2"></i>Validation
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ route('sim-requests.approve', $simRequest) }}" class="mb-2">
-                        @csrf
-                        <div class="mb-2">
-                            <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Notes (optionnel)"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-success w-100 btn-action-main">
-                            <i class="bi bi-check-circle"></i> Approuver
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('sim-requests.reject', $simRequest) }}" class="mb-2" data-confirm="Confirmer le rejet de cette demande ?" data-confirm-variant="danger" data-confirm-text="Rejeter">
-                        @csrf
-                        <div class="mb-2">
-                            <textarea name="rejection_reason" class="form-control form-control-sm" rows="2" placeholder="Raison du rejet *" required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-danger w-100 btn-action-main">
-                            <i class="bi bi-x-circle"></i> Rejeter
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('sim-requests.destroy', $simRequest) }}" data-confirm="Supprimer définitivement cette demande ?" data-confirm-variant="danger" data-confirm-text="Supprimer">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-outline-danger w-100 btn-action-main">
-                            <i class="bi bi-trash"></i> Supprimer
-                        </button>
-                    </form>
-                </div>
-            </div>
-        @endif
-
         {{-- Bordereau (validateur) --}}
         @if(auth()->user()->isValidator())
-            <div class="card action-card">
-                <div class="card-header" style="background: #eff6ff; color: #1e40af;">
-                    <i class="bi bi-file-earmark-text me-2"></i>Bordereau
+            <div class="sr-action">
+                <div class="sr-action-header indigo">
+                    <i class="bi bi-file-earmark-text"></i> Bordereau
                 </div>
-                <div class="card-body">
+                <div class="sr-action-body">
                     @if($simRequest->status === 'accepted')
-                        <a href="{{ route('sim-requests.bordereau', $simRequest) }}" class="btn btn-outline-primary w-100 btn-action-main" target="_blank">
+                        <a href="{{ route('sim-requests.bordereau', $simRequest) }}"
+                           class="sr-btn sr-btn-primary" target="_blank" style="text-decoration:none;">
                             <i class="bi bi-file-text"></i> Voir le bordereau
                         </a>
                     @else
-                        <button class="btn btn-secondary w-100 btn-action-main" disabled title="Disponible pour les demandes acceptées">
+                        <button class="sr-btn sr-btn-disabled" disabled title="Disponible pour les demandes acceptées">
                             <i class="bi bi-file-text"></i> Voir le bordereau
                         </button>
                     @endif
@@ -518,182 +853,86 @@
             </div>
         @endif
 
-        {{-- Admin : webhook + statuts --}}
+        {{-- Actions Admin --}}
         @if(auth()->user()->isAdmin())
-            <div class="card action-card">
-                <div class="card-header bg-primary text-white">
-                    <i class="bi bi-gear-wide-connected me-2"></i>Actions Admin
+            <div class="sr-action">
+                <div class="sr-action-header green">
+                    <i class="bi bi-gear-wide-connected"></i> Actions Admin
                 </div>
-                <div class="card-body">
+                <div class="sr-action-body">
                     @if(!$simRequest->isRejetee())
-                        <form method="POST" action="{{ route('sim-requests.submit-webhook', $simRequest) }}" class="mb-3" data-confirm="Soumettre cette demande au webhook ? Un email sera envoyé." data-confirm-variant="primary" data-confirm-text="Soumettre">
+                        <form method="POST" action="{{ route('sim-requests.submit-webhook', $simRequest) }}"
+                              class="mb-3"
+                              data-confirm="Soumettre cette demande au webhook ? Un email sera envoyé."
+                              data-confirm-variant="primary" data-confirm-text="Soumettre">
                             @csrf
-                            <button type="submit" class="btn btn-success w-100 btn-action-main">
-                                <i class="bi bi-send"></i> Soumettre à l’opérateur
+                            <button type="submit" class="sr-btn sr-btn-success">
+                                <i class="bi bi-send"></i> Soumettre à l'opérateur
                             </button>
                         </form>
                     @endif
                     <form method="POST" action="{{ route('sim-requests.admin-action', $simRequest) }}">
                         @csrf
                         <div class="mb-2">
-                            <select name="status" id="admin_status" class="form-select form-select-sm" required>
-                                <option value="pending" {{ $simRequest->status === 'pending' ? 'selected' : '' }}>Pending</option>
+                            <select name="status" class="sr-input" required>
+                                <option value="pending"  {{ $simRequest->status === 'pending'  ? 'selected' : '' }}>Pending</option>
                                 <option value="accepted" {{ $simRequest->status === 'accepted' ? 'selected' : '' }}>Accepted</option>
-                                <option value="refused" {{ $simRequest->status === 'refused' ? 'selected' : '' }}>Refused</option>
+                                <option value="refused"  {{ $simRequest->status === 'refused'  ? 'selected' : '' }}>Refused</option>
                             </select>
                         </div>
                         <div class="mb-2">
-                            <textarea name="admin_comment" id="admin_comment" class="form-control form-control-sm" rows="2" placeholder="Commentaire...">{{ old('admin_comment', $simRequest->admin_comment) }}</textarea>
+                            <textarea name="admin_comment" class="sr-input" rows="2"
+                                      placeholder="Commentaire...">{{ old('admin_comment', $simRequest->admin_comment) }}</textarea>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100 btn-action-main btn-sm">
-                            <i class="bi bi-send"></i> Mettre à jour
+                        <button type="submit" class="sr-btn sr-btn-primary">
+                            <i class="bi bi-check-circle"></i> Mettre à jour
                         </button>
                     </form>
                 </div>
             </div>
         @endif
-        </div>
 
-        {{-- Activité/Historique déplacés dans la zone principale (layout type dashboard) --}}
-        </div>
+    </div>{{-- /right --}}
 
-        <div>
-            @php
-                $recentHistories = $simRequest->histories->sortByDesc('created_at')->take(3);
-            @endphp
+</div>{{-- /sr-grid --}}
 
-            <div class="sr-panel">
-                <div class="sr-panel-header">
-                    <i class="bi bi-lightning-charge me-2"></i><span style="font-weight:650;">Activité récente</span>
-                </div>
-                <div class="sr-panel-body">
-                    @forelse($recentHistories as $history)
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <div style="font-weight: 600;">{{ $history->action_label }}</div>
-                                <div class="text-muted" style="font-size: 12px;">{{ $history->created_at->format('d/m/Y H:i') }}</div>
-                            </div>
-                            <div class="text-muted" style="font-size: 12px;">
-                                {{ $history->user ? $history->user->full_name : ($history->user_matricule ?? '-') }}
-                            </div>
-                        </div>
-                    @empty
-                        <span class="text-muted">Aucune activité récente</span>
-                    @endforelse
-                </div>
-            </div>
-
-            <div class="sr-panel">
-                <div class="sr-panel-header">
-                    <i class="bi bi-clock-history me-2"></i><span style="font-weight:650;">Historique</span>
-                </div>
-                <div class="sr-panel-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-sm mb-0" style="margin: 0; font-size: 12.5px;">
-                            <thead style="background: #f9fafb;">
-                                <tr>
-                                    <th style="padding: 10px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px;">Date</th>
-                                    <th style="padding: 10px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px;">Action</th>
-                                    <th style="padding: 10px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px;">Utilisateur</th>
-                                    <th style="padding: 10px; font-weight: 600; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px;">Détails</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($simRequest->histories->sortByDesc('created_at') as $history)
-                                    <tr style="border-bottom: 1px solid #e5e7eb;">
-                                        <td style="padding: 10px; color: #4b5563;">{{ $history->created_at->format('d/m/Y H:i') }}</td>
-                                        <td style="padding: 10px;">
-                                            @php
-                                                $actionColors = [
-                                                    'created' => '#10b981',
-                                                    'validated' => '#3b82f6',
-                                                    'rejected' => '#ef4444',
-                                                    'status_updated' => '#f59e0b',
-                                                    'submitted_to_webhook' => '#8b5cf6',
-                                                    'cancelled' => '#6b7280',
-                                                ];
-                                                $color = $actionColors[$history->action] ?? '#3b82f6';
-                                            @endphp
-                                            <span class="badge" style="background: {{ $color }}; color: white; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">
-                                                {{ $history->action_label }}
-                                            </span>
-                                        </td>
-                                        <td style="padding: 10px; color: #4b5563;">
-                                            {{ $history->user ? $history->user->full_name : ($history->user_matricule ?? '-') }}
-                                        </td>
-                                        <td style="padding: 10px; color: #6b7280;">
-                                            @if($history->changes_summary)
-                                                {{ $history->changes_summary }}
-                                            @elseif($history->notes)
-                                                {{ \Illuminate\Support\Str::limit($history->notes, 50) }}
-                                            @else
-                                                -
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="4" class="text-center" style="padding: 18px; color: #9ca3af;">Aucun historique</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="mt-4 sim-request-page">
-    <a href="{{ route('sim-requests.index') }}" class="btn btn-outline-secondary btn-action-main">
+<div class="mt-2 mb-4">
+    <a href="{{ route('sim-requests.index') }}" class="sr-back">
         <i class="bi bi-arrow-left"></i> Retour à la liste
     </a>
 </div>
-
-<script>
-    function toggleFavorite(requestId, button) {
-        fetch(`{{ url('sim-requests') }}/${requestId}/toggle-favorite`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                if (window.showToast) {
-                    showToast(data.message, 'success');
-                }
-                
-                // Mettre à jour le bouton
-                const icon = button.querySelector('i');
-                if (data.is_favorite) {
-                    button.classList.remove('btn-outline-warning');
-                    button.classList.add('btn-warning');
-                    icon.classList.remove('bi-star');
-                    icon.classList.add('bi-star-fill');
-                    button.title = 'Retirer des favoris';
-                    button.innerHTML = '<i class="bi bi-star-fill"></i> Favori';
-                } else {
-                    button.classList.remove('btn-warning');
-                    button.classList.add('btn-outline-warning');
-                    icon.classList.remove('bi-star-fill');
-                    icon.classList.add('bi-star');
-                    button.title = 'Ajouter aux favoris';
-                    button.innerHTML = '<i class="bi bi-star"></i> Ajouter aux favoris';
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            if (window.showToast) {
-                showToast('Erreur lors de la mise à jour des favoris', 'error');
-            }
-        });
-    }
-</script>
 @endsection
+
+@push('scripts')
+<script>
+function toggleFavorite(requestId, button) {
+    fetch(`{{ url('sim-requests') }}/${requestId}/toggle-favorite`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) return;
+        if (window.showToast) showToast(data.message, 'success');
+        const icon = button.querySelector('i');
+        if (data.is_favorite) {
+            button.classList.add('active');
+            icon.className = 'bi bi-star-fill';
+            button.innerHTML = '<i class="bi bi-star-fill"></i> Favori';
+        } else {
+            button.classList.remove('active');
+            icon.className = 'bi bi-star';
+            button.innerHTML = '<i class="bi bi-star"></i> Ajouter';
+        }
+    })
+    .catch(() => {
+        if (window.showToast) showToast('Erreur lors de la mise à jour des favoris', 'error');
+    });
+}
+</script>
+@endpush
