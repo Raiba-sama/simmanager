@@ -971,6 +971,7 @@ class SimRequestController extends Controller
             DB::rollBack();
             return back()->with('error', 'Erreur lors de la mise à jour: ' . $e->getMessage());
         }
+
     }
 
     /**
@@ -996,6 +997,109 @@ class SimRequestController extends Controller
                 'admin_processed_at' => now(),
                 'updated_by' => auth()->id(),
             ]);
+
+            # If status is accepted then send mail to RH Team
+            $username = env('N8N_USERNAME');
+            $password = env('N8N_PASSWORD');
+            
+            if (!$username || !$password) {
+                Log::warning('Webhook credentials not configured');
+                return null;
+            }
+
+            if($validated['status'] === 'accepted'){
+
+                $requester = $simRequest->user;
+                $createdByMatricule = $requester->matricule ?? '';
+                $createdByName = trim(($requester->name ?? '') . ' ' . ($requester->first_name ?? ''));
+                $createdByEmail = $requester->email ?? '';
+                $createdByNumeroFlotte = $requester->numero_flotte ?? '';
+                
+                // Déterminer le numéro de téléphone à utiliser
+                // Pour les demandes de suspension, désactivation, ajustement, récupération : utiliser le numéro de la ligne concernée
+                // Pour la création : utiliser le numéro personnel du demandeur
+                $phoneNumberToUse = '';
+                $phoneNumberSource = '';
+                // Construire les paramètres de base de la requête
+                $params = [
+                    'general_request' => $simRequest,
+                    'request_type' => $simRequest->request_type,
+                    'request_number' => $simRequest->request_number,
+                    'request_date' => $simRequest->created_at?->toDateTimeString() ?? '',
+                    'request_matricule' => $createdByMatricule,
+                    'request_name' => $createdByName,
+                    'request_phone_number' => $simRequest->phone_number,
+                    'request_iccid' => $simRequest->sim->iccid,
+
+                ];
+                // Construire l'URL avec les paramètres
+                $baseUrl = 'https://acepmg.it4life.org/webhook/isAccepted';
+                $url = $baseUrl . '?' . http_build_query($params);
+
+                // Envoyer la requête HTTP
+                $response = Http::withBasicAuth($username, $password)
+                    ->withoutVerifying()
+                    ->timeout(30)
+                    ->get($url);
+
+                if ($response->successful()) {
+                    $responseData = $response->json();
+                    $responseBody = $response->body();
+                    
+                    // Initialiser responseData comme tableau vide si null
+                    if ($responseData === null) {
+                        $responseData = [];
+                    }
+                    
+                    // Si la réponse est un tableau indexé (ex: [0 => [...]], prendre le premier élément
+                    if (is_array($responseData) && isset($responseData[0]) && is_array($responseData[0])) {
+                        $responseData = $responseData[0];
+                    }
+                    
+                    Log::info('Webhook request successful', [
+                        'request_number' => $simRequest->request_number,
+                        'response_json' => $responseData,
+                        'response_body' => $responseBody,
+                        'response_body_length' => strlen($responseBody),
+                        'response_status' => $response->status()
+                    ]);
+
+                    // Si la réponse n'est pas un JSON valide, essayer de parser le body
+                    if (empty($responseData) && !empty($responseBody)) {
+                        $parsedData = json_decode($responseBody, true);
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            // Si c'est un tableau indexé, prendre le premier élément
+                            if (is_array($parsedData) && isset($parsedData[0]) && is_array($parsedData[0])) {
+                                $responseData = $parsedData[0];
+                            } else {
+                                $responseData = $parsedData;
+                            }
+                        } else {
+                            Log::warning('Webhook response is not valid JSON', [
+                                'request_number' => $simRequest->request_number,
+                                'body' => $responseBody
+                            ]);
+                        }
+                    }
+
+                    // Vérifier si la réponse est vide ou ne contient pas de données utiles
+                    $hasValidData = !empty($responseData) && (
+                        isset($responseData['message_subject']) || 
+                        isset($responseData['subject']) || 
+                        isset($responseData['message_corps']) || 
+                        isset($responseData['body']) || 
+                        isset($responseData['message'])
+                    );
+
+                } else {
+                    Log::error('Webhook request failed', [
+                        'request_number' => $simRequest->request_number,
+                        'status' => $response->status(),
+                        'response' => $response->body()
+                    ]);
+                }
+
+            }
 
             if ($validated['status'] === 'refused') {
                 $this->releaseSimAfterRejection($simRequest, null);
@@ -1795,6 +1899,7 @@ class SimRequestController extends Controller
             // Pour une demande de récupération, user_id = created_by (l'utilisateur qui fait la demande)
             // Pour les autres demandes, user_id est le bénéficiaire et created_by est le validator
             // On utilise user_id car c'est toujours l'utilisateur pour qui la demande est faite
+
             $requester = $simRequest->user;
             $createdByMatricule = $requester->matricule ?? '';
             $createdByName = trim(($requester->name ?? '') . ' ' . ($requester->first_name ?? ''));
