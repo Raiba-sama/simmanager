@@ -1029,7 +1029,7 @@ class SimRequestController extends Controller
                     'request_matricule' => $createdByMatricule,
                     'request_name' => $createdByName,
                     'request_phone_number' => $simRequest->phone_number,
-                    'request_iccid' => $simRequest->sim->iccid,
+                    'request_iccid' => $simRequest->sim->iccid ?? '',
 
                 ];
                 // Construire l'URL avec les paramètres
