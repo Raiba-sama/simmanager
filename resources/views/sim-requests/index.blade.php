@@ -553,7 +553,17 @@ tr.row-normal:hover .sticky-left, tr.row-normal:hover .sticky-left2, tr.row-norm
                             @endif
                         </td>
                         <td class="col-secondary" style="font-size:13px;">
-                            {{ $lineNumber ?? '—' }}
+                            @if($lineNumber)
+                                <div>{{ $lineNumber }}</div>
+                            @endif
+                            @php
+                                $iccidDisplay = $req->requested_iccid ?? ($req->sim ? $req->sim->iccid : null);
+                            @endphp
+                            @if($iccidDisplay)
+                                <div style="font-size:11px;color:#94a3b8;font-family:monospace;">{{ $iccidDisplay }}</div>
+                            @elseif(!$lineNumber)
+                                <span style="color:#d1d5db;">—</span>
+                            @endif
                         </td>
                         <td>
                             <span class="sbadge {{ $statusClass }}">

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Exports\SimsExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -22,12 +23,28 @@ class SimController extends Controller
     {
         $query = Sim::with('assignedUser')->orderBy('created_at', 'desc');
 
-        if ($request->has('status')) {
+        if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        if ($request->has('iccid')) {
+        if ($request->filled('iccid')) {
             $query->where('iccid', 'like', '%' . $request->iccid . '%');
+        }
+
+        if ($request->filled('phone_number')) {
+            $query->where('phone_number', 'like', '%' . $request->phone_number . '%');
+        }
+
+        if ($request->filled('operator')) {
+            $query->where('operator', 'like', '%' . $request->operator . '%');
+        }
+
+        if ($request->filled('assigned')) {
+            if ($request->assigned === '1') {
+                $query->whereNotNull('assigned_to');
+            } elseif ($request->assigned === '0') {
+                $query->whereNull('assigned_to');
+            }
         }
 
         $sims = $query->paginate(20);
