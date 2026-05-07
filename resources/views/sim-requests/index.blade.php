@@ -398,7 +398,7 @@ tr.row-normal:hover .sticky-left, tr.row-normal:hover .sticky-left2, tr.row-norm
             <div class="col-md-2">
                 <div class="fi-wrap">
                     <i class="bi bi-upc-scan fi-icon"></i>
-                    <input type="text" name="iccid" class="filter-input" value="{{ request('iccid') }}" placeholder="ICCID">
+                    <input type="text" name="iccid" id="filter-iccid" class="filter-input" value="{{ request('iccid') }}" placeholder="ICCID">
                 </div>
             </div>
             <div class="col-auto">
@@ -477,7 +477,7 @@ tr.row-normal:hover .sticky-left, tr.row-normal:hover .sticky-left2, tr.row-norm
                     <th>Type</th>
                     <th class="col-secondary">Demandeur</th>
                     <th class="col-secondary">Collaborateur</th>
-                    <th class="col-secondary">Ligne</th>
+                    <th>Ligne / ICCID</th>
                     <th>Statut</th>
                     <th class="col-secondary">Livré</th>
                     <th class="col-secondary">Priorité</th>
@@ -552,16 +552,17 @@ tr.row-normal:hover .sticky-left, tr.row-normal:hover .sticky-left2, tr.row-norm
                                 <span style="color:#d1d5db;">—</span>
                             @endif
                         </td>
-                        <td class="col-secondary" style="font-size:13px;">
-                            @if($lineNumber)
-                                <div>{{ $lineNumber }}</div>
-                            @endif
+                        <td style="font-size:13px;">
                             @php
                                 $iccidDisplay = $req->requested_iccid ?? ($req->sim ? $req->sim->iccid : null);
                             @endphp
+                            @if($lineNumber)
+                                <div style="color:#374151;">{{ $lineNumber }}</div>
+                            @endif
                             @if($iccidDisplay)
-                                <div style="font-size:11px;color:#94a3b8;font-family:monospace;">{{ $iccidDisplay }}</div>
-                            @elseif(!$lineNumber)
+                                <div style="font-size:11px;color:#64748b;font-family:monospace;margin-top:2px;">{{ $iccidDisplay }}</div>
+                            @endif
+                            @if(!$lineNumber && !$iccidDisplay)
                                 <span style="color:#d1d5db;">—</span>
                             @endif
                         </td>
@@ -762,6 +763,13 @@ document.getElementById('toggle-columns-btn')?.addEventListener('click', functio
     document.getElementById(id)?.addEventListener('change', () =>
         document.getElementById('filters-form').submit()
     );
+});
+
+/* ── Auto-submit on ICCID typing (debounced) ────────── */
+let iccidTimer;
+document.getElementById('filter-iccid')?.addEventListener('input', function() {
+    clearTimeout(iccidTimer);
+    iccidTimer = setTimeout(() => document.getElementById('filters-form').submit(), 500);
 });
 
 /* ── Favorite toggle ────────────────────────────────── */
