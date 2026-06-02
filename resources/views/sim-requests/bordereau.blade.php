@@ -200,10 +200,16 @@
             <div class="info-row">
                 <div class="info-label">Le Réceptionnaire:</div>
                 <div class="info-value">
-                    @if($simRequest->isCreation() && $simRequest->beneficiary_matricule)
-                        {{ $simRequest->beneficiary_matricule }} – {{ $simRequest->beneficiary_name }} {{ $simRequest->beneficiary_first_name ?? '' }}
+                    @if($simRequest->isCreation())
+                        @if($simRequest->beneficiary_matricule)
+                            {{ $simRequest->beneficiary_matricule }} – {{ trim(($simRequest->beneficiary_name ?? '') . ' ' . ($simRequest->beneficiary_first_name ?? '')) }}
+                        @else
+                            {{ trim(($simRequest->beneficiary_name ?? '') . ' ' . ($simRequest->beneficiary_first_name ?? '')) }}
+                        @endif
+                    @elseif($simRequest->collaborator_matricule || $simRequest->collaborator_name)
+                        {{ $simRequest->collaborator_matricule ? $simRequest->collaborator_matricule . ' – ' : '' }}{{ trim(($simRequest->collaborator_name ?? '') . ' ' . ($simRequest->collaborator_first_name ?? '')) }}
                     @else
-                        {{ $simRequest->user->matricule ?? '' }} – {{ $simRequest->user->full_name }}
+                        {{ $simRequest->user->matricule ?? '' }}{{ $simRequest->user->matricule ? ' – ' : '' }}{{ $simRequest->user->full_name }}
                     @endif
                 </div>
             </div>
