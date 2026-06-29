@@ -108,8 +108,8 @@
 
         /* ── Page footer ─────────────────────────────── */
         .page-footer {
-            border-top: 1px solid #e5e7eb; padding: 5px 0 0 0;
-            margin-top: 5px;
+            border-top: 1px solid #e5e7eb; padding: 2px 0 0 0;
+            margin-top: 1px;
             font-size: 7.5pt; color: #9ca3af; text-align: center;
         }
     </style>
