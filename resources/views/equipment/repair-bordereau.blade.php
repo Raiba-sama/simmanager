@@ -101,7 +101,7 @@
 
         /* ── Footer note ─────────────────────────────── */
         .footer-note {
-            margin-top: 18px; font-size: 7.5pt; font-style: italic;
+            margin-top: 5px; font-size: 7.5pt; font-style: italic;
             color: #6b7280; text-align: center; padding: 6px 12px;
             border: 1px dashed #d1d5db; background: #f9fafb;
         }
