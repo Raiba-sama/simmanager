@@ -4,9 +4,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>{{ $isReturn ? 'Bordereau Retour Réparation' : 'Bordereau Envoi Réparation' }}</title>
     <style>
-        @page { size: A4; margin: 20mm 25mm 24mm 25mm; }
+        @page { size: A4; margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 10pt; color: #1a1a1a; }
+        .page-wrap { padding: 18mm 22mm 20mm 22mm; }
 
         /* ── Header ──────────────────────────────────── */
         .hdr { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
@@ -107,17 +108,14 @@
 
         /* ── Page footer ─────────────────────────────── */
         .page-footer {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            border-top: 1px solid #e5e7eb; padding: 4px 0;
+            border-top: 1px solid #e5e7eb; padding: 5px 0 0 0;
+            margin-top: 20px;
             font-size: 7.5pt; color: #9ca3af; text-align: center;
         }
     </style>
 </head>
 <body>
-
-<div class="page-footer">
-    Document interne — Parc Informatique ACEP &nbsp;·&nbsp; Confidentiel
-</div>
+<div class="page-wrap">
 
 @php
     $refNumber = $sendout->supplier_reference
@@ -262,5 +260,10 @@
     (*) : Appose les articles reçus conformes le ________ et signe. — Ce document atteste l'{{ $isReturn ? 'retour' : 'envoi' }} de l'équipement listé ci-dessus.
 </div>
 
+<div class="page-footer">
+    Document interne — Parc Informatique ACEP &nbsp;·&nbsp; Confidentiel
+</div>
+
+</div>{{-- /.page-wrap --}}
 </body>
 </html>
