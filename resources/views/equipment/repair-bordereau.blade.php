@@ -4,7 +4,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>{{ $isReturn ? 'Bordereau Retour Réparation' : 'Bordereau Envoi Réparation' }}</title>
     <style>
-        @page { size: A4; margin: 14mm 15mm 18mm 15mm; }
+        @page { size: A4; margin: 20mm 25mm 24mm 25mm; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 10pt; color: #1a1a1a; }
 
