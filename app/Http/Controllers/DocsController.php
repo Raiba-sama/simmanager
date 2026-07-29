@@ -3,11 +3,10 @@
 namespace App\Http\Controllers;
 
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Http\Response;
 
 class DocsController extends Controller
 {
-    public function userGuide(): Response
+    public function userGuide()
     {
         $pdf = Pdf::loadView('docs.user-guide');
         $pdf->setOption('encoding', 'utf-8');
@@ -21,7 +20,7 @@ class DocsController extends Controller
         ]);
     }
 
-    public function adminGuide(): Response
+    public function adminGuide()
     {
         abort_unless(auth()->user()?->isValidator(), 403);
 
