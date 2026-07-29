@@ -30,6 +30,10 @@ Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'ind
 Route::get('/dashboard/chart-data', [\App\Http\Controllers\DashboardController::class, 'getChartDataApi'])->middleware('auth')->name('dashboard.chart-data');
 
 Route::middleware('auth')->group(function () {
+    // Documentation guides (PDF download)
+    Route::get('docs/guide-utilisateur', [\App\Http\Controllers\DocsController::class, 'userGuide'])->name('docs.user-guide');
+    Route::get('docs/guide-administrateur', [\App\Http\Controllers\DocsController::class, 'adminGuide'])->name('docs.admin-guide');
+
     // Sync users from webhook (admin only, controller checks isAdmin)
     Route::get('sync-users', [\App\Http\Controllers\UserSyncController::class, 'showSyncForm'])->name('sync-users.form');
     Route::post('admin/sync-users-from-webhook', [\App\Http\Controllers\UserSyncController::class, 'syncFromWebhook'])

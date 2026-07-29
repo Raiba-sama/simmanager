@@ -12,7 +12,9 @@
       "Bash(Sort-Object FullName)",
       "Bash(Get-ChildItem -Path \"c:\\\\xampp2\\\\htdocs\\\\flotte\\\\simmanager\" -Directory)",
       "Bash(Select-Object Name)",
-      "Bash(php artisan *)"
+      "Bash(php artisan *)",
+      "Bash(php -l app/Filament/Pages/DocumentationPage.php)",
+      "Bash(php -l app/Http/Controllers/DocsController.php)"
     ]
   }
 }
